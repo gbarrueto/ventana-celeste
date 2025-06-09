@@ -1,1 +1,327 @@
-Works x
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stellarium Web Engine (No Vue)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      font-family: Roboto, sans-serif;
+      background-color: #000; color: white;
+    }
+
+    .topbar {
+      background: rgba(0,0,0,0.5);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+    }
+
+    .title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-left: 1rem;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem;
+      gap: 0.5rem;
+    }
+
+    .stel-button {
+      width: 50px;
+      height: 50px;
+      opacity: 0.5;
+    }
+
+    .stel-button.active {
+      opacity: 1;
+    }
+
+    .stel-button img {
+      width: 100%;
+      height: 100%;
+    }
+
+    #stel {
+      position: absolute;
+      top: 64px;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+    }
+
+    #stel-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    
+    }
+
+    #info-card {
+      position: absolute;
+      top: 70px;
+      left: 10px;
+      width: 400px;
+      background: rgba(0,0,0,0.6);
+      padding: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .radecVal { font-family: monospace; font-weight: bold; display: inline-block; margin-right: 5px; }
+    .radecUnit { color: #ccc; font-weight: normal; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="title">Stellarium<sup>Web</sup></span>
+  <div id="progress" style="margin-left:auto; margin-right:1rem;"></div>
+</div>
+
+<div id="stel">
+  <canvas id="stel-canvas"></canvas>
+  <div id="info-card"></div>
+</div>
+
+<div class="footer" id="footer-buttons"></div>
+
+  <!--
+<script src="https://unpkg.com/i18next/dist/umd/i18next.min.js"></script>
+<script src="https://unpkg.com/i18next-xhr-backend/dist/umd/i18nextXHRBackend.min.js"></script>
+-->
+<script src="stellarium-web-engine.js"></script>
+
+<script>
+  
+        function toJulianDate(date) {
+        return date.getTime() / 86400000 + 2440587.5;
+      }
+      
+      function toJulianDateIso(string) {
+        const date = new Date(string);
+        return date.getTime() / 86400000 + 2440587.5;
+      }
+  
+  
+  const BUTTONS = [
+    { label: "Constellations", img: "static/imgs/symbols/btn-cst-lines.svg", path: "constellations", attr: "lines_visible" },
+    { label: "Atmosphere", img: "static/imgs/symbols/btn-atmosphere.svg", path: "atmosphere", attr: "visible" },
+    { label: "Landscape", img: "static/imgs/symbols/btn-landscape.svg", path: "landscapes", attr: "visible" },
+    { label: "Azimuthal Grid", img: "static/imgs/symbols/btn-azimuthal-grid.svg", path: "lines.azimuthal", attr: "visible" },
+    { label: "Equatorial Grid", img: "static/imgs/symbols/btn-equatorial-grid.svg", path: "lines.equatorial", attr: "visible" },
+    { label: "Nebulae", img: "static/imgs/symbols/btn-nebulae.svg", path: "dsos", attr: "visible" },
+    { label: "DSS", img: "static/imgs/symbols/btn-nebulae.svg", path: "dss", attr: "visible" },
+  ];
+/*
+  i18next.use(i18nextXHRBackend).init({
+    lng: 'index',
+    ns: ['gui', 'skycultures'],
+    backend: {
+      loadPath: 'https://stellarium.sfo2.cdn.digitaloceanspaces.com/{{ns}}/v3/western/{{lng}}.json'
+    }
+  });
+  */
+
+  function getBaseUrl() {
+    const parts = document.location.href.split('/');
+    parts.pop();
+    return parts.join('/') + '/';
+  }
+
+  function formatValue(obj, formatFn) {
+    return '<div class="radecVal">'+formatFn(obj)+'</div>';
+  }
+
+var engine;
+  StelWebEngine({
+    wasmFile: 'stellarium-web-engine.wasm',
+    canvas: document.getElementById('stel-canvas'),
+    //translateFn: (domain, str) => i18next.t(str, {ns: domain}),
+    onReady: function(stel) {
+      const baseUrl = 'https://stardata.alessiobellino.com/cache/';
+      const core = stel.core;
+      engine=stel;
+      //set night
+      
+
+
+      const myDate = "2025-06-06T23:15:00Z";
+      engine.core.observer.utc = toJulianDateIso(myDate);
+      
+      engine.core.observer.latitude = -33.4489;
+      engine.core.observer.longitude = -70.6693;
+      engine.core.observer.elevation = 570;
+      engine.core.observer.name = "Santiago, Chile";
+
+      
+      //engine.core.observer.utc=65336.6666786062
+      
+      /*
+      core.stars.addDataSource({ url: baseUrl + 'stars' });
+      core.skycultures.addDataSource({ url: baseUrl + 'skycultures/v3/western', key: 'western' });
+      core.dsos.addDataSource({ url: baseUrl + 'dso' });
+      core.landscapes.addDataSource({ url: baseUrl + 'landscapes/guereins', key: 'guereins' });
+      core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway' });
+      core.minor_planets.addDataSource({ url: baseUrl + 'mpc/v1/mpcorb.dat', key: 'mpc_asteroids' });
+      core.planets.addDataSource({ url: baseUrl + 'surveys/sso/moon/v1', key: 'moon' });
+      core.planets.addDataSource({ url: baseUrl + 'surveys/sso/sun', key: 'sun' });
+      core.comets.addDataSource({ url: baseUrl + 'CometEls.txt', key: 'mpc_comets' });
+      core.satellites.addDataSource({ url: baseUrl + 'tle_satellite.jsonl.gz', key: 'jsonl/sat' });
+      */
+      
+      core.stars.addDataSource({ url: baseUrl + "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars", key: "minimal" });
+      core.stars.addDataSource({ url: baseUrl + "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars", key: "base" });
+      core.stars.addDataSource({ url: baseUrl + "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars", key: "extended" });
+      core.stars.addDataSource({ url: baseUrl + "surveys/gaia/v1", key: "gaia" });
+
+      // Culture del cielo
+      core.skycultures.addDataSource({ url: baseUrl + "skycultures/v3/western", key: "western" });
+
+      // Oggetti del cielo profondo (DSO)
+      core.dsos.addDataSource({ url: baseUrl + "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso" });
+      core.dsos.addDataSource({ url: baseUrl + "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso" });
+
+      // Paesaggi
+      core.landscapes.addDataSource({ url: baseUrl + "landscapes/v1/guereins", key: "guereins" });
+
+      // Via Lattea
+      core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
+      
+      core.dss.addDataSource({ url: baseUrl + "surveys/dss/v1" });
+
+      // Pianeti minori (asteroidi)
+      core.minor_planets.addDataSource({ url: baseUrl + "mpc/v1/mpcorb.dat", key: "mpc_asteroids" });
+
+      // Comete
+      core.comets.addDataSource({ url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17", key: "mpc_comets" });
+
+      // Satelliti artificiali
+      core.satellites.addDataSource({ url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16", key: "jsonl/sat" });
+
+      // Pianeti principali
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/moon/v1", key: "moon" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/sun/v1", key: "sun" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/jupiter/v1", key: "jupiter" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/mercury/v1", key: "mercury" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/venus/v1", key: "venus" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/mars/v1", key: "mars" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/saturn/v1", key: "saturn" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/uranus/v1", key: "uranus" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/neptune/v1", key: "neptune" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/io/v1", key: "io" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/europa/v1", key: "europa" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/ganymede/v1", key: "ganymede" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/callisto/v1", key: "callisto" });
+      core.planets.addDataSource({ url: baseUrl + "surveys/sso/moon-normal/v1", key: "moon-normal" });
+
+      //stel.setFont('regular', 'static/fonts/Roboto-Regular.ttf', 1.38);
+      //stel.setFont('bold', 'static/fonts/Roboto-Bold.ttf', 1.38);
+
+      const footer = document.getElementById('footer-buttons');
+      BUTTONS.forEach(({label, img, path, attr}) => {
+        const btn = document.createElement('div');
+        btn.className = 'stel-button';
+        btn.innerHTML = `<img src="${img}" title="${label}" />`;
+        btn.onclick = () => {
+          const obj = path.split('.').reduce((o, k) => o && o[k], stel.core);
+          if (obj) {
+            obj[attr] = !obj[attr];
+            btn.classList.toggle('active', obj[attr]);
+          }
+        };
+        footer.appendChild(btn);
+      });
+
+      stel.change((obj, attr) => {
+        if (attr === 'hovered') return;
+
+        const info = document.getElementById('info-card');
+        if (stel.core.selection) {
+          const s = stel.core.selection;
+          const name = s.designations()[0].replace(/^NAME /, '');
+          const radec = stel.convertFrame(core.observer, 'ICRF', 'CIRS', s.getInfo('radec'));
+          const coords = stel.c2s(radec);
+          const ra = stel.anp(coords[0]);
+          const dec = stel.anpm(coords[1]);
+          const mag = s.getInfo('vmag');
+			info.innerHTML =
+			  '<h3>' + name + '</h3>' +
+			  '<p><strong>Magnitude:</strong> ' + (mag !== undefined ? mag.toFixed(2) : 'Unknown') + '</p>' +
+			  '<p><strong>Ra:</strong> ' + ra.toFixed(3) + '</p>' +
+			  '<p><strong>Dec:</strong> ' + dec.toFixed(3) + '</p>';
+          info.style.display = 'block';
+        } else {
+          info.style.display = 'none';
+        }
+
+        const progress = core.progressbars[0];
+        if (progress) {
+          document.getElementById('progress').innerText = `${progress.label}: ${(progress.value / progress.total * 100).toFixed(0)}%`;
+        }
+      });
+    }
+  });
+  
+  
+  //automatic scraper
+  /*
+  
+  (async () => {
+  const engine = window.engine;
+  const delay = ms => new Promise(res => setTimeout(res, ms));
+  const toRad = deg => deg * Math.PI / 180;
+
+  const levels = [
+    //{ fov: 3.2, stepDeg: 30 },
+    //{ fov: 2.0, stepDeg: 20 },
+    //{ fov: 1.2, stepDeg: 10 },
+    //{ fov: 0.3, stepDeg: 6 },
+    //{ fov: 0.1, stepDeg: 3 },
+    //{ fov: 0.01, stepDeg: 3 },
+	{ fov: 0.001, stepDeg: 1 }
+  ];
+
+  const delayMs = 10; // velocissimo
+
+  for (const level of levels) {
+    const { fov, stepDeg } = level;
+    engine.core.fov = fov;
+    console.log(`\n[FOV] ${fov.toFixed(2)} rad, passo = ${stepDeg}°`);
+
+    const pitchSteps = Math.floor(180 / stepDeg);
+    const yawSteps = Math.floor(360 / stepDeg);
+
+    for (let pi = 0; pi <= pitchSteps; pi++) {
+      const pitch = toRad(-90 + pi * stepDeg);
+      engine.core.observer.pitch = pitch;
+
+      for (let yi = 0; yi < yawSteps; yi++) {
+        const yaw = toRad(yi * stepDeg);
+        engine.core.observer.yaw = yaw;
+
+        console.log(`[LOOK] FOV=${fov.toFixed(2)} | pitch=${(pitch * 180 / Math.PI).toFixed(1)}° | yaw=${(yaw * 180 / Math.PI).toFixed(1)}°`);
+        await delay(delayMs);
+      }
+    }
+  }
+
+  console.log("\n[✓] Esplorazione completa.");
+})();
+
+  
+  */
+</script>
+
+</body>
+</html>
