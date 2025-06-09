@@ -115,13 +115,13 @@
   
   
   const BUTTONS = [
-    { label: "Constellations", img: "static/imgs/symbols/btn-cst-lines.svg", path: "constellations", attr: "lines_visible" },
-    { label: "Atmosphere", img: "static/imgs/symbols/btn-atmosphere.svg", path: "atmosphere", attr: "visible" },
-    { label: "Landscape", img: "static/imgs/symbols/btn-landscape.svg", path: "landscapes", attr: "visible" },
-    { label: "Azimuthal Grid", img: "static/imgs/symbols/btn-azimuthal-grid.svg", path: "lines.azimuthal", attr: "visible" },
-    { label: "Equatorial Grid", img: "static/imgs/symbols/btn-equatorial-grid.svg", path: "lines.equatorial", attr: "visible" },
-    { label: "Nebulae", img: "static/imgs/symbols/btn-nebulae.svg", path: "dsos", attr: "visible" },
-    { label: "DSS", img: "static/imgs/symbols/btn-nebulae.svg", path: "dss", attr: "visible" },
+    { label: "Constellations", img: "svg/btn-cst-lines.svg", path: "constellations", attr: "lines_visible" },
+    { label: "Atmosphere", img: "svg/btn-atmosphere.svg", path: "atmosphere", attr: "visible" },
+    { label: "Landscape", img: "svg/btn-landscape.svg", path: "landscapes", attr: "visible" },
+    { label: "Azimuthal Grid", img: "svg/btn-azimuthal-grid.svg", path: "lines.azimuthal", attr: "visible" },
+    { label: "Equatorial Grid", img: "svg/btn-equatorial-grid.svg", path: "lines.equatorial", attr: "visible" },
+    { label: "Nebulae", img: "svg/btn-nebulae.svg", path: "dsos", attr: "visible" },
+    { label: "DSS", img: "svg/btn-nebulae.svg", path: "dss", attr: "visible" },
   ];
 /*
   i18next.use(i18nextXHRBackend).init({
@@ -149,7 +149,7 @@ var engine;
     canvas: document.getElementById('stel-canvas'),
     //translateFn: (domain, str) => i18next.t(str, {ns: domain}),
     onReady: function(stel) {
-      const baseUrl = 'https://stardata.alessiobellino.com/cache/';
+      const baseUrl = 'https://telescope.alessiobellino.com/stardata/cache/';
       const core = stel.core;
       engine=stel;
       //set night
