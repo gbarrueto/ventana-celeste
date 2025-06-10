@@ -1,4 +1,4 @@
-Protobject.setProduction(false)
+Protobject.setProduction(true)
 Protobject.initialize(
 [
   { 
