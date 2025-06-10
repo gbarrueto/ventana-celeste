@@ -103,6 +103,19 @@
 <script src="stellarium-web-engine.js"></script>
 
 <script>
+
+	  
+function updateStellariumView(data) {
+  if (!engine || !engine.core || !engine.core.observer) return;
+
+  engine.core.observer.yaw = -data.h;
+  engine.core.observer.pitch = data.v;
+}
+  
+Protobject.Core.onReceived(function (data) {
+  console.log(data)
+  updateStellariumView(data);
+});
   
         function toJulianDate(date) {
         return date.getTime() / 86400000 + 2440587.5;
@@ -156,7 +169,7 @@ var engine;
       
 
 
-      const myDate = "2025-06-06T23:15:00Z";
+      const myDate = "2024-06-27T23:15:00Z";
       engine.core.observer.utc = toJulianDateIso(myDate);
       
       engine.core.observer.latitude = -33.4489;
