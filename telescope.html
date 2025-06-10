@@ -71,7 +71,7 @@
 			const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
 
-      Protobject.Core.send({h: xKalman.filter(yaw), v: yKalman.filter(pitch)}).to("index.html");
+      Protobject.Core.send({h: yaw, v: pitch}).to("index.html");
 
 		},
 
