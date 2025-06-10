@@ -13,12 +13,49 @@
 <body>
       <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
+  
+
+  
+    <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+
+    #touchArea {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      position: relative;
+    }
+
+    #fovDisplay {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-family: sans-serif;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.5em;
+      pointer-events: none;
+    }
+  </style>
+  
+  <div id="touchArea">
+  <div id="fovDisplay">FOV: 3.2288591161</div>
+</div>
+  
+  
+  
   <script>
     
-    var KalmanFilter=function(){"use strict";function s(t,i){for(var e=0;e<i.length;e++){var s=i[e];s.enumerable=s.enumerable||!1,s.configurable=!0,"value"in s&&(s.writable=!0),Object.defineProperty(t,s.key,s)}}return function(){function v(){var t=0<arguments.length&&void 0!==arguments[0]?arguments[0]:{},i=t.R,e=void 0===i?1:i,s=t.Q,n=void 0===s?1:s,r=t.A,h=void 0===r?1:r,a=t.B,o=void 0===a?0:a,u=t.C,c=void 0===u?1:u;!function(t,i){if(!(t instanceof i))throw new TypeError("Cannot call a class as a function")}(this,v),this.R=e,this.Q=n,this.A=h,this.C=c,this.B=o,this.cov=NaN,this.x=NaN}var t,i,e;return t=v,(i=[{key:"filter",value:function(t){var i=1<arguments.length&&void 0!==arguments[1]?arguments[1]:0;if(isNaN(this.x))this.x=1/this.C*t,this.cov=1/this.C*this.Q*(1/this.C);else{var e=this.predict(i),s=this.uncertainty(),n=s*this.C*(1/(this.C*s*this.C+this.Q));this.x=e+n*(t-this.C*e),this.cov=s-n*this.C*s}return this.x}},{key:"predict",value:function(){var t=0<arguments.length&&void 0!==arguments[0]?arguments[0]:0;return this.A*this.x+this.B*t}},{key:"uncertainty",value:function(){return this.A*this.cov*this.A+this.R}},{key:"lastMeasurement",value:function(){return this.x}},{key:"setMeasurementNoise",value:function(t){this.Q=t}},{key:"setProcessNoise",value:function(t){this.R=t}}])&&s(t.prototype,i),e&&s(t,e),v}()}();
 
-    var xKalman = new KalmanFilter({ R: 0.05, Q: 0.5 });
-    var yKalman = new KalmanFilter({ R: 0.05, Q: 0.5 });
+    
     
     let Orientation = {
 
@@ -27,7 +64,8 @@
 		start(freq=200) {
 			this.freq = freq;
 			this.timeNow = Date.now();
-
+      this.oldX;
+      this.oldY;
 			this.horizontal = 0;
 			this.vertical = 0;
 			this.callback = null;
@@ -69,9 +107,15 @@
 			const [x, y, z, w] = quaternion;
 			const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
 			const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-
-
-      Protobject.Core.send({h: yaw, v: pitch}).to("index.html");
+      
+      if (this.oldX!=yaw || this.oldY!=pitch)
+        Protobject.Core.send({h: yaw, v: pitch}).to("index.html");
+ 
+      
+      this.oldX=yaw;
+      this.oldY=pitch;
+      
+      
 
 		},
 
@@ -94,4 +138,61 @@
 
 
 </body>
+  
+  
+<script>
+  
+  let oldFov;
+  
+  const MIN_FOV = 0.000004848137;
+  const MAX_FOV = 3.22885911619;
+
+  const minLogFov = Math.log(MIN_FOV);
+  const maxLogFov = Math.log(MAX_FOV);
+  let logFov = maxLogFov;
+  let lastY = null;
+  const sensitivity = 0.5;
+
+  const fovDisplay = document.getElementById("fovDisplay");
+  const touchArea = document.getElementById("touchArea");
+
+  function updateDisplay() {
+    const fov = Math.exp(logFov);
+    fovDisplay.textContent = `FOV: ${fov.toFixed(10)}`;
+   
+    if (oldFov!=fov){
+      
+          Protobject.Core.send({f: fov}).to("index.html");
+    }
+    
+   
+    oldFov=fov;
+  }
+
+  touchArea.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      lastY = e.touches[0].clientY;
+    }
+  });
+
+  touchArea.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && lastY !== null) {
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - lastY;
+      logFov += deltaY * sensitivity * 0.01;
+      logFov = Math.max(minLogFov, Math.min(maxLogFov, logFov));
+      updateDisplay();
+      lastY = currentY;
+    }
+  }, { passive: false });
+
+  touchArea.addEventListener("touchend", () => {
+    lastY = null;
+  });
+
+  updateDisplay();
+</script>
+  
+
 </html>
