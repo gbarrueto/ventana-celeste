@@ -115,9 +115,23 @@ function updateStellariumView(data) {
   engine.core.observer.pitch = data.v;
 }
   
+  function updateStellariumFov(f) {
+  if (!engine || !engine.core) return;
+
+  engine.core.fov = f;
+}
+  
 Protobject.Core.onReceived(function (data) {
   console.log(data)
-  updateStellariumView(data);
+  
+  if (data.f) {
+    updateStellariumFov(data.f)
+    
+  } else {
+     updateStellariumView(data);
+    
+  }
+ 
 });
   
         function toJulianDate(date) {
