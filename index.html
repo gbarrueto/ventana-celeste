@@ -183,6 +183,15 @@
     });
 
     let engine;
+    
+
+let flatpickrSyncInterval = null;
+let activeFlatpickr = null;
+let isUserTouchingCalendar = false;
+let lastManualChange = 0;
+
+    
+    
     StelWebEngine({
       wasmFile: 'https://telescope.alessiobellino.com/stellarium-web-engine.wasm',
       canvas: document.getElementById('stel-canvas'),
@@ -266,10 +275,12 @@
     });
 
 
+    
 
 let clockInterval = null;
 let timeSpeed = 0;
-    
+let suppressFlatpickrUpdate = false;
+
     
 function setSpeed(multiplier) {
   timeSpeed = multiplier;
@@ -406,8 +417,19 @@ function updateSpeedButtons() {
   });
 }
 
+function fromJulianDateToDate(jd) {
+  return new Date((jd - 2440587.5) * 86400000);
+}
+    
+    function fromMJDToDate(mjd) {
+  const jd = mjd + 2400000.5;
+  return new Date((jd - 2440587.5) * 86400000);
+}
 
-function showTimeSelector() {
+    
+    
+    
+    function showTimeSelector() {
   const modal = document.getElementById("modal-container");
   const timeBtn = document.querySelector('.control-button[onclick="showTimeSelector()"]');
   const isVisible = modal.style.display === "block";
@@ -415,6 +437,12 @@ function showTimeSelector() {
   if (isVisible) {
     modal.style.display = "none";
     timeBtn.classList.remove("active");
+
+    if (flatpickrSyncInterval) {
+      clearInterval(flatpickrSyncInterval);
+      flatpickrSyncInterval = null;
+    }
+
     return;
   }
 
@@ -431,15 +459,44 @@ function showTimeSelector() {
     </div>
   `;
 
-  flatpickr("#datetime-picker", {
+  activeFlatpickr = flatpickr("#datetime-picker", {
     enableTime: true,
     dateFormat: "Y-m-d\\TH:i:S",
-    time_24hr: true, 
+    time_24hr: true,
     defaultDate: new Date(),
-    inline: true, // 👈 mostriamo il calendario direttamente
+    inline: true,
+    onOpen: () => isUserTouchingCalendar = true,
+    onClose: () => isUserTouchingCalendar = false,
+
     onChange: function(selectedDates) {
       if (selectedDates.length > 0) {
-        engine.core.observer.utc = toJulianDateIso(selectedDates[0].toISOString());
+        const date = selectedDates[0];
+        lastManualChange = Date.now();
+        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+      }
+    },
+
+    onValueUpdate: function(selectedDates) {
+      if (selectedDates.length > 0) {
+        const date = selectedDates[0];
+        lastManualChange = Date.now();
+        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+      }
+    },
+
+    onMonthChange: function(selectedDates) {
+      if (selectedDates.length > 0) {
+        const date = selectedDates[0];
+        lastManualChange = Date.now();
+        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+      }
+    },
+
+    onYearChange: function(selectedDates) {
+      if (selectedDates.length > 0) {
+        const date = selectedDates[0];
+        lastManualChange = Date.now();
+        engine.core.observer.utc = toJulianDateIso(date.toISOString());
       }
     }
   });
@@ -447,7 +504,20 @@ function showTimeSelector() {
   modal.style.display = "block";
   timeBtn.classList.add("active");
   updateSpeedButtons();
+
+  flatpickrSyncInterval = setInterval(() => {
+    if (!activeFlatpickr || !engine?.core?.observer?.utc) return;
+
+    const now = Date.now();
+    const recentlyChanged = (now - lastManualChange < 2000);
+
+    if (!isUserTouchingCalendar && !recentlyChanged) {
+      const date = fromMJDToDate(engine.core.observer.utc);
+      activeFlatpickr.setDate(date, false);
+    }
+  }, 300);
 }
+
 
 
 
