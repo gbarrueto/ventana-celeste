@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Stellarium Web Engine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -18,12 +19,27 @@
       display: flex;
       align-items: center;
       padding: 0 1rem;
+      gap: 1rem;
     }
 
     .title {
       font-size: 1.5rem;
       font-weight: bold;
       margin-left: 1rem;
+    }
+
+    .control-button {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #fff;
+      border-radius: 6px;
+      color: white;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .dropdown-menu div {
+      color: #000;
     }
 
     .footer {
@@ -76,21 +92,49 @@
       font-size: 0.9rem;
       display: none;
     }
-    .dropdown-menu div{
-      color:#000;
-    }
 
     .radecVal { font-family: monospace; font-weight: bold; display: inline-block; margin-right: 5px; }
     .radecUnit { color: #ccc; font-weight: normal; }
+    
+    .control-button.active {
+  background-color: #4caf50;
+  font-weight: bold;
+}
+    
+    .control-button.active {
+  background-color: #4caf50;
+  font-weight: bold;
+}
+    
+/* Forza il calendario a stare nel contenitore */
+#modal-container .flatpickr-calendar.inline {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Assicura che il contenitore interno si espanda */
+#modal-container .flatpickr-innerContainer {
+  width: 100% !important;
+  display: flex;
+  justify-content: center; /* centra il contenuto */
+}
+
+
+
+    
   </style>
 </head>
 <body>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
   <div class="topbar">
     <span class="title">Stellarium<sup>Web</sup></span>
+    <button class="control-button" onclick="showLocationSelector()">Location</button>
+    <button class="control-button" onclick="showTimeSelector()">Date & Time</button>
     <div id="progress" style="margin-left:auto; margin-right:1rem;"></div>
   </div>
 
@@ -100,6 +144,7 @@
   </div>
 
   <div class="footer" id="footer-buttons"></div>
+  <div id="modal-container" style="position: absolute; top: 70px; left: 10px; background: #222; padding: 1rem; border-radius: 8px; display: none; color: white;"></div>
 
   <script>
     const BUTTONS = [
@@ -113,8 +158,13 @@
     ];
 
     function toJulianDateIso(iso) {
-      return new Date(iso).getTime() / 86400000 + 2440587.5;
+        const now = new Date(iso);
+        const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
+        const mjd = jd - 2400000.5; // Modified Julian Date
+        return mjd;
     }
+    
+
 
     function updateStellariumView(data) {
       if (!engine?.core?.observer) return;
@@ -128,7 +178,6 @@
     }
 
     Protobject.Core.onReceived(data => {
-      console.log(data);
       if (data.f) updateStellariumFov(data.f);
       else updateStellariumView(data);
     });
@@ -140,10 +189,12 @@
       onReady(stel) {
         engine = stel;
         const core = stel.core;
+        
 
-        core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
-        core.observer.latitude = -33.4489;
-        core.observer.longitude = -70.6693;
+
+        //core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
+        core.observer.latitude = -33.4489 * (Math.PI / 180);
+        core.observer.longitude = -70.6693 * (Math.PI / 180);
         core.observer.elevation = 570;
         core.observer.name = "Santiago, Chile";
 
@@ -165,8 +216,7 @@
         core.comets.addDataSource({ url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17", key: "mpc_comets" });
         core.satellites.addDataSource({ url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16", key: "jsonl/sat" });
 
-        const planets = ["moon", "sun", "jupiter", "mercury", "venus", "mars", "saturn", "uranus", "neptune", "io", "europa", "ganymede", "callisto", "moon-normal"];
-        planets.forEach(p => {
+        ["moon", "sun", "jupiter", "mercury", "venus", "mars", "saturn", "uranus", "neptune", "io", "europa", "ganymede", "callisto", "moon-normal"].forEach(p => {
           core.planets.addDataSource({ url: baseUrl + `surveys/sso/${p}/v1`, key: p });
         });
 
@@ -214,6 +264,195 @@
         });
       }
     });
+
+
+
+let clockInterval = null;
+let timeSpeed = 0;
+    
+    
+function setSpeed(multiplier) {
+  timeSpeed = multiplier;
+
+  if (clockInterval) {
+    clearInterval(clockInterval);
+    clockInterval = null;
+  }
+
+  if (multiplier > 0) {
+    clockInterval = setInterval(() => {
+      if (!engine) return;
+      const simulatedSecondsPerStep = (multiplier * 0.03); // 30 ms
+      const jdStep = simulatedSecondsPerStep / 86400;
+      engine.core.observer.utc += jdStep;
+    }, 30);
+  }
+
+  updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+}
+
+
+
+    
   </script>
+  <script>
+    
+    let selectedCity = "Santiago";  // default iniziale
+    
+const cities = {
+  "New York":       { lat: 40.7128, lon: -74.0060, elev: 10, tz: -4 },
+  "Rome":           { lat: 41.89332, lon: 12.48293, elev: 21, tz: 2 },
+  "Santiago":       { lat: -33.4489, lon: -70.6693, elev: 570, tz: -4 },
+  "Buenos Aires":   { lat: -34.6037, lon: -58.3816, elev: 25, tz: -3 },
+  "Seoul":          { lat: 37.5665, lon: 126.9780, elev: 38, tz: 9 },
+  
+  // Europa
+  "London":         { lat: 51.5074, lon: -0.1278, elev: 11, tz: 1 },
+  "Berlin":         { lat: 52.5200, lon: 13.4050, elev: 34, tz: 1 },
+  "Moscow":         { lat: 55.7558, lon: 37.6173, elev: 156, tz: 3 },
+
+  // Asia
+  "Tokyo":          { lat: 35.6895, lon: 139.6917, elev: 40, tz: 9 },
+  "Beijing":        { lat: 39.9042, lon: 116.4074, elev: 43, tz: 8 },
+  "Mumbai":         { lat: 19.0760, lon: 72.8777, elev: 14, tz: 5.5 },
+
+  // Nord America
+  "Los Angeles":    { lat: 34.0522, lon: -118.2437, elev: 71, tz: -7 },
+  "Mexico City":    { lat: 19.4326, lon: -99.1332, elev: 2240, tz: -6 },
+
+  // Sud America
+  "Lima":           { lat: -12.0464, lon: -77.0428, elev: 154, tz: -5 },
+  "Bogotá":         { lat: 4.7110, lon: -74.0721, elev: 2640, tz: -5 },
+
+  // Africa
+  "Cairo":          { lat: 30.0444, lon: 31.2357, elev: 23, tz: 2 },
+  "Johannesburg":   { lat: -26.2041, lon: 28.0473, elev: 1753, tz: 2 },
+
+  // Oceania
+  "Sydney":         { lat: -33.8688, lon: 151.2093, elev: 58, tz: 10 },
+
+  // Medio Oriente
+  "Dubai":          { lat: 25.276987, lon: 55.296249, elev: 16, tz: 4 },
+  "Istanbul":       { lat: 41.0082, lon: 28.9784, elev: 39, tz: 3 }
+};
+
+    
+function showLocationSelector() {
+  const modal = document.getElementById("modal-container");
+  const locationBtn = document.querySelector('.control-button[onclick="showLocationSelector()"]');
+
+  const isVisible = modal.style.display === "block";
+
+  if (isVisible) {
+    modal.style.display = "none";
+    locationBtn.classList.remove("active");
+    return;
+  }
+
+  let buttonsHtml = "<h3>Select Location</h3>";
+  for (const city in cities) {
+    const isSelected = city === selectedCity;
+    buttonsHtml += `
+      <button class="control-button" style="
+        display: block;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        background-color: ${isSelected ? '#4caf50' : 'rgba(255,255,255,0.1)'};
+        font-weight: ${isSelected ? 'bold' : 'normal'};
+      " onclick="applyLocation('${city}')">
+        ${city}
+      </button>`;
+  }
+
+  modal.innerHTML = buttonsHtml;
+  modal.style.display = "block";
+  locationBtn.classList.add("active");
+}
+
+
+
+
+function applyLocation(cityName) {
+  const data = cities[cityName];
+  if (!data || !engine) return;
+
+  engine.core.observer.latitude = data.lat * (Math.PI / 180);
+  engine.core.observer.longitude = data.lon * (Math.PI / 180);
+  engine.core.observer.elevation = data.elev || 0;
+  engine.core.observer.name = cityName;
+
+  const localTime = new Date();
+  engine.core.observer.utc = toJulianDateIso(localTime.toLocaleString());
+  engine.core.observer.pitch = 0;
+  engine.core.observer.yaw = 0;
+
+  selectedCity = cityName;
+  showLocationSelector(); // rinfresca la UI con selezione aggiornata
+}
+    
+    
+function updateSpeedButtons() {
+  document.querySelectorAll('#modal-container .control-button').forEach(btn => {
+    const text = btn.textContent.trim();
+
+    const match =
+      (timeSpeed === 0 && text.startsWith("🟥")) ||
+      (timeSpeed === 1 && text.startsWith("🕒")) ||
+      (timeSpeed === 10 && text.includes("10x")) ||
+      (timeSpeed === 60 && text.includes("60x")) ||
+      (timeSpeed === 3600 && text.includes("3600x"));
+
+    btn.classList.toggle('active', match);
+  });
+}
+
+
+function showTimeSelector() {
+  const modal = document.getElementById("modal-container");
+  const timeBtn = document.querySelector('.control-button[onclick="showTimeSelector()"]');
+  const isVisible = modal.style.display === "block";
+
+  if (isVisible) {
+    modal.style.display = "none";
+    timeBtn.classList.remove("active");
+    return;
+  }
+
+  modal.innerHTML = `
+    <h3>Select Date & Time</h3>
+    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+      <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+      <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+      <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+      <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+      <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+    </div>
+  `;
+
+  flatpickr("#datetime-picker", {
+    enableTime: true,
+    dateFormat: "Y-m-d\\TH:i:S",
+    time_24hr: true, 
+    defaultDate: new Date(),
+    inline: true, // 👈 mostriamo il calendario direttamente
+    onChange: function(selectedDates) {
+      if (selectedDates.length > 0) {
+        engine.core.observer.utc = toJulianDateIso(selectedDates[0].toISOString());
+      }
+    }
+  });
+
+  modal.style.display = "block";
+  timeBtn.classList.add("active");
+  updateSpeedButtons();
+}
+
+
+
+
+
+</script>
 </body>
 </html>
