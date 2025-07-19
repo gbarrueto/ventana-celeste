@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controllo Orientamento e FOV</title>
+
+  <link rel="stylesheet" href="telescope/Slider/slider.css">
   <style>
     html, body {
       height: 100%;
@@ -18,7 +20,8 @@
       width: 100%;
       height: 100%;
       touch-action: none;
-      position: relative;
+      /* position: relative; */
+      position: absolute;
     }
 
     #fovDisplay {
@@ -39,11 +42,22 @@
 <body>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
-
+  
   <div id="touchArea">
     <div id="fovDisplay">FOV: 3.2288591161</div>
   </div>
 
+  <div class="slide-container">
+    <input 
+    id="zoomSlider"
+    class="slider"
+    type="range" 
+    min="0.000005" max="3.228859" value="1" step="0.01"
+    orient="vertical">
+    <span id="sliderValue" class="range-value"></span>
+  </div>
+  
+  <script src="telescope/Slider/slider.js"></script>
   <script>
     let oldFov;
     const MIN_FOV = 0.000004848137;
@@ -67,12 +81,16 @@
     }
 
     touchArea.addEventListener("touchstart", (e) => {
+      // if (e.target.closest('.slider')) return; // Ignore slider input
+
       if (e.touches.length === 1) {
         lastY = e.touches[0].clientY;
       }
     });
 
     touchArea.addEventListener("touchmove", (e) => {
+      // if (e.target.closest('.slider')) return; // Ignore slider input
+
       e.preventDefault();
       if (e.touches.length === 1 && lastY !== null) {
         const currentY = e.touches[0].clientY;

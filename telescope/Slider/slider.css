@@ -1,0 +1,24 @@
+.slide-container {
+  .slider {
+    /* -webkit-appearance: none; */
+    /* appearance: none; */
+    /* height: 100%; */
+    /* background: #d3d3d3;  */
+    /* outline: none; */
+    writing-mode: tb; /* top-bottom */
+    /* -webkit-appearance: slider-vertical; */
+  }
+
+  width: fit-content;
+  position: relative;
+}
+
+
+/* ::-moz-range-track {
+    background: #ccc;
+    border: 0;
+}
+
+input::-moz-focus-inner { 
+  border: 0; 
+} */
