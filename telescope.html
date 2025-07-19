@@ -44,7 +44,7 @@
   <script src="config.js"></script>
   
   <div id="touchArea">
-    <div id="fovDisplay">FOV: 3.2288591161</div>
+    <div id="fovDisplay">FOV: 3.228859</div>
   </div>
 
   <div class="slide-container">
@@ -52,16 +52,17 @@
     id="zoomSlider"
     class="slider"
     type="range" 
-    min="0.000005" max="3.228859" value="1" step="0.01"
+    min="0.000005" max="3.228859" value="3.228859" step="0.000001"
     orient="vertical">
     <span id="sliderValue" class="range-value"></span>
   </div>
   
-  <script src="telescope/Slider/slider.js"></script>
   <script>
     let oldFov;
-    const MIN_FOV = 0.000004848137;
-    const MAX_FOV = 3.22885911619;
+    // const MIN_FOV = 0.000004848137;
+    // const MAX_FOV = 3.22885911619;
+    const MIN_FOV = 0.000005;
+    const MAX_FOV = 3.228859;
     const minLogFov = Math.log(MIN_FOV);
     const maxLogFov = Math.log(MAX_FOV);
     let logFov = maxLogFov;
@@ -71,9 +72,18 @@
     const fovDisplay = document.getElementById("fovDisplay");
     const touchArea = document.getElementById("touchArea");
 
+    const slider = document.getElementById('zoomSlider');
+    const sliderValue = document.getElementById('sliderValue');
+
+    // set min-max slider values
+    slider.min = minLogFov;
+    slider.max = maxLogFov;
+    slider.value = logFov;
+
     function updateDisplay() {
       const fov = Math.exp(logFov);
-      fovDisplay.textContent = `FOV: ${fov.toFixed(10)}`;
+      // fovDisplay.textContent = `FOV: ${fov.toFixed(10)}`;
+      fovDisplay.textContent = `FOV: ${fov.toFixed(6)}`;
       if (oldFov !== fov) {
         Protobject.Core.send({ f: fov }).to("index.html");
       }
@@ -97,7 +107,7 @@
         const deltaY = currentY - lastY;
         logFov += deltaY * sensitivity * 0.01;
         logFov = Math.max(minLogFov, Math.min(maxLogFov, logFov));
-        updateDisplay();
+        updateDisplayFov();
         lastY = currentY;
       }
     }, { passive: false });
@@ -106,8 +116,11 @@
       lastY = null;
     });
 
-    updateDisplay();
+    updateDisplayFov();
   </script>
+
+  <script src="telescope/utils/updateDisplayFov.js"></script>
+  <script src="telescope/Slider/slider.js"></script>
 
   <script>
     function unwrapAngle(newAngle, prevAngle) {
