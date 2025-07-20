@@ -1,4 +1,10 @@
 .slide-container {
+  width: fit-content;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 60%;
+
   .slider {
     /* -webkit-appearance: none; */
     /* appearance: none; */
@@ -9,8 +15,12 @@
     /* -webkit-appearance: slider-vertical; */
   }
 
-  width: fit-content;
-  position: relative;
+  .zoom-button {
+    background-color: transparent;
+    color: white;
+    border: none;
+  }
+
 }
 
 

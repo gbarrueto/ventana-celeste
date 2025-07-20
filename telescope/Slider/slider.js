@@ -2,7 +2,7 @@
 // const slider = document.getElementById('zoomSlider');
 // const value = document.getElementById('sliderValue');
 
-sliderValue.textContent = Math.exp(slider.value).toFixed(6);
+// sliderValue.textContent = Math.exp(slider.value).toFixed(6);
 
 slider.addEventListener('input', () => {
   // value.innerHTML = slider.value;

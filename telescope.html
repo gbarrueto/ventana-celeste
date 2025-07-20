@@ -48,13 +48,16 @@
   </div>
 
   <div class="slide-container">
+    <button id="moreZoom" class="zoom-button" onclick="zoom(-1)">+</button>
+
     <input 
     id="zoomSlider"
     class="slider"
     type="range" 
     min="0.000005" max="3.228859" value="3.228859" step="0.000001"
     orient="vertical">
-    <span id="sliderValue" class="range-value"></span>
+    
+    <button id="lessZoom" class="zoom-button" onclick="zoom(1)">-</button>
   </div>
   
   <script>
@@ -73,8 +76,19 @@
     const touchArea = document.getElementById("touchArea");
 
     const slider = document.getElementById('zoomSlider');
-    const sliderValue = document.getElementById('sliderValue');
+    // const sliderValue = document.getElementById('sliderValue');
+  </script>
 
+  <script src="telescope/utils/updateDisplayFov.js"></script>
+
+  <script>
+    function zoom(direction = 1) {
+      logFov = parseFloat(slider.value) + (0.1 * direction);
+      updateDisplayFov();
+    }    
+  </script>
+
+  <script>
     // set min-max slider values
     slider.min = minLogFov;
     slider.max = maxLogFov;
@@ -119,7 +133,6 @@
     updateDisplayFov();
   </script>
 
-  <script src="telescope/utils/updateDisplayFov.js"></script>
   <script src="telescope/Slider/slider.js"></script>
 
   <script>
