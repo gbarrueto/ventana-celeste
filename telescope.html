@@ -52,16 +52,16 @@
   </div>
 
   <div class="slide-container">
-    <button id="moreZoom" class="zoom-button" onclick="zoom(-1)">+</button>
+    <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
 
     <input 
-    id="zoomSlider"
+    id="blurSlider"
     class="slider"
     type="range" 
-    min="0.000005" max="3.228859" value="3.228859" step="0.000001"
+    min="0" max="10" value="0" step="1"
     orient="vertical">
     
-    <button id="lessZoom" class="zoom-button" onclick="zoom(1)">-</button>
+    <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
   </div>
   
   <script>
@@ -76,27 +76,28 @@
     let lastY = null;
     const sensitivity = 0.5;
 
+    let currentBlur = 0;
+
     const fovDisplay = document.getElementById("fovDisplay");
     const touchArea = document.getElementById("touchArea");
 
-    const slider = document.getElementById('zoomSlider');
+    const blurSlider = document.getElementById('blurSlider');
     // const sliderValue = document.getElementById('sliderValue');
   </script>
 
-  <script src="telescope/utils/updateDisplayFov.js"></script>
+  <script src="telescope/utils/updateDisplay.js"></script>
 
   <script>
-    function zoom(direction = 1) {
-      logFov = parseFloat(slider.value) + (0.1 * direction);
-      updateDisplayFov();
+    function updateBlur(direction = 1) {
+      currentBlur += direction;
+      currentBlur = Math.max(0, Math.min(10, currentBlur));
+
+      updateDisplayBlur();
     }    
   </script>
 
   <script>
-    // set min-max slider values
-    slider.min = minLogFov;
-    slider.max = maxLogFov;
-    slider.value = logFov;
+    blurSlider.value = currentBlur;
 
     function updateDisplay() {
       const fov = Math.exp(logFov);

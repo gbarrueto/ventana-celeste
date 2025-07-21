@@ -17,7 +17,7 @@
     /* width: 100%; */
     background: transparent; 
     /* outline: none; */
-    writing-mode: tb; /* top-bottom */
+    /* writing-mode: tb; /* top-bottom */
 
   }
 
@@ -64,7 +64,7 @@
     border: 1px solid #cdd7f5;
   }
 
-  .zoom-button {
+  .blur-button {
     background-color: transparent;
     color: inherit;
     border: none;
@@ -72,13 +72,3 @@
   }
 
 }
-
-
-/* ::-moz-range-track {
-    background: #ccc;
-    border: 0;
-}
-
-input::-moz-focus-inner { 
-  border: 0; 
-} */
