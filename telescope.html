@@ -6,6 +6,7 @@
   <title>Controllo Orientamento e FOV</title>
 
   <link rel="stylesheet" href="telescope/Slider/slider.css">
+  <link rel="stylesheet" href="telescope/Zoom/zoom.css">
   <style>
     html, body {
       height: 100%;
@@ -67,6 +68,17 @@
     
     <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
   </div>
+
+  <div class="zoom-container">
+    <button id="zoomExpandable" onclick="toggleZoomOptions()">Zoom</button>
+
+    <section id="zoomOptions">
+      <button id="zoomX1" class="zoom-button">x1</button>
+      <button id="zoomX2" class="zoom-button">x2</button>
+      <button id="zoomX3" class="zoom-button">x3</button>
+      <button id="zoomX4" class="zoom-button">x4</button>
+    </section>
+  </div>
   
   <script>
     let oldFov;
@@ -87,6 +99,8 @@
 
     const blurSlider = document.getElementById('blurSlider');
     const blurText = document.getElementById('blurText');
+
+    const zoomOptions = document.getElementById('zoomOptions')
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
@@ -144,6 +158,7 @@
   </script>
 
   <script src="telescope/Slider/slider.js"></script>
+  <script src="telescope/Zoom/zoom.js"></script>
 
   <script>
     function unwrapAngle(newAngle, prevAngle) {

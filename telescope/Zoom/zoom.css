@@ -1,0 +1,27 @@
+.zoom-container {
+  position: relative;
+  height: 15%;
+  width: 25%;
+  align-self: end;
+  justify-self: center;
+  display: flex;
+  justify-content: center;
+  padding: 2%;
+  
+  #zoomExpandable {
+
+  }
+
+  #zoomOptions {
+    position: absolute;
+    top: -100%;
+    width: fit-content;
+    display: flex;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  #zoomOptions.visible {
+    opacity: 1;
+  }
+}
