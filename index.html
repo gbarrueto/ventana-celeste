@@ -157,6 +157,8 @@
       { label: "DSS", img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg", path: "dss", attr: "visible" },
     ];
 
+    const canvas_blur = document.getElementById('stel-canvas');
+
     function toJulianDateIso(iso) {
         const now = new Date(iso);
         const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
@@ -177,8 +179,13 @@
       engine.core.fov = fov;
     }
 
+    function updateStellariumBlur(blur) {
+      canvas_blur.style.filter = blur(`${blur}px`);
+    }
+
     Protobject.Core.onReceived(data => {
       if (data.f) updateStellariumFov(data.f);
+      if (data.blur) updateStellariumBlur(data.blur);
       else updateStellariumView(data);
     });
 
