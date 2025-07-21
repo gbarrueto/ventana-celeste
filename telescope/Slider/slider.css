@@ -10,6 +10,20 @@
   /* transform: translateX(-1%); */
   margin-right: 2%;
 
+  .blur-text-container {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+
+    p {
+      margin: 1px;
+    }
+
+    .blur-title {
+      align-self: end;
+    }
+  }
+
   .slider {
     -webkit-appearance: none;
     appearance: none;

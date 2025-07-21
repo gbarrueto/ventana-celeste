@@ -52,6 +52,10 @@
   </div>
 
   <div class="slide-container">
+    <div class="blur-text-container">
+      <p class="blur-title">Enfocador</p>
+      <p id="blurText"></p>
+    </div>
     <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
 
     <input 
@@ -82,7 +86,7 @@
     const touchArea = document.getElementById("touchArea");
 
     const blurSlider = document.getElementById('blurSlider');
-    // const sliderValue = document.getElementById('sliderValue');
+    const blurText = document.getElementById('blurText');
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
@@ -98,6 +102,7 @@
 
   <script>
     blurSlider.value = currentBlur;
+    blurText.textContent = currentBlur;
 
     function updateDisplay() {
       const fov = Math.exp(logFov);

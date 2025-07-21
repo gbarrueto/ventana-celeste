@@ -12,6 +12,7 @@ function updateDisplayFov() {
 
 function updateDisplayBlur() {
   blurSlider.value = currentBlur;
+  blurText.textContent = currentBlur;
   
   Protobject.Core.send({ blur: currentBlur }).to("index.html");
 }
