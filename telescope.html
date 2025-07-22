@@ -82,9 +82,9 @@
 
     <section id="zoomOptions">
       <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
-      <button class="button zoom-button" onclick="applyZoom(16)">x4</button>
-      <button class="button zoom-button" onclick="applyZoom(32)">x8</button>
-      <button class="button zoom-button" onclick="applyZoom(64)">x16</button>
+      <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
+      <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
+      <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
     </section>
   </div>
   
@@ -115,7 +115,7 @@
 
   <script>
     function updateBlur(direction = 1) {
-      currentBlur += direction;
+      currentBlur += direction * 0.001;
       currentBlur = Math.max(0, Math.min(10, currentBlur));
 
       updateDisplayBlur();
