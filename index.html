@@ -186,7 +186,7 @@
 
     Protobject.Core.onReceived(data => {
       if (data.f) updateStellariumFov(data.f);
-      if (data.blur) updateStellariumBlur(data.blur);
+      else if (data.blur == 0 || data.blur) updateStellariumBlur(data.blur);
       else updateStellariumView(data);
     });
 
