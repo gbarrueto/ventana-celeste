@@ -88,10 +88,10 @@
     </section>
   </div>
   
+
+  <!-- Variables - Parameters - Constants -->
   <script>
     let oldFov;
-    // const MIN_FOV = 0.000004848137;
-    // const MAX_FOV = 3.22885911619;
     const MIN_FOV = 0.000005;
     const MAX_FOV = 3.228859;
     const minLogFov = Math.log(MIN_FOV);
@@ -100,7 +100,8 @@
     let lastY = null;
     const sensitivity = 0.5;
 
-    let currentBlur = 0;
+    let currentBlur = 5;
+    let blurTarget = currentBlur;
 
     const fovDisplay = document.getElementById("fovDisplay");
     const touchArea = document.getElementById("touchArea");
@@ -125,16 +126,6 @@
   <script>
     blurSlider.value = currentBlur;
     blurText.textContent = currentBlur;
-
-    function updateDisplay() {
-      const fov = Math.exp(logFov);
-      // fovDisplay.textContent = `FOV: ${fov.toFixed(10)}`;
-      fovDisplay.textContent = `FOV: ${fov.toFixed(6)}`;
-      if (oldFov !== fov) {
-        Protobject.Core.send({ f: fov }).to("index.html");
-      }
-      oldFov = fov;
-    }
 
     touchArea.addEventListener("touchstart", (e) => {
       // if (e.target.closest('.slider')) return; // Ignore slider input
