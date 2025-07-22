@@ -1,6 +1,6 @@
 
 blurSlider.addEventListener('input', () => {
-    currentBlur = parseInt(blurSlider.value);
+    currentBlur = parseFloat(blurSlider.value);
 
     updateDisplayBlur();
 }); 

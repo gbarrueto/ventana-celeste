@@ -31,14 +31,15 @@
     /* width: 100%; */
     background: transparent; 
     /* outline: none; */
-    /* writing-mode: tb; /* top-bottom */
+    writing-mode: vertical-rl;
+    direction: rtl;
 
   }
 
   /*** Track style ***/
   /* Chrome, Safari, Opera, and Edge Chromium */
   ::-webkit-slider-runnable-track {
-    background: white;
+    background: #e3eaff;
     height: 100%;
     width: 25%;
     border-radius: 10em;
