@@ -28,7 +28,7 @@ function updateDisplayBlur() {
   const blurEffect = Math.min(diff * sensitivity, 1) * 10;
 
   blurSlider.value = currentBlur;
-  blurText.textContent = currentBlur;
+  // blurText.textContent = currentBlur;
   
   Protobject.Core.send({ blur: blurEffect }).to("index.html");
 }

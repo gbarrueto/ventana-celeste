@@ -63,7 +63,7 @@
   <div class="slide-container">
     <div class="blur-text-container">
       <p class="blur-title">Enfocador</p>
-      <p id="blurText"></p>
+      <!-- <p id="blurText"></p> -->
     </div>
     <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
 
@@ -108,7 +108,7 @@
     const touchArea = document.getElementById("touchArea");
 
     const blurSlider = document.getElementById('blurSlider');
-    const blurText = document.getElementById('blurText');
+    // const blurText = document.getElementById('blurText');
 
     const zoomOptions = document.getElementById('zoomOptions')
   </script>
@@ -126,7 +126,7 @@
 
   <script>
     blurSlider.value = currentBlur;
-    blurText.textContent = currentBlur;
+    // blurText.textContent = currentBlur;
 
     touchArea.addEventListener("touchstart", (e) => {
       // if (e.target.closest('.slider')) return; // Ignore slider input
