@@ -4,21 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controllo Orientamento e FOV</title>
+
+  <link rel="stylesheet" href="telescope/Slider/slider.css">
+  <link rel="stylesheet" href="telescope/Zoom/zoom.css">
   <style>
     html, body {
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background: black;
-      color: white;
+      background: #02040a;
+      color: #e3eaff;
       font-family: sans-serif;
+    }
+
+    body {
+      display: grid;
     }
 
     #touchArea {
       width: 100%;
       height: 100%;
       touch-action: none;
-      position: relative;
+      /* position: relative; */
+      position: absolute;
     }
 
     #fovDisplay {
@@ -26,12 +34,20 @@
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
+      /* background: rgba(0, 0, 0, 0.7); */
+      color: #e3eaff;
       padding: 10px 20px;
       border-radius: 8px;
       font-size: 1.5em;
       pointer-events: none;
+    }
+
+    .button {
+      padding: 0.2rem 1rem;
+      background-color: transparent;
+      border: 1px solid #e3eaff;
+      color: #e3eaff;
+      border-radius: 1em;
     }
 
   </style>
@@ -39,47 +55,97 @@
 <body>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
-
+  
   <div id="touchArea">
-    <div id="fovDisplay">FOV: 3.2288591161</div>
+    <div id="fovDisplay">FOV: 3.228859</div>
   </div>
 
+  <div class="slide-container">
+    <div class="blur-text-container">
+      <p class="blur-title">Enfocador</p>
+      <!-- <p id="blurText"></p> -->
+    </div>
+    <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
+
+    <input 
+    id="blurSlider"
+    class="slider"
+    type="range" 
+    min="0" max="10" value="0" step="0.001"
+    orient="vertical">
+    
+    <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
+  </div>
+
+  <div class="zoom-container">
+    <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
+
+    <section id="zoomOptions">
+      <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button>
+      <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
+      <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
+      <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
+      <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
+    </section>
+  </div>
+  
+
+  <!-- Variables - Parameters - Constants -->
   <script>
     let oldFov;
-    const MIN_FOV = 0.000004848137;
-    const MAX_FOV = 3.22885911619;
+    const MIN_FOV = 0.000005;
+    const MAX_FOV = 3.228859;
     const minLogFov = Math.log(MIN_FOV);
     const maxLogFov = Math.log(MAX_FOV);
     let logFov = maxLogFov;
     let lastY = null;
     const sensitivity = 0.5;
 
+    let currentBlur = 5;
+    let blurTarget = currentBlur;
+
     const fovDisplay = document.getElementById("fovDisplay");
     const touchArea = document.getElementById("touchArea");
 
-    function updateDisplay() {
-      const fov = Math.exp(logFov);
-      fovDisplay.textContent = `FOV: ${fov.toFixed(10)}`;
-      if (oldFov !== fov) {
-        Protobject.Core.send({ f: fov }).to("index.html");
-      }
-      oldFov = fov;
-    }
+    const blurSlider = document.getElementById('blurSlider');
+    // const blurText = document.getElementById('blurText');
+
+    const zoomOptions = document.getElementById('zoomOptions')
+  </script>
+
+  <script src="telescope/utils/updateDisplay.js"></script>
+
+  <script>
+    function updateBlur(direction = 1) {
+      currentBlur += direction * 0.001;
+      currentBlur = Math.max(0, Math.min(10, currentBlur));
+
+      updateDisplayBlur();
+    }    
+  </script>
+
+  <script>
+    blurSlider.value = currentBlur;
+    // blurText.textContent = currentBlur;
 
     touchArea.addEventListener("touchstart", (e) => {
+      // if (e.target.closest('.slider')) return; // Ignore slider input
+
       if (e.touches.length === 1) {
         lastY = e.touches[0].clientY;
       }
     });
 
     touchArea.addEventListener("touchmove", (e) => {
+      // if (e.target.closest('.slider')) return; // Ignore slider input
+
       e.preventDefault();
       if (e.touches.length === 1 && lastY !== null) {
         const currentY = e.touches[0].clientY;
         const deltaY = currentY - lastY;
         logFov += deltaY * sensitivity * 0.01;
         logFov = Math.max(minLogFov, Math.min(maxLogFov, logFov));
-        updateDisplay();
+        updateDisplayFov();
         lastY = currentY;
       }
     }, { passive: false });
@@ -88,8 +154,11 @@
       lastY = null;
     });
 
-    updateDisplay();
+    updateDisplayFov();
   </script>
+
+  <script src="telescope/Slider/slider.js"></script>
+  <script src="telescope/Zoom/zoom.js"></script>
 
   <script>
     function unwrapAngle(newAngle, prevAngle) {

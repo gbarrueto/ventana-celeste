@@ -80,6 +80,7 @@
       width: 100%;
       height: 100%;
       display: block;
+      filter: blur(0px);
     }
 
     #info-card {
@@ -157,6 +158,8 @@
       { label: "DSS", img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg", path: "dss", attr: "visible" },
     ];
 
+    const canvas_blur = document.getElementById('stel-canvas');
+
     function toJulianDateIso(iso) {
         const now = new Date(iso);
         const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
@@ -177,9 +180,37 @@
       engine.core.fov = fov;
     }
 
+    function updateStellariumBlur(blur) {
+      canvas_blur.style.filter = `blur(${blur}px)`;
+    }
+
+    function toggleEyepieceOverlay() {
+      const overlay = document.getElementById('eyepiece-overlay');
+      if (overlay) {
+        overlay.remove();
+      } else {
+        const newOverlay = document.createElement('div');
+        newOverlay.id = 'eyepiece-overlay';
+        newOverlay.style.position = 'absolute';
+        newOverlay.style.top = '0';
+        newOverlay.style.left = '0';
+        newOverlay.style.width = '100%';
+        newOverlay.style.height = '100%';
+        newOverlay.style.pointerEvents = 'none';
+        newOverlay.style.backgroundColor = 'transparent';
+        newOverlay.style.backgroundImage = 'radial-gradient(circle at center, transparent 35%, black 40%)';
+        newOverlay.style.backgroundSize = '100% 100%';
+        newOverlay.style.backgroundRepeat = 'no-repeat';
+        newOverlay.style.backgroundPosition = 'center';
+        document.body.appendChild(newOverlay);
+      }
+    }
+
     Protobject.Core.onReceived(data => {
-      if (data.f) updateStellariumFov(data.f);
-      else updateStellariumView(data);
+      if (data.f !== undefined) updateStellariumFov(data.f);
+      if (data.blur !== undefined) updateStellariumBlur(data.blur);
+      if (data.h !== undefined || data.v !== undefined) updateStellariumView(data);
+      if (data.toggleSignal !== undefined) toggleEyepieceOverlay();
     });
 
     let engine;
