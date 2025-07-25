@@ -1,0 +1,162 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: "Roboto", sans-serif;
+  background-color: #000;
+  color: white;
+  overflow: hidden;
+}
+
+#stel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+#stel-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+  background: rgba(20, 20, 20, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.control-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: white;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.control-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-button.active {
+  background-color: #4caf50;
+  font-weight: bold;
+  border-color: #4caf50;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(20, 20, 20, 0.3);
+  backdrop-filter: blur(6px);
+  padding: 0.6rem 1rem;
+  gap: 0.7rem;
+  border-radius: 12px;
+  z-index: 10;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.stel-button {
+  width: 50px;
+  height: 50px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.stel-button:hover,
+.stel-button.active {
+  opacity: 1;
+}
+
+.stel-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#info-card {
+  position: absolute;
+  top: 80px;
+  left: 10px;
+  width: 400px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1rem;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  z-index: 9;
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.radecVal {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  margin-right: 5px;
+}
+.radecUnit {
+  color: #ccc;
+  font-weight: normal;
+}
+
+.dropdown-menu div {
+  color: #000;
+}
+
+/* flatpickr modal styles */
+#modal-container .flatpickr-calendar.inline {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#modal-container .flatpickr-innerContainer {
+  width: 100% !important;
+  display: flex;
+  justify-content: center;
+}
+
+#progress {
+  margin-left: auto;
+  margin-right: 1rem;
+}
+
+#modal-container {
+  position: absolute;
+  top: 70px;
+  left: 10px;
+  background: #222;
+  padding: 1rem;
+  border-radius: 8px;
+  display: none;
+  color: white;
+}

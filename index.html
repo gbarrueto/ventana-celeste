@@ -1,189 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Stellarium Web Engine</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <style>
-    html, body {
-      margin: 0; padding: 0;
-      height: 100%; width: 100%;
-      font-family: Roboto, sans-serif;
-      background-color: #000; color: white;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stellarium Web Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <link rel="stylesheet" href="stellarium.styles.css" />
+  </head>
+  <body>
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
-    .topbar {
-      background: rgba(0,0,0,0.5);
-      height: 64px;
-      display: flex;
-      align-items: center;
-      padding: 0 1rem;
-      gap: 1rem;
-    }
+    <div class="topbar">
+      <span class="title">Stellarium<sup>Web</sup></span>
+      <button class="control-button" onclick="showLocationSelector()">
+        Location
+      </button>
+      <button class="control-button" onclick="showTimeSelector()">
+        Date & Time
+      </button>
+      <div id="progress"></div>
+    </div>
 
-    .title {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-left: 1rem;
-    }
+    <div id="stel">
+      <canvas id="stel-canvas"></canvas>
+      <div id="info-card"></div>
+    </div>
 
-    .control-button {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid #fff;
-      border-radius: 6px;
-      color: white;
-      padding: 0.4rem 0.8rem;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
+    <div class="footer" id="footer-buttons"></div>
+    <div id="modal-container"></div>
 
-    .dropdown-menu div {
-      color: #000;
-    }
+    <script>
+      const BUTTONS = [
+        {
+          label: "Constellations",
+          img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg",
+          path: "constellations",
+          attr: "lines_visible",
+        },
+        {
+          label: "Atmosphere",
+          img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg",
+          path: "atmosphere",
+          attr: "visible",
+        },
+        {
+          label: "Landscape",
+          img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg",
+          path: "landscapes",
+          attr: "visible",
+        },
+        {
+          label: "Azimuthal Grid",
+          img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg",
+          path: "lines.azimuthal",
+          attr: "visible",
+        },
+        {
+          label: "Equatorial Grid",
+          img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg",
+          path: "lines.equatorial",
+          attr: "visible",
+        },
+        {
+          label: "Nebulae",
+          img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+          path: "dsos",
+          attr: "visible",
+        },
+        {
+          label: "DSS",
+          img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+          path: "dss",
+          attr: "visible",
+        },
+        {
+          label: "Contamination",
+          img: "https://telescope.alessiobellino.com/svg/btn-cst-art.svg",
+          path: "contamination",
+          attr: "visible",
+        },
+      ];
 
-    .footer {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      background: rgba(0,0,0,0.3);
-      padding: 0.5rem;
-      gap: 0.5rem;
-    }
+      const canvas_blur = document.getElementById("stel-canvas");
 
-    .stel-button {
-      width: 50px;
-      height: 50px;
-      opacity: 0.5;
-    }
-
-    .stel-button.active {
-      opacity: 1;
-    }
-
-    .stel-button img {
-      width: 100%;
-      height: 100%;
-    }
-
-    #stel {
-      position: absolute;
-      top: 64px;
-      bottom: 60px;
-      left: 0;
-      right: 0;
-    }
-
-    #stel-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      filter: blur(0px);
-    }
-
-    #info-card {
-      position: absolute;
-      top: 70px;
-      left: 10px;
-      width: 400px;
-      background: rgba(0,0,0,0.6);
-      padding: 1rem;
-      font-size: 0.9rem;
-      display: none;
-    }
-
-    .radecVal { font-family: monospace; font-weight: bold; display: inline-block; margin-right: 5px; }
-    .radecUnit { color: #ccc; font-weight: normal; }
-    
-    .control-button.active {
-  background-color: #4caf50;
-  font-weight: bold;
-}
-    
-    .control-button.active {
-  background-color: #4caf50;
-  font-weight: bold;
-}
-    
-/* Forza il calendario a stare nel contenitore */
-#modal-container .flatpickr-calendar.inline {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box;
-}
-
-/* Assicura che il contenitore interno si espanda */
-#modal-container .flatpickr-innerContainer {
-  width: 100% !important;
-  display: flex;
-  justify-content: center; /* centra il contenuto */
-}
-
-
-
-    
-  </style>
-</head>
-<body>
-  <script src="https://app.protobject.com/framework/p.js"></script>
-  <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
-
-  <div class="topbar">
-    <span class="title">Stellarium<sup>Web</sup></span>
-    <button class="control-button" onclick="showLocationSelector()">Location</button>
-    <button class="control-button" onclick="showTimeSelector()">Date & Time</button>
-    <div id="progress" style="margin-left:auto; margin-right:1rem;"></div>
-  </div>
-
-  <div id="stel">
-    <canvas id="stel-canvas"></canvas>
-    <div id="info-card"></div>
-  </div>
-
-  <div class="footer" id="footer-buttons"></div>
-  <div id="modal-container" style="position: absolute; top: 70px; left: 10px; background: #222; padding: 1rem; border-radius: 8px; display: none; color: white;"></div>
-
-  <script>
-    const BUTTONS = [
-      { label: "Constellations", img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg", path: "constellations", attr: "lines_visible" },
-      { label: "Atmosphere", img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg", path: "atmosphere", attr: "visible" },
-      { label: "Landscape", img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg", path: "landscapes", attr: "visible" },
-      { label: "Azimuthal Grid", img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg", path: "lines.azimuthal", attr: "visible" },
-      { label: "Equatorial Grid", img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg", path: "lines.equatorial", attr: "visible" },
-      { label: "Nebulae", img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg", path: "dsos", attr: "visible" },
-      { label: "DSS", img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg", path: "dss", attr: "visible" },
-    ];
-
-    const canvas_blur = document.getElementById('stel-canvas');
-
-    function toJulianDateIso(iso) {
+      function toJulianDateIso(iso) {
         const now = new Date(iso);
         const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
         const mjd = jd - 2400000.5; // Modified Julian Date
         return mjd;
-    }
-    
+      }
 
+      function updateStellariumView(data) {
+        if (!engine?.core?.observer) return;
+        engine.core.observer.yaw = -data.h;
+        engine.core.observer.pitch = data.v;
+      }
 
-    function updateStellariumView(data) {
-      if (!engine?.core?.observer) return;
-      engine.core.observer.yaw = -data.h;
-      engine.core.observer.pitch = data.v;
-    }
+      function updateStellariumFov(fov) {
+        if (!engine?.core) return;
+        engine.core.fov = fov;
+      }
 
-    function updateStellariumFov(fov) {
-      if (!engine?.core) return;
-      engine.core.fov = fov;
-    }
+      function updateStellariumBlur(blur) {
+        canvas_blur.style.filter = `blur(${blur}px)`;
+      }
 
-    function updateStellariumBlur(blur) {
-      canvas_blur.style.filter = `blur(${blur}px)`;
-    }
+      Protobject.Core.onReceived((data) => {
+        if (data.f !== undefined) updateStellariumFov(data.f);
+        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+        else data.h !== undefined || data.v !== undefined;
+        updateStellariumView(data);
+      });
 
+<<<<<<< Updated upstream
     function toggleEyepieceOverlay() {
       const overlay = document.getElementById('eyepiece-overlay');
       if (overlay) {
@@ -212,272 +147,327 @@
       if (data.h !== undefined || data.v !== undefined) updateStellariumView(data);
       if (data.toggleSignal !== undefined) toggleEyepieceOverlay();
     });
+=======
+      let engine;
+>>>>>>> Stashed changes
 
-    let engine;
-    
+      let flatpickrSyncInterval = null;
+      let activeFlatpickr = null;
+      let isUserTouchingCalendar = false;
+      let lastManualChange = 0;
 
-let flatpickrSyncInterval = null;
-let activeFlatpickr = null;
-let isUserTouchingCalendar = false;
-let lastManualChange = 0;
+      StelWebEngine({
+        wasmFile:
+          "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
+        canvas: document.getElementById("stel-canvas"),
+        onReady(stel) {
+          engine = stel;
+          const core = stel.core;
 
-    
-    
-    StelWebEngine({
-      wasmFile: 'https://telescope.alessiobellino.com/stellarium-web-engine.wasm',
-      canvas: document.getElementById('stel-canvas'),
-      onReady(stel) {
-        engine = stel;
-        const core = stel.core;
-        
+          //core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
+          core.observer.latitude = -33.4489 * (Math.PI / 180);
+          core.observer.longitude = -70.6693 * (Math.PI / 180);
+          core.observer.elevation = 570;
+          core.observer.name = "Santiago, Chile";
 
+          const baseUrl =
+            "https://telescope.alessiobellino.com/stardata/cache/";
 
-        //core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
-        core.observer.latitude = -33.4489 * (Math.PI / 180);
-        core.observer.longitude = -70.6693 * (Math.PI / 180);
-        core.observer.elevation = 570;
-        core.observer.name = "Santiago, Chile";
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars",
+            key: "minimal",
+          });
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars",
+            key: "base",
+          });
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars",
+            key: "extended",
+          });
+          core.stars.addDataSource({
+            url: baseUrl + "surveys/gaia/v1",
+            key: "gaia",
+          });
 
-        const baseUrl = 'https://telescope.alessiobellino.com/stardata/cache/';
+          core.skycultures.addDataSource({
+            url: baseUrl + "skycultures/v3/western",
+            key: "western",
+          });
+          core.dsos.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso",
+          });
+          core.dsos.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
+          });
 
-        core.stars.addDataSource({ url: baseUrl + "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars", key: "minimal" });
-        core.stars.addDataSource({ url: baseUrl + "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars", key: "base" });
-        core.stars.addDataSource({ url: baseUrl + "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars", key: "extended" });
-        core.stars.addDataSource({ url: baseUrl + "surveys/gaia/v1", key: "gaia" });
+          core.landscapes.addDataSource({
+            url: baseUrl + "landscapes/v1/guereins",
+            key: "guereins",
+          });
+          core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
+          core.dss.addDataSource({ url: baseUrl + "surveys/dss/v1" });
+          core.minor_planets.addDataSource({
+            url: baseUrl + "mpc/v1/mpcorb.dat",
+            key: "mpc_asteroids",
+          });
+          core.comets.addDataSource({
+            url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
+            key: "mpc_comets",
+          });
+          core.satellites.addDataSource({
+            url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+            key: "jsonl/sat",
+          });
 
-        core.skycultures.addDataSource({ url: baseUrl + "skycultures/v3/western", key: "western" });
-        core.dsos.addDataSource({ url: baseUrl + "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso" });
-        core.dsos.addDataSource({ url: baseUrl + "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso" });
+          [
+            "moon",
+            "sun",
+            "jupiter",
+            "mercury",
+            "venus",
+            "mars",
+            "saturn",
+            "uranus",
+            "neptune",
+            "io",
+            "europa",
+            "ganymede",
+            "callisto",
+            "moon-normal",
+          ].forEach((p) => {
+            core.planets.addDataSource({
+              url: baseUrl + `surveys/sso/${p}/v1`,
+              key: p,
+            });
+          });
 
-        core.landscapes.addDataSource({ url: baseUrl + "landscapes/v1/guereins", key: "guereins" });
-        core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
-        core.dss.addDataSource({ url: baseUrl + "surveys/dss/v1" });
-        core.minor_planets.addDataSource({ url: baseUrl + "mpc/v1/mpcorb.dat", key: "mpc_asteroids" });
-        core.comets.addDataSource({ url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17", key: "mpc_comets" });
-        core.satellites.addDataSource({ url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16", key: "jsonl/sat" });
+          const footer = document.getElementById("footer-buttons");
+          BUTTONS.forEach(({ label, img, path, attr }) => {
+            const btn = document.createElement("div");
+            btn.className = "stel-button";
+            btn.innerHTML = `<img src="${img}" title="${label}" />`;
+            btn.onclick = () => {
+              const obj = path.split(".").reduce((o, k) => o && o[k], core);
+              if (obj) {
+                obj[attr] = !obj[attr];
+                btn.classList.toggle("active", obj[attr]);
+              }
+            };
+            footer.appendChild(btn);
+          });
 
-        ["moon", "sun", "jupiter", "mercury", "venus", "mars", "saturn", "uranus", "neptune", "io", "europa", "ganymede", "callisto", "moon-normal"].forEach(p => {
-          core.planets.addDataSource({ url: baseUrl + `surveys/sso/${p}/v1`, key: p });
-        });
+          stel.change((obj, attr) => {
+            if (attr === "hovered") return;
 
-        const footer = document.getElementById('footer-buttons');
-        BUTTONS.forEach(({ label, img, path, attr }) => {
-          const btn = document.createElement('div');
-          btn.className = 'stel-button';
-          btn.innerHTML = `<img src="${img}" title="${label}" />`;
-          btn.onclick = () => {
-            const obj = path.split('.').reduce((o, k) => o && o[k], core);
-            if (obj) {
-              obj[attr] = !obj[attr];
-              btn.classList.toggle('active', obj[attr]);
-            }
-          };
-          footer.appendChild(btn);
-        });
-
-        stel.change((obj, attr) => {
-          if (attr === 'hovered') return;
-
-          const info = document.getElementById('info-card');
-          if (stel.core.selection) {
-            const s = stel.core.selection;
-            const name = s.designations()[0].replace(/^NAME /, '');
-            const radec = stel.convertFrame(core.observer, 'ICRF', 'CIRS', s.getInfo('radec'));
-            const coords = stel.c2s(radec);
-            const ra = stel.anp(coords[0]);
-            const dec = stel.anpm(coords[1]);
-            const mag = s.getInfo('vmag');
-            info.innerHTML = `
+            const info = document.getElementById("info-card");
+            if (stel.core.selection) {
+              const s = stel.core.selection;
+              const name = s.designations()[0].replace(/^NAME /, "");
+              const radec = stel.convertFrame(
+                core.observer,
+                "ICRF",
+                "CIRS",
+                s.getInfo("radec")
+              );
+              const coords = stel.c2s(radec);
+              const ra = stel.anp(coords[0]);
+              const dec = stel.anpm(coords[1]);
+              const mag = s.getInfo("vmag");
+              info.innerHTML = `
               <h3>${name}</h3>
-              <p><strong>Magnitude:</strong> ${mag !== undefined ? mag.toFixed(2) : 'Unknown'}</p>
+              <p><strong>Magnitude:</strong> ${
+                mag !== undefined ? mag.toFixed(2) : "Unknown"
+              }</p>
               <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
               <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
-            info.style.display = 'block';
-          } else {
-            info.style.display = 'none';
-          }
+              info.style.display = "block";
+            } else {
+              info.style.display = "none";
+            }
 
-          const progress = core.progressbars[0];
-          if (progress) {
-            document.getElementById('progress').innerText = `${progress.label}: ${(progress.value / progress.total * 100).toFixed(0)}%`;
-          }
-        });
+            const progress = core.progressbars[0];
+            if (progress) {
+              document.getElementById("progress").innerText = `${
+                progress.label
+              }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
+            }
+          });
+        },
+      });
+
+      let clockInterval = null;
+      let timeSpeed = 0;
+      let suppressFlatpickrUpdate = false;
+
+      function setSpeed(multiplier) {
+        timeSpeed = multiplier;
+
+        if (clockInterval) {
+          clearInterval(clockInterval);
+          clockInterval = null;
+        }
+
+        if (multiplier > 0) {
+          clockInterval = setInterval(() => {
+            if (!engine) return;
+            const simulatedSecondsPerStep = multiplier * 0.03; // 30 ms
+            const jdStep = simulatedSecondsPerStep / 86400;
+            engine.core.observer.utc += jdStep;
+          }, 30);
+        }
+
+        updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
       }
-    });
+    </script>
+    <script>
+      let selectedCity = "Santiago"; // default iniziale
 
+      const cities = {
+        "New York": { lat: 40.7128, lon: -74.006, elev: 10, tz: -4 },
+        Rome: { lat: 41.89332, lon: 12.48293, elev: 21, tz: 2 },
+        Santiago: { lat: -33.4489, lon: -70.6693, elev: 570, tz: -4 },
+        "Buenos Aires": { lat: -34.6037, lon: -58.3816, elev: 25, tz: -3 },
+        Seoul: { lat: 37.5665, lon: 126.978, elev: 38, tz: 9 },
 
-    
+        // Europa
+        London: { lat: 51.5074, lon: -0.1278, elev: 11, tz: 1 },
+        Berlin: { lat: 52.52, lon: 13.405, elev: 34, tz: 1 },
+        Moscow: { lat: 55.7558, lon: 37.6173, elev: 156, tz: 3 },
 
-let clockInterval = null;
-let timeSpeed = 0;
-let suppressFlatpickrUpdate = false;
+        // Asia
+        Tokyo: { lat: 35.6895, lon: 139.6917, elev: 40, tz: 9 },
+        Beijing: { lat: 39.9042, lon: 116.4074, elev: 43, tz: 8 },
+        Mumbai: { lat: 19.076, lon: 72.8777, elev: 14, tz: 5.5 },
 
-    
-function setSpeed(multiplier) {
-  timeSpeed = multiplier;
+        // Nord America
+        "Los Angeles": { lat: 34.0522, lon: -118.2437, elev: 71, tz: -7 },
+        "Mexico City": { lat: 19.4326, lon: -99.1332, elev: 2240, tz: -6 },
 
-  if (clockInterval) {
-    clearInterval(clockInterval);
-    clockInterval = null;
-  }
+        // Sud America
+        Lima: { lat: -12.0464, lon: -77.0428, elev: 154, tz: -5 },
+        Bogotá: { lat: 4.711, lon: -74.0721, elev: 2640, tz: -5 },
 
-  if (multiplier > 0) {
-    clockInterval = setInterval(() => {
-      if (!engine) return;
-      const simulatedSecondsPerStep = (multiplier * 0.03); // 30 ms
-      const jdStep = simulatedSecondsPerStep / 86400;
-      engine.core.observer.utc += jdStep;
-    }, 30);
-  }
+        // Africa
+        Cairo: { lat: 30.0444, lon: 31.2357, elev: 23, tz: 2 },
+        Johannesburg: { lat: -26.2041, lon: 28.0473, elev: 1753, tz: 2 },
 
-  updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
-}
+        // Oceania
+        Sydney: { lat: -33.8688, lon: 151.2093, elev: 58, tz: 10 },
 
+        // Medio Oriente
+        Dubai: { lat: 25.276987, lon: 55.296249, elev: 16, tz: 4 },
+        Istanbul: { lat: 41.0082, lon: 28.9784, elev: 39, tz: 3 },
+      };
 
+      function showLocationSelector() {
+        const modal = document.getElementById("modal-container");
+        const locationBtn = document.querySelector(
+          '.control-button[onclick="showLocationSelector()"]'
+        );
 
-    
-  </script>
-  <script>
-    
-    let selectedCity = "Santiago";  // default iniziale
-    
-const cities = {
-  "New York":       { lat: 40.7128, lon: -74.0060, elev: 10, tz: -4 },
-  "Rome":           { lat: 41.89332, lon: 12.48293, elev: 21, tz: 2 },
-  "Santiago":       { lat: -33.4489, lon: -70.6693, elev: 570, tz: -4 },
-  "Buenos Aires":   { lat: -34.6037, lon: -58.3816, elev: 25, tz: -3 },
-  "Seoul":          { lat: 37.5665, lon: 126.9780, elev: 38, tz: 9 },
-  
-  // Europa
-  "London":         { lat: 51.5074, lon: -0.1278, elev: 11, tz: 1 },
-  "Berlin":         { lat: 52.5200, lon: 13.4050, elev: 34, tz: 1 },
-  "Moscow":         { lat: 55.7558, lon: 37.6173, elev: 156, tz: 3 },
+        const isVisible = modal.style.display === "block";
 
-  // Asia
-  "Tokyo":          { lat: 35.6895, lon: 139.6917, elev: 40, tz: 9 },
-  "Beijing":        { lat: 39.9042, lon: 116.4074, elev: 43, tz: 8 },
-  "Mumbai":         { lat: 19.0760, lon: 72.8777, elev: 14, tz: 5.5 },
+        if (isVisible) {
+          modal.style.display = "none";
+          locationBtn.classList.remove("active");
+          return;
+        }
 
-  // Nord America
-  "Los Angeles":    { lat: 34.0522, lon: -118.2437, elev: 71, tz: -7 },
-  "Mexico City":    { lat: 19.4326, lon: -99.1332, elev: 2240, tz: -6 },
-
-  // Sud America
-  "Lima":           { lat: -12.0464, lon: -77.0428, elev: 154, tz: -5 },
-  "Bogotá":         { lat: 4.7110, lon: -74.0721, elev: 2640, tz: -5 },
-
-  // Africa
-  "Cairo":          { lat: 30.0444, lon: 31.2357, elev: 23, tz: 2 },
-  "Johannesburg":   { lat: -26.2041, lon: 28.0473, elev: 1753, tz: 2 },
-
-  // Oceania
-  "Sydney":         { lat: -33.8688, lon: 151.2093, elev: 58, tz: 10 },
-
-  // Medio Oriente
-  "Dubai":          { lat: 25.276987, lon: 55.296249, elev: 16, tz: 4 },
-  "Istanbul":       { lat: 41.0082, lon: 28.9784, elev: 39, tz: 3 }
-};
-
-    
-function showLocationSelector() {
-  const modal = document.getElementById("modal-container");
-  const locationBtn = document.querySelector('.control-button[onclick="showLocationSelector()"]');
-
-  const isVisible = modal.style.display === "block";
-
-  if (isVisible) {
-    modal.style.display = "none";
-    locationBtn.classList.remove("active");
-    return;
-  }
-
-  let buttonsHtml = "<h3>Select Location</h3>";
-  for (const city in cities) {
-    const isSelected = city === selectedCity;
-    buttonsHtml += `
+        let buttonsHtml = "<h3>Select Location</h3>";
+        for (const city in cities) {
+          const isSelected = city === selectedCity;
+          buttonsHtml += `
       <button class="control-button" style="
         display: block;
         width: 100%;
         margin-bottom: 0.5rem;
-        background-color: ${isSelected ? '#4caf50' : 'rgba(255,255,255,0.1)'};
-        font-weight: ${isSelected ? 'bold' : 'normal'};
+        background-color: ${isSelected ? "#4caf50" : "rgba(255,255,255,0.1)"};
+        font-weight: ${isSelected ? "bold" : "normal"};
       " onclick="applyLocation('${city}')">
         ${city}
       </button>`;
-  }
+        }
 
-  modal.innerHTML = buttonsHtml;
-  modal.style.display = "block";
-  locationBtn.classList.add("active");
-}
+        modal.innerHTML = buttonsHtml;
+        modal.style.display = "block";
+        locationBtn.classList.add("active");
+      }
 
+      function applyLocation(cityName) {
+        const data = cities[cityName];
+        if (!data || !engine) return;
 
+        engine.core.observer.latitude = data.lat * (Math.PI / 180);
+        engine.core.observer.longitude = data.lon * (Math.PI / 180);
+        engine.core.observer.elevation = data.elev || 0;
+        engine.core.observer.name = cityName;
 
+        const localTime = new Date();
+        engine.core.observer.utc = toJulianDateIso(localTime.toLocaleString());
+        engine.core.observer.pitch = 0;
+        engine.core.observer.yaw = 0;
 
-function applyLocation(cityName) {
-  const data = cities[cityName];
-  if (!data || !engine) return;
+        selectedCity = cityName;
+        showLocationSelector(); // rinfresca la UI con selezione aggiornata
+      }
 
-  engine.core.observer.latitude = data.lat * (Math.PI / 180);
-  engine.core.observer.longitude = data.lon * (Math.PI / 180);
-  engine.core.observer.elevation = data.elev || 0;
-  engine.core.observer.name = cityName;
+      function updateSpeedButtons() {
+        document
+          .querySelectorAll("#modal-container .control-button")
+          .forEach((btn) => {
+            const text = btn.textContent.trim();
 
-  const localTime = new Date();
-  engine.core.observer.utc = toJulianDateIso(localTime.toLocaleString());
-  engine.core.observer.pitch = 0;
-  engine.core.observer.yaw = 0;
+            const match =
+              (timeSpeed === 0 && text.startsWith("🟥")) ||
+              (timeSpeed === 1 && text.startsWith("🕒")) ||
+              (timeSpeed === 10 && text.includes("10x")) ||
+              (timeSpeed === 60 && text.includes("60x")) ||
+              (timeSpeed === 3600 && text.includes("3600x"));
 
-  selectedCity = cityName;
-  showLocationSelector(); // rinfresca la UI con selezione aggiornata
-}
-    
-    
-function updateSpeedButtons() {
-  document.querySelectorAll('#modal-container .control-button').forEach(btn => {
-    const text = btn.textContent.trim();
+            btn.classList.toggle("active", match);
+          });
+      }
 
-    const match =
-      (timeSpeed === 0 && text.startsWith("🟥")) ||
-      (timeSpeed === 1 && text.startsWith("🕒")) ||
-      (timeSpeed === 10 && text.includes("10x")) ||
-      (timeSpeed === 60 && text.includes("60x")) ||
-      (timeSpeed === 3600 && text.includes("3600x"));
+      function fromJulianDateToDate(jd) {
+        return new Date((jd - 2440587.5) * 86400000);
+      }
 
-    btn.classList.toggle('active', match);
-  });
-}
+      function fromMJDToDate(mjd) {
+        const jd = mjd + 2400000.5;
+        return new Date((jd - 2440587.5) * 86400000);
+      }
 
-function fromJulianDateToDate(jd) {
-  return new Date((jd - 2440587.5) * 86400000);
-}
-    
-    function fromMJDToDate(mjd) {
-  const jd = mjd + 2400000.5;
-  return new Date((jd - 2440587.5) * 86400000);
-}
+      function showTimeSelector() {
+        const modal = document.getElementById("modal-container");
+        const timeBtn = document.querySelector(
+          '.control-button[onclick="showTimeSelector()"]'
+        );
+        const isVisible = modal.style.display === "block";
 
-    
-    
-    
-    function showTimeSelector() {
-  const modal = document.getElementById("modal-container");
-  const timeBtn = document.querySelector('.control-button[onclick="showTimeSelector()"]');
-  const isVisible = modal.style.display === "block";
+        if (isVisible) {
+          modal.style.display = "none";
+          timeBtn.classList.remove("active");
 
-  if (isVisible) {
-    modal.style.display = "none";
-    timeBtn.classList.remove("active");
+          if (flatpickrSyncInterval) {
+            clearInterval(flatpickrSyncInterval);
+            flatpickrSyncInterval = null;
+          }
 
-    if (flatpickrSyncInterval) {
-      clearInterval(flatpickrSyncInterval);
-      flatpickrSyncInterval = null;
-    }
+          return;
+        }
 
-    return;
-  }
-
-  modal.innerHTML = `
+        modal.innerHTML = `
     <h3>Select Date & Time</h3>
     <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
 
@@ -490,70 +480,64 @@ function fromJulianDateToDate(jd) {
     </div>
   `;
 
-  activeFlatpickr = flatpickr("#datetime-picker", {
-    enableTime: true,
-    dateFormat: "Y-m-d\\TH:i:S",
-    time_24hr: true,
-    defaultDate: new Date(),
-    inline: true,
-    onOpen: () => isUserTouchingCalendar = true,
-    onClose: () => isUserTouchingCalendar = false,
+        activeFlatpickr = flatpickr("#datetime-picker", {
+          enableTime: true,
+          dateFormat: "Y-m-d\\TH:i:S",
+          time_24hr: true,
+          defaultDate: new Date(),
+          inline: true,
+          onOpen: () => (isUserTouchingCalendar = true),
+          onClose: () => (isUserTouchingCalendar = false),
 
-    onChange: function(selectedDates) {
-      if (selectedDates.length > 0) {
-        const date = selectedDates[0];
-        lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+          onChange: function (selectedDates) {
+            if (selectedDates.length > 0) {
+              const date = selectedDates[0];
+              lastManualChange = Date.now();
+              engine.core.observer.utc = toJulianDateIso(date.toISOString());
+            }
+          },
+
+          onValueUpdate: function (selectedDates) {
+            if (selectedDates.length > 0) {
+              const date = selectedDates[0];
+              lastManualChange = Date.now();
+              engine.core.observer.utc = toJulianDateIso(date.toISOString());
+            }
+          },
+
+          onMonthChange: function (selectedDates) {
+            if (selectedDates.length > 0) {
+              const date = selectedDates[0];
+              lastManualChange = Date.now();
+              engine.core.observer.utc = toJulianDateIso(date.toISOString());
+            }
+          },
+
+          onYearChange: function (selectedDates) {
+            if (selectedDates.length > 0) {
+              const date = selectedDates[0];
+              lastManualChange = Date.now();
+              engine.core.observer.utc = toJulianDateIso(date.toISOString());
+            }
+          },
+        });
+
+        modal.style.display = "block";
+        timeBtn.classList.add("active");
+        updateSpeedButtons();
+
+        flatpickrSyncInterval = setInterval(() => {
+          if (!activeFlatpickr || !engine?.core?.observer?.utc) return;
+
+          const now = Date.now();
+          const recentlyChanged = now - lastManualChange < 2000;
+
+          if (!isUserTouchingCalendar && !recentlyChanged) {
+            const date = fromMJDToDate(engine.core.observer.utc);
+            activeFlatpickr.setDate(date, false);
+          }
+        }, 300);
       }
-    },
-
-    onValueUpdate: function(selectedDates) {
-      if (selectedDates.length > 0) {
-        const date = selectedDates[0];
-        lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
-      }
-    },
-
-    onMonthChange: function(selectedDates) {
-      if (selectedDates.length > 0) {
-        const date = selectedDates[0];
-        lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
-      }
-    },
-
-    onYearChange: function(selectedDates) {
-      if (selectedDates.length > 0) {
-        const date = selectedDates[0];
-        lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
-      }
-    }
-  });
-
-  modal.style.display = "block";
-  timeBtn.classList.add("active");
-  updateSpeedButtons();
-
-  flatpickrSyncInterval = setInterval(() => {
-    if (!activeFlatpickr || !engine?.core?.observer?.utc) return;
-
-    const now = Date.now();
-    const recentlyChanged = (now - lastManualChange < 2000);
-
-    if (!isUserTouchingCalendar && !recentlyChanged) {
-      const date = fromMJDToDate(engine.core.observer.utc);
-      activeFlatpickr.setDate(date, false);
-    }
-  }, 300);
-}
-
-
-
-
-
-
-</script>
-</body>
+    </script>
+  </body>
 </html>
