@@ -255,13 +255,68 @@
             const btn = document.createElement("div");
             btn.className = "stel-button";
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
-            btn.onclick = () => {
-              const obj = path.split(".").reduce((o, k) => o && o[k], core);
-              if (obj) {
-                obj[attr] = !obj[attr];
-                btn.classList.toggle("active", obj[attr]);
-              }
-            };
+            // Custom contamination overlay
+            if (label === "Contamination") {
+              btn.onclick = () => {
+                let overlay = document.getElementById("contamination-overlay");
+                const isActive = btn.classList.toggle("active");
+                if (isActive) {
+                  if (!overlay) {
+                    overlay = document.createElement("div");
+                    overlay.id = "contamination-overlay";
+                    overlay.style.position = "absolute";
+                    overlay.style.top = 0;
+                    overlay.style.left = 0;
+                    overlay.style.width = "100%";
+                    overlay.style.height = "100%";
+                    overlay.style.pointerEvents = "none";
+                    overlay.style.zIndex = 2;
+                    const stel = document.getElementById("stel");
+                    stel.appendChild(overlay);
+                  }
+                  overlay.style.display = "block";
+                  updateContaminationOverlay();
+                  if (contaminationOverlayTimer)
+                    clearInterval(contaminationOverlayTimer);
+                  contaminationOverlayTimer = setInterval(
+                    () => updateContaminationOverlay(),
+                    1000
+                  );
+                } else {
+                  if (overlay) {
+                    overlay.style.opacity = 0;
+                    setTimeout(() => {
+                      overlay.style.display = "none";
+                    }, 1000);
+                  }
+                  if (contaminationOverlayTimer) {
+                    clearInterval(contaminationOverlayTimer);
+                    contaminationOverlayTimer = null;
+                  }
+                  if (overlay) {
+                    overlay.style.opacity = 0;
+                    setTimeout(() => {
+                      overlay.style.display = "none";
+                    }, 1000);
+                  }
+
+                  if (engine.core) {
+                    engine.core.bortle_index = 1;
+                    engine.core.display_limit_mag = 7.5;
+                    engine.core.star_relative_scale = 1.1;
+                    engine.core.star_linear_scale = 0.8;
+                  }
+                }
+              };
+            } else {
+              btn.onclick = () => {
+                const obj = path.split(".").reduce((o, k) => o && o[k], core);
+                if (obj) {
+                  obj[attr] = !obj[attr];
+                  btn.classList.toggle("active", obj[attr]);
+                }
+              };
+            }
             footer.appendChild(btn);
           });
 
@@ -332,40 +387,160 @@
       let selectedCity = "Santiago"; // default iniziale
 
       const cities = {
-        "New York": { lat: 40.7128, lon: -74.006, elev: 10, tz: -4 },
-        Rome: { lat: 41.89332, lon: 12.48293, elev: 21, tz: 2 },
-        Santiago: { lat: -33.4489, lon: -70.6693, elev: 570, tz: -4 },
-        "Buenos Aires": { lat: -34.6037, lon: -58.3816, elev: 25, tz: -3 },
-        Seoul: { lat: 37.5665, lon: 126.978, elev: 38, tz: 9 },
+        "New York": {
+          lat: 40.7128,
+          lon: -74.006,
+          elev: 10,
+          tz: -4,
+          contaminacion: 0.8,
+        },
+        Rome: {
+          lat: 41.89332,
+          lon: 12.48293,
+          elev: 21,
+          tz: 2,
+          contaminacion: 0.6,
+        },
+        Santiago: {
+          lat: -33.4489,
+          lon: -70.6693,
+          elev: 570,
+          tz: -4,
+          contaminacion: 0.5,
+        },
+        "Buenos Aires": {
+          lat: -34.6037,
+          lon: -58.3816,
+          elev: 25,
+          tz: -3,
+          contaminacion: 0.7,
+        },
+        Seoul: {
+          lat: 37.5665,
+          lon: 126.978,
+          elev: 38,
+          tz: 9,
+          contaminacion: 0.9,
+        },
 
         // Europa
-        London: { lat: 51.5074, lon: -0.1278, elev: 11, tz: 1 },
-        Berlin: { lat: 52.52, lon: 13.405, elev: 34, tz: 1 },
-        Moscow: { lat: 55.7558, lon: 37.6173, elev: 156, tz: 3 },
+        London: {
+          lat: 51.5074,
+          lon: -0.1278,
+          elev: 11,
+          tz: 1,
+          contaminacion: 0.7,
+        },
+        Berlin: {
+          lat: 52.52,
+          lon: 13.405,
+          elev: 34,
+          tz: 1,
+          contaminacion: 0.6,
+        },
+        Moscow: {
+          lat: 55.7558,
+          lon: 37.6173,
+          elev: 156,
+          tz: 3,
+          contaminacion: 0.5,
+        },
 
         // Asia
-        Tokyo: { lat: 35.6895, lon: 139.6917, elev: 40, tz: 9 },
-        Beijing: { lat: 39.9042, lon: 116.4074, elev: 43, tz: 8 },
-        Mumbai: { lat: 19.076, lon: 72.8777, elev: 14, tz: 5.5 },
+        Tokyo: {
+          lat: 35.6895,
+          lon: 139.6917,
+          elev: 40,
+          tz: 9,
+          contaminacion: 0.95,
+        },
+        Beijing: {
+          lat: 39.9042,
+          lon: 116.4074,
+          elev: 43,
+          tz: 8,
+          contaminacion: 0.85,
+        },
+        Mumbai: {
+          lat: 19.076,
+          lon: 72.8777,
+          elev: 14,
+          tz: 5.5,
+          contaminacion: 0.8,
+        },
 
         // Nord America
-        "Los Angeles": { lat: 34.0522, lon: -118.2437, elev: 71, tz: -7 },
-        "Mexico City": { lat: 19.4326, lon: -99.1332, elev: 2240, tz: -6 },
+        "Los Angeles": {
+          lat: 34.0522,
+          lon: -118.2437,
+          elev: 71,
+          tz: -7,
+          contaminacion: 0.75,
+        },
+        "Mexico City": {
+          lat: 19.4326,
+          lon: -99.1332,
+          elev: 2240,
+          tz: -6,
+          contaminacion: 0.7,
+        },
 
         // Sud America
-        Lima: { lat: -12.0464, lon: -77.0428, elev: 154, tz: -5 },
-        Bogotá: { lat: 4.711, lon: -74.0721, elev: 2640, tz: -5 },
+        Lima: {
+          lat: -12.0464,
+          lon: -77.0428,
+          elev: 154,
+          tz: -5,
+          contaminacion: 0.6,
+        },
+        Bogotá: {
+          lat: 4.711,
+          lon: -74.0721,
+          elev: 2640,
+          tz: -5,
+          contaminacion: 0.5,
+        },
 
         // Africa
-        Cairo: { lat: 30.0444, lon: 31.2357, elev: 23, tz: 2 },
-        Johannesburg: { lat: -26.2041, lon: 28.0473, elev: 1753, tz: 2 },
+        Cairo: {
+          lat: 30.0444,
+          lon: 31.2357,
+          elev: 23,
+          tz: 2,
+          contaminacion: 0.4,
+        },
+        Johannesburg: {
+          lat: -26.2041,
+          lon: 28.0473,
+          elev: 1753,
+          tz: 2,
+          contaminacion: 0.6,
+        },
 
         // Oceania
-        Sydney: { lat: -33.8688, lon: 151.2093, elev: 58, tz: 10 },
+        Sydney: {
+          lat: -33.8688,
+          lon: 151.2093,
+          elev: 58,
+          tz: 10,
+          contaminacion: 0.5,
+        },
 
         // Medio Oriente
-        Dubai: { lat: 25.276987, lon: 55.296249, elev: 16, tz: 4 },
-        Istanbul: { lat: 41.0082, lon: 28.9784, elev: 39, tz: 3 },
+        Dubai: {
+          lat: 25.276987,
+          lon: 55.296249,
+          elev: 16,
+          tz: 4,
+          contaminacion: 0.3,
+        },
+        Istanbul: {
+          lat: 41.0082,
+          lon: 28.9784,
+          elev: 39,
+          tz: 3,
+          contaminacion: 0.5,
+        },
       };
 
       function showLocationSelector() {
@@ -402,6 +577,48 @@
         locationBtn.classList.add("active");
       }
 
+      let contaminationOverlayTimer = null;
+
+      function updateContaminationOverlay(forceHide = false) {
+        const overlay = document.getElementById("contamination-overlay");
+        if (!overlay) return;
+
+        const city = cities[selectedCity];
+        const contamination =
+          city && city.contaminacion !== undefined ? city.contaminacion : 0.5;
+
+        // Mostrar overlay
+        overlay.style.transition = "opacity 1s";
+        overlay.style.opacity = contamination;
+        overlay.style.display = "block";
+
+        // Fondo visual del overlay
+        overlay.style.background = `radial-gradient(ellipse at bottom, rgba(255,255,255,${
+          0.25 * contamination
+        }) 0%, rgba(200,200,200,${
+          0.15 * contamination
+        }) 40%, rgba(180,180,180,${
+          0.1 * contamination
+        }) 70%, rgba(0,0,0,0.0) 100%)`;
+
+        // Ajustar parámetros del motor
+        if (engine.core) {
+          engine.core.bortle_index = Math.round(1 + contamination * 8); // de 1 a 9
+          engine.core.display_limit_mag = 7.5 - contamination * 3.5; // de 7.5 a 4
+          engine.core.star_relative_scale = 1 - contamination * 0.5; // reducción parcial
+          engine.core.star_linear_scale = 1 - contamination * 0.3; // reducción más suave
+        }
+      }
+
+      function setSelectedCityWithContamination(city) {
+        selectedCity = city;
+        // Update overlay if active
+        const overlay = document.getElementById("contamination-overlay");
+        if (overlay && overlay.style.display !== "none") {
+          updateContaminationOverlay();
+        }
+      }
+
       function applyLocation(cityName) {
         const data = cities[cityName];
         if (!data || !engine) return;
@@ -416,8 +633,7 @@
         engine.core.observer.pitch = 0;
         engine.core.observer.yaw = 0;
 
-        selectedCity = cityName;
-        showLocationSelector(); // rinfresca la UI con selezione aggiornata
+        setSelectedCityWithContamination(cityName);
       }
 
       function updateSpeedButtons() {
