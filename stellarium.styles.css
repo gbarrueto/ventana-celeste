@@ -159,4 +159,10 @@ body {
   border-radius: 8px;
   display: none;
   color: white;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 1000;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
 }
