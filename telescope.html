@@ -7,6 +7,7 @@
 
   <link rel="stylesheet" href="telescope/Slider/slider.css">
   <link rel="stylesheet" href="telescope/Zoom/zoom.css">
+  <link rel="stylesheet" href="telescope/Menu/menu.css">
   <style>
     html, body {
       height: 100%;
@@ -56,10 +57,12 @@
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
   
+  <!-- Touchable Screen -->
   <div id="touchArea">
     <div id="fovDisplay">FOV: 3.228859</div>
   </div>
 
+  <!-- Focuser Slider -->
   <div class="slide-container">
     <div class="blur-text-container">
       <p class="blur-title">Enfocador</p>
@@ -77,6 +80,7 @@
     <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
   </div>
 
+  <!-- Zoom Buttons -->
   <div class="zoom-container">
     <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
 
@@ -88,6 +92,31 @@
       <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
     </section>
   </div>
+
+  <!-- Menu -->
+  <div id="menuContainer">
+    <section class="header">
+      <button
+        onclick="closeMenu()"
+      >X</button>
+    </section>
+
+    <!-- Options -->
+    <section id="optionsSection">
+      <button class="option-button">Ubicacion</button>
+      <button class="option-button">Fecha y Tiempo</button>
+      <button class="option-button">Contaminacion Luminica</button>
+    </section>
+
+    <!-- Option Interaction -->
+    <section id="interactionSection"></section>
+  </div>
+
+  <button 
+    id="openMenuButton"
+    onclick="openMenu()"
+  >|||</button>
+
   
 
   <!-- Variables - Parameters - Constants -->
@@ -111,9 +140,12 @@
     // const blurText = document.getElementById('blurText');
 
     const zoomOptions = document.getElementById('zoomOptions')
+
+    const menu = document.getElementById('menuContainer');
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
+  <script src="telescope/Menu/menu.js"></script>
 
   <script>
     function updateBlur(direction = 1) {

@@ -1,0 +1,46 @@
+#menuContainer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  opacity: 0;
+  background: green;
+  z-index: -1;
+  transition: 0.2s ease;
+
+  .header {
+
+    button {
+      width: 2em;
+      height: 2em;
+      padding: 0;
+      margin: 1em;
+    }
+  }
+
+  #optionsSection {
+    display: flex;
+    padding: 0.5em;
+    gap: 0.1em;
+    text-align: center;
+    
+    .option-button {
+
+    }
+  }
+
+  #interactionSection {
+
+  }
+}
+
+#openMenuButton {
+  position: absolute;
+  top: 1em;
+  left: 1em;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+}
