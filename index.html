@@ -23,9 +23,9 @@
 
     <div class="topbar">
       <span class="title">Stellarium<sup>Web</sup></span>
-      <button class="control-button" onclick="showLocationSelector()">
+      <!-- <button class="control-button" onclick="showLocationSelector()">
         Location
-      </button>
+      </button> -->
       <button class="control-button" onclick="showTimeSelector()">
         Date & Time
       </button>
@@ -116,12 +116,12 @@
         canvas_blur.style.filter = `blur(${blur}px)`;
       }
 
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f);
-        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-        else data.h !== undefined || data.v !== undefined;
-        updateStellariumView(data);
-      });
+      // Protobject.Core.onReceived((data) => {
+      //   if (data.f !== undefined) updateStellariumFov(data.f);
+      //   else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+      //   else data.h !== undefined || data.v !== undefined;
+      //   updateStellariumView(data);
+      // });
 
       function toggleEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
@@ -151,6 +151,10 @@
         if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
         if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
         if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
+        
+        // Aplicar ubicacion
+        if (data.cityName !== undefined) applyLocation({ cityName: data.cityName});
+        if (data.lat !== undefined && data.lon !== undefined) applyLocation({ lat: data.lat, lon: data.lon, elev: data.elev });
       });
 
       let flatpickrSyncInterval = null;
@@ -494,14 +498,18 @@
         }
       }
 
-      function applyLocation(cityName) {
-        const data = cities[cityName];
+      function applyLocation({ cityName, lat, lon, elev }) {
+        const data = cityName 
+          ? cities[cityName]
+          : (lat || lat == 0) && (lon || lon == 0) 
+            ? { lat, lon, elev }
+            : null;
         if (!data || !engine) return;
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName;
+        engine.core.observer.name = cityName || 'Custom';
 
         const localTime = new Date();
         engine.core.observer.utc = toJulianDateIso(localTime.toISOString());
@@ -509,7 +517,7 @@
         engine.core.observer.yaw = 0;
 
         setSelectedCityWithPollution(cityName);
-        showLocationSelector();
+        // showLocationSelector();
       }
 
       function updateSpeedButtons() {

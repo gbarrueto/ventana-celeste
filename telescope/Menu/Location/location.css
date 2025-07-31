@@ -1,0 +1,9 @@
+#locationSection {
+  display: block;
+  height: 100%;
+}
+
+#locationButtonsContainer {
+  overflow-y: scroll;
+  height: 100%;
+}
