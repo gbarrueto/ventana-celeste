@@ -4,7 +4,8 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  display: block;
+  display: flex;
+  flex-direction: column;
   opacity: 0;
   background: green;
   z-index: -1;
@@ -22,17 +23,22 @@
 
   #optionsSection {
     display: flex;
-    padding: 0.5em;
-    gap: 0.1em;
-    text-align: center;
+    padding: 0 2%;
+    gap: 2%;
+    justify-content: center;
     
     .option-button {
 
     }
+
+    .active {
+      background-color: aqua;
+    }
   }
 
   #interactionSection {
-
+    padding: 2%;
+    flex: 1;
   }
 }
 

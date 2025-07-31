@@ -44,7 +44,7 @@
     }
 
     .button {
-      padding: 0.2rem 1rem;
+      padding: 0.3em 0.8em;
       background-color: transparent;
       border: 1px solid #e3eaff;
       color: #e3eaff;
@@ -103,9 +103,9 @@
 
     <!-- Options -->
     <section id="optionsSection">
-      <button class="option-button">Ubicacion</button>
-      <button class="option-button">Fecha y Tiempo</button>
-      <button class="option-button">Contaminacion Luminica</button>
+      <button class="button option-button" onclick="displayLocation(event)">Ubicacion</button>
+      <button class="button option-button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      <button class="button option-button" onclick="displayPollution(event)">Contaminacion Luminica</button>
     </section>
 
     <!-- Option Interaction -->
@@ -142,10 +142,14 @@
     const zoomOptions = document.getElementById('zoomOptions')
 
     const menu = document.getElementById('menuContainer');
+    const interactionSection = document.getElementById('interactionSection');
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
   <script src="telescope/Menu/menu.js"></script>
+  <script src="telescope/Menu/DateTime/datetime.js"></script>
+  <script src="telescope/Menu/Location/location.js"></script>
+  <script src="telescope/Menu/Pollution/pollution.js"></script>
 
   <script>
     function updateBlur(direction = 1) {
