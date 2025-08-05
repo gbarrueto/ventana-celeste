@@ -1,9 +1,28 @@
 #locationSection {
   display: block;
   height: 100%;
+
+  .container {
+    display: grid;
+    grid-template-columns: 65% 35%;
+    overflow: hidden;
+  }
+  
+  #locationButtonsContainer {
+    overflow-y: scroll;
+    height: 100%;
+
+    .control-button {
+      display: block;
+      width: 100%;
+      margin-bottom: 0.5rem;
+      background-color: rgba(255,255,255,0.1);
+      font-weight: normal;
+    }
+
+    .control-button.active {
+      background-color: aqua;
+    }
+  }
 }
 
-#locationButtonsContainer {
-  overflow-y: scroll;
-  height: 100%;
-}
