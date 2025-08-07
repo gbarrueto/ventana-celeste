@@ -132,6 +132,12 @@ function submitLocation() {
     )
   }
 
+  const activeButton = document.querySelector(
+    '.control-button.active'
+  );
+
+  if (activeButton) activeButton.classList.remove('active');
+
   currentLat = latInput.value;
   currentLon = lonInput.value;
   currentElev = elevInput.value;
