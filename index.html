@@ -9,6 +9,7 @@
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
     <link rel="stylesheet" href="stellarium.styles.css" />
+    
     <style>
       #modal-container::-webkit-scrollbar {
         display: none;
@@ -20,6 +21,9 @@
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
+    <script src="util/lp/pako_inflate.min.js"></script>
+    <script src="util/lp/getLpFromCoords.js"></script>
+    <script src="data/locations/cities.js"></script>
 
     <div class="topbar">
       <span class="title">Stellarium<sup>Web</sup></span>
@@ -394,24 +398,24 @@
     <script>
       let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
 
-      let cities = {};
+      let cities = cities_data;
 
-      fetch("data/cities.json")
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("No se pudo cargar el archivo JSON");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          cities = data;
-          console.log("Ciudades cargadas:", cities);
+      // fetch("data/cities.json")
+      //   .then((response) => {
+      //     if (!response.ok) {
+      //       throw new Error("No se pudo cargar el archivo JSON");
+      //     }
+      //     return response.json();
+      //   })
+      //   .then((data) => {
+      //     cities = data;
+      //     //console.log("Ciudades cargadas:", cities);
 
-          console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
-        })
-        .catch((error) => {
-          console.error("Error al cargar el JSON:", error);
-        });
+      //     //console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
+      //   })
+      //   .catch((error) => {
+      //     console.error("Error al cargar el JSON:", error);
+      //   });
 
       function showLocationSelector() {
         const modal = document.getElementById("modal-container");
@@ -498,7 +502,7 @@
         }
       }
 
-      function applyLocation({ cityName, lat, lon, elev }) {
+      async function applyLocation({ cityName, lat, lon, elev }) {
         const data = cityName 
           ? cities[cityName]
           : (lat || lat == 0) && (lon || lon == 0) 
@@ -506,10 +510,17 @@
             : null;
         if (!data || !engine) return;
 
+        const latLon = {lat: data.lat, lng: data.lon};
+
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName || 'Custom';
+        engine.core.observer.name = cityName;
+
+        // Apply this only to custom locations
+        const bortle_index = await getBortleIndex(latLon);
+
+        console.log("Bortle index for", cityName, ":", bortle_index);
 
         const localTime = new Date();
         engine.core.observer.utc = toJulianDateIso(localTime.toISOString());
