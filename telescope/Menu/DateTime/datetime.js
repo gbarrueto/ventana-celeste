@@ -5,17 +5,32 @@ function displayDateTime(e) {
 
   if (!datetimeSection) {
     let section = `
-      <section id="datetimeSection" class="active" style="display: block">
+      <section id="datetimeSection" class="active" style="display: block;">
+        <h3>Select Date & Time</h3>
+
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+          <button class="control-button active" onclick="setSpeed(0); updateSpeedButtons(event)">🟥 Stop</button>
+          <button class="control-button" onclick="setSpeed(1); updateSpeedButtons(event)">🕒 Realtime</button>
+          <button class="control-button" onclick="setSpeed(10); updateSpeedButtons(event)">⏩ 10x</button>
+          <button class="control-button" onclick="setSpeed(60); updateSpeedButtons(event)">⏩ 60x</button>
+          <button class="control-button" onclick="setSpeed(3600); updateSpeedButtons(event)">⏩ 3600x</button>
+        </div>
       </section>
     `;
 
     interactionSection.innerHTML = section;
-    return;
   }
 
-  datetimeSection.style.display = 'block';
-  datetimeSection.classList.add('active');
-  showTimeSelector();
+  else {
+    datetimeSection.style.display = 'block';
+    datetimeSection.classList.add('active');
+  }
+}
+
+function setSpeed(multiplier) {
+  Protobject.Core.send({ speed: multiplier }).to("index.html");
 }
 
 
@@ -26,21 +41,13 @@ function toJulianDateIso(iso) {
   return mjd;
 }
 
-function updateSpeedButtons() {
-  document
-    .querySelectorAll("#datetimeSection .control-button")
-    .forEach((btn) => {
-      const text = btn.textContent.trim();
+function updateSpeedButtons(e) {
+  const activeButton = document.querySelector(
+    '.control-button.active'
+  )
 
-      const match =
-        (timeSpeed === 0 && text.startsWith("🟥")) ||
-        (timeSpeed === 1 && text.startsWith("🕒")) ||
-        (timeSpeed === 10 && text.includes("10x")) ||
-        (timeSpeed === 60 && text.includes("60x")) ||
-        (timeSpeed === 3600 && text.includes("3600x"));
-
-      btn.classList.toggle("active", match);
-    });
+  if (activeButton) activeButton.classList.remove('active');
+  e.currentTarget.classList.add('active');
 }
 
 function fromJulianDateToDate(jd) {
@@ -57,32 +64,6 @@ function showTimeSelector() {
   const timeBtn = document.querySelector(
     '.control-button[onclick="showTimeSelector()"]'
   );
-  // const isVisible = modal.style.display === "block";
-
-  // if (isVisible) {
-  //   modal.style.display = "none";
-  //   timeBtn.classList.remove("active");
-
-  //   if (flatpickrSyncInterval) {
-  //     clearInterval(flatpickrSyncInterval);
-  //     flatpickrSyncInterval = null;
-  //   }
-
-  //   return;
-  // }
-
-  modal.innerHTML = `
-<h3>Select Date & Time</h3>
-<div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
-
-<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-<button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-<button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-<button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-<button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-<button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-</div>
-`;
 
   activeFlatpickr = flatpickr("#datetime-picker", {
     enableTime: true,

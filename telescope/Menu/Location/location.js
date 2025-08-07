@@ -65,11 +65,12 @@ function displayLocation(e) {
     `;
 
     interactionSection.innerHTML = section;
-    return;
   }
 
-  locationSection.style.display = 'block';
-  locationSection.classList.add('active');
+  else {
+    locationSection.style.display = 'block';
+    locationSection.classList.add('active');
+  }
 }
 
 function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
@@ -78,7 +79,7 @@ function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
       '.control-button.active'
     );
   
-    activeButton.classList.remove('active');
+    if (activeButton) activeButton.classList.remove('active');
     e.currentTarget.classList.add('active');
   }
 

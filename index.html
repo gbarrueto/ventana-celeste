@@ -44,6 +44,7 @@
     <div class="footer" id="footer-buttons"></div>
     <div id="modal-container"></div>
 
+    <script src="protobject.js"></script>
     <script>
       const BUTTONS = [
         {
@@ -120,13 +121,6 @@
         canvas_blur.style.filter = `blur(${blur}px)`;
       }
 
-      // Protobject.Core.onReceived((data) => {
-      //   if (data.f !== undefined) updateStellariumFov(data.f);
-      //   else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-      //   else data.h !== undefined || data.v !== undefined;
-      //   updateStellariumView(data);
-      // });
-
       function toggleEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -149,17 +143,6 @@
           document.body.appendChild(newOverlay);
         }
       }
-
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
-        if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
-        if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
-        if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
-        
-        // Aplicar ubicacion
-        if (data.cityName !== undefined) applyLocation({ cityName: data.cityName});
-        if (data.lat !== undefined && data.lon !== undefined) applyLocation({ lat: data.lat, lon: data.lon, elev: data.elev });
-      });
 
       let flatpickrSyncInterval = null;
       let activeFlatpickr = null;
@@ -392,7 +375,7 @@
           }, 30);
         }
 
-        updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+        // updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
       }
     </script>
     <script>

@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="telescope/Zoom/zoom.css">
   <link rel="stylesheet" href="telescope/Menu/menu.css">
   <link rel="stylesheet" href="telescope/Menu/Location/location.css">
+  <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
   <style>
     html, body {
       height: 100%;
@@ -63,6 +64,7 @@
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="data/locations/cities.js"></script>
   
   <!-- Touchable Screen -->
   <div id="touchArea">
@@ -141,7 +143,7 @@
     let blurTarget = currentBlur;
 
     let selectedCity = 'Santiago';
-    let cities = {};
+    let cities = cities_data;
 
     let currentLat = 0;
     let currentLon = 0;
@@ -179,23 +181,23 @@
   </script>
 
   <script>
-    // Fetch cities
-    fetch("data/cities.json")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("No se pudo cargar el archivo JSON");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        cities = data;
-        console.log("Ciudades cargadas:", cities);
+    // // Fetch cities
+    // fetch("data/cities.json")
+    //   .then((response) => {
+    //     if (!response.ok) {
+    //       throw new Error("No se pudo cargar el archivo JSON");
+    //     }
+    //     return response.json();
+    //   })
+    //   .then((data) => {
+    //     cities = data;
+    //     console.log("Ciudades cargadas:", cities);
 
-        console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
-      })
-      .catch((error) => {
-        console.error("Error al cargar el JSON:", error);
-      });
+    //     console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
+    //   })
+    //   .catch((error) => {
+    //     console.error("Error al cargar el JSON:", error);
+    //   });
 
     blurSlider.value = currentBlur;
     // blurText.textContent = currentBlur;
