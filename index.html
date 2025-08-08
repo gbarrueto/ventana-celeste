@@ -9,6 +9,7 @@
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
     <link rel="stylesheet" href="stellarium.styles.css" />
+    
     <style>
       #modal-container::-webkit-scrollbar {
         display: none;
@@ -20,15 +21,12 @@
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
+    <script src="util/lp/pako_inflate.min.js"></script>
+    <script src="util/lp/getLpFromCoords.js"></script>
+    <script src="data/locations/cities.js"></script>
 
     <div class="topbar">
       <span class="title">Stellarium<sup>Web</sup></span>
-      <button class="control-button" onclick="showLocationSelector()">
-        Location
-      </button>
-      <button class="control-button" onclick="showTimeSelector()">
-        Date & Time
-      </button>
       <div id="progress"></div>
     </div>
 
@@ -40,6 +38,15 @@
     <div class="footer" id="footer-buttons"></div>
     <div id="modal-container"></div>
 
+    <script src="util/protobject.js"></script>
+
+    <!-- PARAMETER - CONSTANTS - VARIABLES -->
+    <script>
+      let datetimeInterval = null;
+
+      let pollutionOverlay = null;
+    </script>
+    
     <script>
       const BUTTONS = [
         {
@@ -84,12 +91,12 @@
           path: "dss",
           attr: "visible",
         },
-        {
-          label: "Pollution",
-          img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
-          path: "pollution",
-          attr: "visible",
-        },
+        // {
+        //   label: "Pollution",
+        //   img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
+        //   path: "pollution",
+        //   attr: "visible",
+        // },
       ];
 
       const canvas_blur = document.getElementById("stel-canvas");
@@ -116,13 +123,6 @@
         canvas_blur.style.filter = `blur(${blur}px)`;
       }
 
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f);
-        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-        else data.h !== undefined || data.v !== undefined;
-        updateStellariumView(data);
-      });
-
       function toggleEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -146,13 +146,6 @@
         }
       }
 
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
-        if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
-        if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
-        if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
-      });
-
       let flatpickrSyncInterval = null;
       let activeFlatpickr = null;
       let isUserTouchingCalendar = false;
@@ -166,7 +159,7 @@
           engine = stel;
           const core = stel.core;
 
-          core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
+          core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
           core.observer.longitude = -70.6693 * (Math.PI / 180);
           core.observer.elevation = 570;
@@ -261,6 +254,7 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             if (label === "Pollution") {
+              btn.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
               btn.onclick = () => {
                 let overlay = document.getElementById("pollution-overlay");
                 const isActive = btn.classList.toggle("active");
@@ -360,6 +354,20 @@
               }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
             }
           });
+
+          pollutionOverlay = document.createElement("div");
+          pollutionOverlay.id = "pollution-overlay";
+          pollutionOverlay.style.position = "absolute";
+          pollutionOverlay.style.top = 0;
+          pollutionOverlay.style.left = 0;
+          pollutionOverlay.style.width = "100%";
+          pollutionOverlay.style.height = "100%";
+          pollutionOverlay.style.pointerEvents = "none";
+          pollutionOverlay.style.zIndex = 5;
+          pollutionOverlay.style.display = "block";
+          const stelElement = document.getElementById("stel");
+          stelElement.appendChild(pollutionOverlay);
+          updatePollutionOverlay({});
         },
       });
 
@@ -384,30 +392,31 @@
           }, 30);
         }
 
-        updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+        // updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+      }
+
+      function updateDate(date) {
+        engine.core.observer.utc = date;
+      }
+
+      function setDatetimeInterval() {
+        datetimeInterval = setInterval(() => {
+          Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to("telescope.html")
+        }, 300)
+      }
+
+      function clearDatetimeInterval() {
+        clearInterval(datetimeInterval);
+      }
+
+      function applyPollution(bortle) {
+        updatePollutionOverlay({ bortle })
       }
     </script>
     <script>
       let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
 
-      let cities = {};
-
-      fetch("data/cities.json")
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("No se pudo cargar el archivo JSON");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          cities = data;
-          console.log("Ciudades cargadas:", cities);
-
-          console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
-        })
-        .catch((error) => {
-          console.error("Error al cargar el JSON:", error);
-        });
+      let cities = cities_data;
 
       function showLocationSelector() {
         const modal = document.getElementById("modal-container");
@@ -447,25 +456,33 @@
 
       let pollutionOverlayTimer = null;
 
-      function updatePollutionOverlay(forceHide = false) {
-        const overlay = document.getElementById("pollution-overlay");
-        if (!overlay) return;
+      function updatePollutionOverlay({ forceHide = false, bortle }) {
+        console.log('function call')
+        // const overlay = document.getElementById("pollution-overlay");
+        // if (!overlay) return;
+        if (!pollutionOverlay) return;
 
+        console.log('setting city')
         const city = cities[selectedCity];
+        console.log('city:', city);
         const pollution =
-          city && city.contaminacion !== undefined ? city.contaminacion : 1;
+        bortle 
+        ? bortle
+        : city && city.contaminacion !== undefined ? city.contaminacion : 1;
+        console.log('pollution:', pollution);
 
         // Mostrar overlay
-        overlay.style.transition = "opacity 1s";
-        overlay.style.opacity = 0.1 * pollution;
-        overlay.style.display = "block";
+        pollutionOverlay.style.transition = "opacity 1s";
+        pollutionOverlay.style.opacity = 0.1 * pollution;
+        pollutionOverlay.style.display = "block";
 
         // Fondo visual del overlay
-        overlay.style.background = `radial-gradient(ellipse at bottom, 
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
           rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 30%, 
-          rgba(200,100,50,${0.01 + 0.03 * (pollution - 1)}) 60%, 
-          rgba(100,50,25,${0.005 + 0.015 * (pollution - 1)}) 80%, 
+          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
+          rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
+          rgba(100,50,25,${0.000 + 0.0035 * (pollution - 1)}) 65%, 
+          rgba(100,50,25,${0.000 + 0.001 * (pollution - 1)}) 80%, 
           rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
@@ -488,28 +505,41 @@
       function setSelectedCityWithPollution(city) {
         selectedCity = city;
         // Update overlay if active
-        const overlay = document.getElementById("pollution-overlay");
-        if (overlay && overlay.style.display !== "none") {
-          updatePollutionOverlay();
+        // const overlay = document.getElementById("pollution-overlay");
+        console.log('city selected:', selectedCity);
+        if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
+          console.log('first if');
+          updatePollutionOverlay({});
         }
       }
 
-      function applyLocation(cityName) {
-        const data = cities[cityName];
+      async function applyLocation({ cityName, lat, lon, elev }) {
+        const data = cityName 
+          ? cities[cityName]
+          : (lat || lat == 0) && (lon || lon == 0) 
+            ? { lat, lon, elev }
+            : null;
         if (!data || !engine) return;
+
+        const latLon = {lat: data.lat, lng: data.lon};
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName;
+        engine.core.observer.name = cityName || 'Custom';
+
+        // Apply this only to custom locations
+        const bortle_index = await getBortleIndex(latLon);
+
+        console.log("Bortle index for", cityName, ":", bortle_index);
 
         const localTime = new Date();
         engine.core.observer.utc = toJulianDateIso(localTime.toISOString());
         engine.core.observer.pitch = 0;
         engine.core.observer.yaw = 0;
 
-        setSelectedCityWithPollution(cityName);
-        showLocationSelector();
+        setSelectedCityWithPollution(cityName || 'Custom'); // APLICAR POLLUTION PERSONALIZADA
+        // showLocationSelector();
       }
 
       function updateSpeedButtons() {

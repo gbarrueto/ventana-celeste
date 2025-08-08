@@ -5,8 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controllo Orientamento e FOV</title>
 
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+  />
+
   <link rel="stylesheet" href="telescope/Slider/slider.css">
   <link rel="stylesheet" href="telescope/Zoom/zoom.css">
+  <link rel="stylesheet" href="telescope/Menu/menu.css">
+  <link rel="stylesheet" href="telescope/Menu/Location/location.css">
+  <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
   <style>
     html, body {
       height: 100%;
@@ -43,7 +51,7 @@
     }
 
     .button {
-      padding: 0.2rem 1rem;
+      padding: 0.3em 0.8em;
       background-color: transparent;
       border: 1px solid #e3eaff;
       color: #e3eaff;
@@ -55,11 +63,15 @@
 <body>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="data/locations/cities.js"></script>
   
+  <!-- Touchable Screen -->
   <div id="touchArea">
     <div id="fovDisplay">FOV: 3.228859</div>
   </div>
 
+  <!-- Focuser Slider -->
   <div class="slide-container">
     <div class="blur-text-container">
       <p class="blur-title">Enfocador</p>
@@ -77,6 +89,7 @@
     <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
   </div>
 
+  <!-- Zoom Buttons -->
   <div class="zoom-container">
     <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
 
@@ -88,6 +101,31 @@
       <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
     </section>
   </div>
+
+  <!-- Menu -->
+  <div id="menuContainer">
+    <section class="header">
+      <button
+        onclick="closeMenu()"
+      >X</button>
+    </section>
+
+    <!-- Options -->
+    <section id="optionsSection">
+      <button class="button option-button" onclick="displayLocation(event)">Ubicacion</button>
+      <button class="button option-button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      <button class="button option-button" onclick="displayPollution(event)">Contaminacion Luminica</button>
+    </section>
+
+    <!-- Option Interaction -->
+    <section id="interactionSection"></section>
+  </div>
+
+  <button 
+    id="openMenuButton"
+    onclick="openMenu()"
+  >|||</button>
+
   
 
   <!-- Variables - Parameters - Constants -->
@@ -104,6 +142,13 @@
     let currentBlur = 5;
     let blurTarget = currentBlur;
 
+    let selectedCity = 'Santiago';
+    let cities = cities_data;
+
+    let currentLat = 0;
+    let currentLon = 0;
+    let currentElev = 0;
+
     const fovDisplay = document.getElementById("fovDisplay");
     const touchArea = document.getElementById("touchArea");
 
@@ -111,9 +156,33 @@
     // const blurText = document.getElementById('blurText');
 
     const zoomOptions = document.getElementById('zoomOptions')
+
+    const menu = document.getElementById('menuContainer');
+    const interactionSection = document.getElementById('interactionSection');
+
+    let latInput = undefined;
+    let lonInput = undefined;
+    let elevInput = undefined;
+
+    let pollutionInput = undefined;
+
+    let flatpickrSyncInterval = null;
+    let activeFlatpickr = null;
+    let isUserTouchingCalendar = false;
+    let lastManualChange = 0;
+
+    let engineUTC = null;
+    let timeSpeed = 0;
+
+    let pollution = cities[selectedCity].contaminacion;
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
+  <script src="telescope/Menu/menu.js"></script>
+  <script src="telescope/Menu/DateTime/datetime.js"></script>
+  <script src="telescope/Menu/Location/location.js"></script>
+  <script src="telescope/Menu/Pollution/pollution.js"></script>
+  <script src="telescope/utils/protobject.js"></script>
 
   <script>
     function updateBlur(direction = 1) {
@@ -125,6 +194,24 @@
   </script>
 
   <script>
+    // // Fetch cities
+    // fetch("data/cities.json")
+    //   .then((response) => {
+    //     if (!response.ok) {
+    //       throw new Error("No se pudo cargar el archivo JSON");
+    //     }
+    //     return response.json();
+    //   })
+    //   .then((data) => {
+    //     cities = data;
+    //     console.log("Ciudades cargadas:", cities);
+
+    //     console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
+    //   })
+    //   .catch((error) => {
+    //     console.error("Error al cargar el JSON:", error);
+    //   });
+
     blurSlider.value = currentBlur;
     // blurText.textContent = currentBlur;
 
