@@ -10,4 +10,10 @@ Protobject.Core.onReceived((data) => {
 
   // Date && Time
   if (data.speed !== undefined) setSpeed(data.speed);
+  if (data.date !== undefined) updateDate(data.date);
+  if (data.setDatetimeInterval !== undefined) {
+    data.setDatetimeInterval == true 
+      ? setDatetimeInterval()
+      : clearDatetimeInterval()
+  }
 });

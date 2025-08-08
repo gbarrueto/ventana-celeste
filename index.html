@@ -46,6 +46,8 @@
 
     <script src="protobject.js"></script>
     <script>
+      let datetimeInterval = null;
+
       const BUTTONS = [
         {
           label: "Constellations",
@@ -376,6 +378,20 @@
         }
 
         // updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+      }
+
+      function updateDate(date) {
+        engine.core.observer.utc = date;
+      }
+
+      function setDatetimeInterval() {
+        datetimeInterval = setInterval(() => {
+          Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to("telescope.html")
+        }, 300)
+      }
+
+      function clearDatetimeInterval() {
+        clearInterval(datetimeInterval);
       }
     </script>
     <script>

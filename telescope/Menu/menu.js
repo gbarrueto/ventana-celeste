@@ -29,4 +29,10 @@ function optionSelection(e) {
     activeInteraction.classList.remove('active');
     activeInteraction.style.display = 'none';
   }
+
+  // Clear Datetime Interval
+  if (engineUTC !== null) {
+    Protobject.Core.send({ setDatetimeInterval: false }).to("index.html");
+    engineUTC = null;
+  }
 }

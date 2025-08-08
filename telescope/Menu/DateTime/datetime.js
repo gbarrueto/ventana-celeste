@@ -11,11 +11,11 @@ function displayDateTime(e) {
         <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
 
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-          <button class="control-button active" onclick="setSpeed(0); updateSpeedButtons(event)">🟥 Stop</button>
-          <button class="control-button" onclick="setSpeed(1); updateSpeedButtons(event)">🕒 Realtime</button>
-          <button class="control-button" onclick="setSpeed(10); updateSpeedButtons(event)">⏩ 10x</button>
-          <button class="control-button" onclick="setSpeed(60); updateSpeedButtons(event)">⏩ 60x</button>
-          <button class="control-button" onclick="setSpeed(3600); updateSpeedButtons(event)">⏩ 3600x</button>
+          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
         </div>
       </section>
     `;
@@ -27,10 +27,28 @@ function displayDateTime(e) {
     datetimeSection.style.display = 'block';
     datetimeSection.classList.add('active');
   }
+
+  updateSpeedButtons();
+  
+  setTimeout(() => {
+    showTimeSelector();
+    createInterval();
+  }, 300);
 }
 
 function setSpeed(multiplier) {
   Protobject.Core.send({ speed: multiplier }).to("index.html");
+  timeSpeed = multiplier;
+  updateSpeedButtons();
+}
+
+function updateDate(date) {
+  const formatDate = toJulianDateIso(date.toISOString());
+  Protobject.Core.send({ date: formatDate }).to("index.html");
+}
+
+function createInterval() {
+  Protobject.Core.send({ setDatetimeInterval: true }).to("index.html");
 }
 
 
@@ -41,13 +59,30 @@ function toJulianDateIso(iso) {
   return mjd;
 }
 
-function updateSpeedButtons(e) {
-  const activeButton = document.querySelector(
-    '.control-button.active'
-  )
+// function updateSpeedButtons(e) {
+//   const activeButton = document.querySelector(
+//     '.control-button.active'
+//   )
 
-  if (activeButton) activeButton.classList.remove('active');
-  e.currentTarget.classList.add('active');
+//   if (activeButton) activeButton.classList.remove('active');
+//   e.currentTarget.classList.add('active');
+// }
+
+function updateSpeedButtons() {
+  document
+    .querySelectorAll("#datetimeSection .control-button")
+    .forEach((btn) => {
+      const text = btn.textContent.trim();
+
+      const match =
+        (timeSpeed === 0 && text.startsWith("🟥")) ||
+        (timeSpeed === 1 && text.startsWith("🕒")) ||
+        (timeSpeed === 10 && text.includes("10x")) ||
+        (timeSpeed === 60 && text.includes("60x")) ||
+        (timeSpeed === 3600 && text.includes("3600x"));
+
+      btn.classList.toggle("active", match);
+    });
 }
 
 function fromJulianDateToDate(jd) {
@@ -60,11 +95,6 @@ function fromMJDToDate(mjd) {
 }
 
 function showTimeSelector() {
-  const modal = document.getElementById("datetimeSection");
-  const timeBtn = document.querySelector(
-    '.control-button[onclick="showTimeSelector()"]'
-  );
-
   activeFlatpickr = flatpickr("#datetime-picker", {
     enableTime: true,
     dateFormat: "Y-m-d\\TH:i:S",
@@ -78,7 +108,7 @@ function showTimeSelector() {
       if (selectedDates.length > 0) {
         const date = selectedDates[0];
         lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+        updateDate(date);
       }
     },
 
@@ -86,7 +116,7 @@ function showTimeSelector() {
       if (selectedDates.length > 0) {
         const date = selectedDates[0];
         lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+        updateDate(date);
       }
     },
 
@@ -94,7 +124,7 @@ function showTimeSelector() {
       if (selectedDates.length > 0) {
         const date = selectedDates[0];
         lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+        updateDate(date);
       }
     },
 
@@ -102,23 +132,19 @@ function showTimeSelector() {
       if (selectedDates.length > 0) {
         const date = selectedDates[0];
         lastManualChange = Date.now();
-        engine.core.observer.utc = toJulianDateIso(date.toISOString());
+        updateDate(date);
       }
     },
   });
 
-  modal.style.display = "block";
-  timeBtn.classList.add("active");
-  updateSpeedButtons();
-
   flatpickrSyncInterval = setInterval(() => {
-    if (!activeFlatpickr || !engine?.core?.observer?.utc) return;
+    if (!activeFlatpickr || !engineUTC) return;
 
     const now = Date.now();
     const recentlyChanged = now - lastManualChange < 2000;
 
     if (!isUserTouchingCalendar && !recentlyChanged) {
-      const date = fromMJDToDate(engine.core.observer.utc);
+      const date = fromMJDToDate(engineUTC);
       activeFlatpickr.setDate(date, false);
     }
   }, 300);

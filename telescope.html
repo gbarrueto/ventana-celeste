@@ -163,6 +163,14 @@
     let latInput = undefined;
     let lonInput = undefined;
     let elevInput = undefined;
+
+    let flatpickrSyncInterval = null;
+    let activeFlatpickr = null;
+    let isUserTouchingCalendar = false;
+    let lastManualChange = 0;
+
+    let engineUTC = null;
+    let timeSpeed = 0;
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
@@ -170,6 +178,7 @@
   <script src="telescope/Menu/DateTime/datetime.js"></script>
   <script src="telescope/Menu/Location/location.js"></script>
   <script src="telescope/Menu/Pollution/pollution.js"></script>
+  <script src="telescope/utils/protobject.js"></script>
 
   <script>
     function updateBlur(direction = 1) {
