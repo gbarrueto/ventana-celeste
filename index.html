@@ -514,7 +514,7 @@
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName;
+        engine.core.observer.name = cityName || 'Custom';
 
         // Apply this only to custom locations
         const bortle_index = await getBortleIndex(latLon);
@@ -526,7 +526,7 @@
         engine.core.observer.pitch = 0;
         engine.core.observer.yaw = 0;
 
-        setSelectedCityWithPollution(cityName); // APLICAR POLLUTION PERSONALIZADA
+        setSelectedCityWithPollution(cityName || 'Custom'); // APLICAR POLLUTION PERSONALIZADA
         // showLocationSelector();
       }
 

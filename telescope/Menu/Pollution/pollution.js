@@ -6,11 +6,15 @@ function displayPollution(e) {
   if (!pollutionSection) {
     let section = `
       <section id="pollutionSection" class="active" style="display: grid">
-        Pollution
+        <input 
+          type="range"
+          min=1
+          max=9
+          value=1>
       </section>
     `;
 
-    interactionSection.innerHTML = section;
+    interactionSection.insertAdjacentHTML("beforeend", section);
     return;
   }
 

@@ -21,14 +21,12 @@ function optionSelection(e) {
   e.currentTarget.classList.add('active');
 
   // Handle interaction section
-  const activeInteraction = document.querySelector(
-    '#interactionSection .active'
-  );
-
-  if (activeInteraction) {
-    activeInteraction.classList.remove('active');
-    activeInteraction.style.display = 'none';
-  }
+  const activeInteraction = document.querySelectorAll(
+    '#interactionSection > .active'
+  ).forEach(el => {
+    el.classList.remove('active');
+    el.style.display = 'none';
+  })
 
   // Clear Datetime Interval
   if (engineUTC !== null) {

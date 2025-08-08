@@ -20,7 +20,7 @@ function displayDateTime(e) {
       </section>
     `;
 
-    interactionSection.innerHTML = section;
+    interactionSection.insertAdjacentHTML("beforeend", section);
   }
 
   else {
@@ -59,15 +59,6 @@ function toJulianDateIso(iso) {
   return mjd;
 }
 
-// function updateSpeedButtons(e) {
-//   const activeButton = document.querySelector(
-//     '.control-button.active'
-//   )
-
-//   if (activeButton) activeButton.classList.remove('active');
-//   e.currentTarget.classList.add('active');
-// }
-
 function updateSpeedButtons() {
   document
     .querySelectorAll("#datetimeSection .control-button")
@@ -95,6 +86,8 @@ function fromMJDToDate(mjd) {
 }
 
 function showTimeSelector() {
+  if (activeFlatpickr) return;
+
   activeFlatpickr = flatpickr("#datetime-picker", {
     enableTime: true,
     dateFormat: "Y-m-d\\TH:i:S",

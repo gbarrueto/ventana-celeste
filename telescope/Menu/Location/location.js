@@ -64,11 +64,11 @@ function displayLocation(e) {
       </section>
     `;
 
-    interactionSection.innerHTML = section;
+    interactionSection.insertAdjacentHTML("beforeend", section);
   }
 
   else {
-    locationSection.style.display = 'block';
+    locationSection.style.display = 'grid';
     locationSection.classList.add('active');
   }
 }
@@ -82,6 +82,8 @@ function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
     if (activeButton) activeButton.classList.remove('active');
     e.currentTarget.classList.add('active');
   }
+
+  selectedCity = cityName;
 
   const data = {
     cityName: cityName,
