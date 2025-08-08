@@ -159,7 +159,7 @@
           engine = stel;
           const core = stel.core;
 
-          core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
+          core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
           core.observer.longitude = -70.6693 * (Math.PI / 180);
           core.observer.elevation = 570;

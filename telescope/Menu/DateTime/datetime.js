@@ -33,7 +33,7 @@ function displayDateTime(e) {
   setTimeout(() => {
     showTimeSelector();
     createInterval();
-  }, 300);
+  }, 100);
 }
 
 function setSpeed(multiplier) {
