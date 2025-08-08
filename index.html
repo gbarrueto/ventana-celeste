@@ -39,9 +39,15 @@
     <div id="modal-container"></div>
 
     <script src="util/protobject.js"></script>
+
+    <!-- PARAMETER - CONSTANTS - VARIABLES -->
     <script>
       let datetimeInterval = null;
 
+      let pollutionOverlay = null;
+    </script>
+    
+    <script>
       const BUTTONS = [
         {
           label: "Constellations",
@@ -85,12 +91,12 @@
           path: "dss",
           attr: "visible",
         },
-        {
-          label: "Pollution",
-          img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
-          path: "pollution",
-          attr: "visible",
-        },
+        // {
+        //   label: "Pollution",
+        //   img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
+        //   path: "pollution",
+        //   attr: "visible",
+        // },
       ];
 
       const canvas_blur = document.getElementById("stel-canvas");
@@ -347,6 +353,20 @@
               }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
             }
           });
+
+          pollutionOverlay = document.createElement("div");
+          pollutionOverlay.id = "pollution-overlay";
+          pollutionOverlay.style.position = "absolute";
+          pollutionOverlay.style.top = 0;
+          pollutionOverlay.style.left = 0;
+          pollutionOverlay.style.width = "100%";
+          pollutionOverlay.style.height = "100%";
+          pollutionOverlay.style.pointerEvents = "none";
+          pollutionOverlay.style.zIndex = 5;
+          pollutionOverlay.style.display = "block";
+          const stelElement = document.getElementById("stel");
+          stelElement.appendChild(pollutionOverlay);
+          updatePollutionOverlay({});
         },
       });
 
@@ -387,28 +407,15 @@
       function clearDatetimeInterval() {
         clearInterval(datetimeInterval);
       }
+
+      function applyPollution(bortle) {
+        updatePollutionOverlay({ bortle })
+      }
     </script>
     <script>
       let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
 
       let cities = cities_data;
-
-      // fetch("data/cities.json")
-      //   .then((response) => {
-      //     if (!response.ok) {
-      //       throw new Error("No se pudo cargar el archivo JSON");
-      //     }
-      //     return response.json();
-      //   })
-      //   .then((data) => {
-      //     cities = data;
-      //     //console.log("Ciudades cargadas:", cities);
-
-      //     //console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
-      //   })
-      //   .catch((error) => {
-      //     console.error("Error al cargar el JSON:", error);
-      //   });
 
       function showLocationSelector() {
         const modal = document.getElementById("modal-container");
@@ -448,21 +455,28 @@
 
       let pollutionOverlayTimer = null;
 
-      function updatePollutionOverlay(forceHide = false) {
-        const overlay = document.getElementById("pollution-overlay");
-        if (!overlay) return;
+      function updatePollutionOverlay({ forceHide = false, bortle }) {
+        console.log('function call')
+        // const overlay = document.getElementById("pollution-overlay");
+        // if (!overlay) return;
+        if (!pollutionOverlay) return;
 
+        console.log('setting city')
         const city = cities[selectedCity];
+        console.log('city:', city);
         const pollution =
-          city && city.contaminacion !== undefined ? city.contaminacion : 1;
+        bortle 
+        ? bortle
+        : city && city.contaminacion !== undefined ? city.contaminacion : 1;
+        console.log('pollution:', pollution);
 
         // Mostrar overlay
-        overlay.style.transition = "opacity 1s";
-        overlay.style.opacity = 0.1 * pollution;
-        overlay.style.display = "block";
+        pollutionOverlay.style.transition = "opacity 1s";
+        pollutionOverlay.style.opacity = 0.1 * pollution;
+        pollutionOverlay.style.display = "block";
 
         // Fondo visual del overlay
-        overlay.style.background = `radial-gradient(ellipse at bottom, 
+        pollutionOverlay.style.background = `radial-gradient(ellipse at bottom, 
           rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
           rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 30%, 
           rgba(200,100,50,${0.01 + 0.03 * (pollution - 1)}) 60%, 
@@ -489,9 +503,11 @@
       function setSelectedCityWithPollution(city) {
         selectedCity = city;
         // Update overlay if active
-        const overlay = document.getElementById("pollution-overlay");
-        if (overlay && overlay.style.display !== "none") {
-          updatePollutionOverlay();
+        // const overlay = document.getElementById("pollution-overlay");
+        console.log('city selected:', selectedCity);
+        if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
+          console.log('first if');
+          updatePollutionOverlay({});
         }
       }
 

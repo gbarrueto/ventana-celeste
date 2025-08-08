@@ -16,4 +16,7 @@ Protobject.Core.onReceived((data) => {
       ? setDatetimeInterval()
       : clearDatetimeInterval()
   }
+
+  // Pollution
+  if (data.bortle !== undefined) applyPollution(data.bortle);
 });
