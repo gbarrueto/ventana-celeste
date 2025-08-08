@@ -254,6 +254,7 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             if (label === "Pollution") {
+              btn.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
               btn.onclick = () => {
                 let overlay = document.getElementById("pollution-overlay");
                 const isActive = btn.classList.toggle("active");
@@ -476,11 +477,12 @@
         pollutionOverlay.style.display = "block";
 
         // Fondo visual del overlay
-        pollutionOverlay.style.background = `radial-gradient(ellipse at bottom, 
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
           rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 30%, 
-          rgba(200,100,50,${0.01 + 0.03 * (pollution - 1)}) 60%, 
-          rgba(100,50,25,${0.005 + 0.015 * (pollution - 1)}) 80%, 
+          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
+          rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
+          rgba(100,50,25,${0.000 + 0.0035 * (pollution - 1)}) 65%, 
+          rgba(100,50,25,${0.000 + 0.001 * (pollution - 1)}) 80%, 
           rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
