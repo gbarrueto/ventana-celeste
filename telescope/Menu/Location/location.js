@@ -85,7 +85,7 @@ function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
 
   selectedCity = cityName;
 
-  pollution = cities[cityName]?.contaminacion;
+  pollution = cities[cityName] ? cities[cityName].contaminacion : 1;
   updatePollution();
 
   const data = {
