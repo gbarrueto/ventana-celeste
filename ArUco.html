@@ -1,378 +1,201 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ArUco Prototipo (móvil)</title>
+    <title>Aruco Tracking Control</title>
     <style>
-      :root {
-        --bg: #0b0b10;
-        --panel: #121218;
-        --accent: #2ea1ff;
-        --muted: #9aa;
-      }
       body {
         margin: 0;
-        font-family: system-ui, Segoe UI, Roboto, Arial;
-        background: var(--bg);
+        background: black;
+        color: white;
+        font-family: sans-serif;
+        text-align: center;
+      }
+      #log {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 100px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.5);
         color: #fff;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-      }
-      header {
+        font-family: monospace;
+        font-size: 0.9em;
         padding: 10px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        background: var(--panel);
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+        box-sizing: border-box;
+        text-align: left;
+        z-index: 1000;
       }
-      header h1 {
-        font-size: 16px;
-        margin: 0;
-        flex: 1;
+      .error {
+        color: #ff6b6b;
       }
-      .controls {
-        display: flex;
-        gap: 8px;
+      .warn {
+        color: #f1c40f;
+      }
+      .info {
+        color: #00d1b2;
+      }
+      #controls {
+        margin: 10px 0;
       }
       button {
-        background: var(--accent);
-        border: none;
-        padding: 8px 10px;
-        border-radius: 8px;
-        color: #012;
-        font-weight: 600;
-      }
-      small {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        padding: 10px;
-        gap: 8px;
-        overflow: auto;
-      }
-      #previewWrap {
-        position: relative;
-        border-radius: 8px;
-        background: #06060a;
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 220px;
-      }
-      #mapImg {
-        max-width: 100%;
-        max-height: 100%;
-        display: block;
-      }
-      .dot {
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: var(--accent);
-        transform: translate(-50%, -50%);
-        border: 2px solid #001;
-      }
-      #status {
-        font-size: 13px;
-        color: var(--muted);
-        padding: 6px 0;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-      input {
-        background: #0b0b10;
-        border: 1px solid #222;
-        padding: 8px;
-        border-radius: 8px;
-        color: #fff;
+        font-size: 1.2em;
+        margin: 0 10px;
+        padding: 0.5em 1em;
+        cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>ArUco — Calibración esquinas</h1>
-      <div class="controls">
-        <button id="startBtn">Start</button>
-        <button id="stopBtn">Stop</button>
-      </div>
-    </header>
+    <div id="controls">
+      <button id="startBtn">Start Detection</button>
+      <button id="stopBtn" disabled>Stop Detection</button>
+    </div>
 
-    <main>
-      <div class="row">
-        <label><small>IDs esquinas (TL,TR,BR,BL)</small></label>
-        <input id="cornerIds" value="0,1,2,3" style="width: 140px" />
-        <label><small>ID telescopio</small></label>
-        <input id="telId" value="10" style="width: 70px" />
-        <button id="showPrev" style="padding: 8px">Preview</button>
-        <button id="hidePrev" style="padding: 8px">Hide</button>
-      </div>
+    <div id="log"></div>
 
-      <div id="previewWrap">
-        <img
-          id="mapImg"
-          src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/1280px-World_map_-_low_resolution.svg.png"
-          alt="map"
-        />
-        <div id="dot0" class="dot" style="display: none"></div>
-        <div id="dot1" class="dot" style="display: none"></div>
-        <div id="dot2" class="dot" style="display: none"></div>
-        <div id="dot3" class="dot" style="display: none"></div>
-      </div>
-
-      <div id="status">Estado: idle</div>
-    </main>
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
 
     <script>
-      /* Minimal pipeline:
- - Protobject.Aruco.start(freq)
- - detect corner markers IDs -> build homography pixel -> mercator (meters)
- - detect telescope marker -> map pixel->mercator -> lat/lon -> send Protobject.Core.send({type:'position',lat,lon})
-*/
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const logDiv = document.getElementById("log");
 
-      // Mercator helpers
-      const R = 6378137;
-      const lonToX = (lon) => (R * lon * Math.PI) / 180;
-      const latToY = (lat) => {
-        const rad = (lat * Math.PI) / 180;
-        return R * Math.log(Math.tan(Math.PI / 4 + rad / 2));
+      // IDs marcadores esquinas y telescopio
+      const cornerMarkers = {
+        topLeft: 0,
+        topRight: 1,
+        bottomLeft: 2,
+        bottomRight: 3,
       };
-      const xToLon = (x) => ((x / R) * 180) / Math.PI;
-      const yToLat = (y) => {
-        const z = Math.exp(y / R);
-        return ((2 * Math.atan(z) - Math.PI / 2) * 180) / Math.PI;
-      };
+      const telescopeMarker = 10;
 
-      // Simple linear solver for 8x8 (homography)
-      function solve(A, b) {
-        const n = b.length;
-        const M = A.map((r, i) => r.concat([b[i]]));
-        for (let k = 0; k < n; k++) {
-          let i_max = k;
-          for (let i = k + 1; i < n; i++)
-            if (Math.abs(M[i][k]) > Math.abs(M[i_max][k])) i_max = i;
-          if (Math.abs(M[i_max][k]) < 1e-12) return null;
-          [M[k], M[i_max]] = [M[i_max], M[k]];
-          const piv = M[k][k];
-          for (let j = k; j <= n; j++) M[k][j] /= piv;
-          for (let i = 0; i < n; i++) {
-            if (i === k) continue;
-            const f = M[i][k];
-            for (let j = k; j <= n; j++) M[i][j] -= f * M[k][j];
-          }
-        }
-        return M.map((r) => r[n]);
-      }
-      function computeHomography(upts, xpts) {
-        const A = [];
-        const b = [];
-        for (let i = 0; i < 4; i++) {
-          const u = upts[i].x,
-            v = upts[i].y;
-          const X = xpts[i].x,
-            Y = xpts[i].y;
-          A.push([u, v, 1, 0, 0, 0, -u * X, -v * X]);
-          b.push(X);
-          A.push([0, 0, 0, u, v, 1, -u * Y, -v * Y]);
-          b.push(Y);
-        }
-        const h = solve(A, b);
-        if (!h) return null;
-        h.push(1);
-        return [
-          [h[0], h[1], h[2]],
-          [h[3], h[4], h[5]],
-          [h[6], h[7], h[8]],
-        ];
-      }
-      function applyH(H, u, v) {
-        const a = H[0][0] * u + H[0][1] * v + H[0][2];
-        const b = H[1][0] * u + H[1][1] * v + H[1][2];
-        const c = H[2][0] * u + H[2][1] * v + H[2][2];
-        return { x: a / c, y: b / c };
+      let detectionActive = false;
+      let cameraStarted = false;
+
+      function showMessage(message, type = "info") {
+        const entry = document.createElement("div");
+        entry.className = type;
+        entry.textContent = `[${type.toUpperCase()}] ${message}`;
+        logDiv.appendChild(entry);
+        logDiv.scrollTop = logDiv.scrollHeight;
       }
 
-      // UI refs
-      const status = (id) =>
-        (document.getElementById("status").innerText = "Estado: " + id);
-      const dotEls = [
-        document.getElementById("dot0"),
-        document.getElementById("dot1"),
-        document.getElementById("dot2"),
-        document.getElementById("dot3"),
-      ];
-      const mapWrap = document.getElementById("previewWrap");
-
-      // state
-      let H = null;
-      let cornerPixels = {}; // id -> {x,y}
-      let cornerMerc = []; // ordered TL,TR,BR,BL
-      let running = false;
-
-      function parseIds(str) {
-        return str
-          .split(",")
-          .map((s) => parseInt(s.trim()))
-          .filter((n) => !isNaN(n));
-      }
-
-      // compute homography from detected corner markers or fallback to container corners + provided lat/lon defaults (global Mercator extents)
-      function buildCalibration(cornerIds) {
-        // expect 4 ids in order TL,TR,BR,BL
-        const w = mapWrap.clientWidth,
-          h = mapWrap.clientHeight;
-        const upts = [];
-        for (let i = 0; i < 4; i++) {
-          const id = cornerIds[i];
-          if (cornerPixels[id])
-            upts.push({ x: cornerPixels[id].x, y: cornerPixels[id].y });
-          else {
-            // fallback to container corners
-            const fallback = [
-              { x: 0, y: 0 },
-              { x: w, y: 0 },
-              { x: w, y: h },
-              { x: 0, y: h },
-            ][i];
-            upts.push(fallback);
-          }
-        }
-        // Mercator target points: use full-world mercator corners by default (lon -180..180, lat ~85..-85)
-        const latlon = [
-          { lat: 85, lon: -180 },
-          { lat: 85, lon: 180 },
-          { lat: -85, lon: 180 },
-          { lat: -85, lon: -180 },
-        ];
-        const xpts = latlon.map((p) => ({
-          x: lonToX(p.lon),
-          y: latToY(p.lat),
-        }));
-        H = computeHomography(upts, xpts);
-        if (H) status("calibrated");
-        else status("calibration error");
-      }
-
-      // send function
-      function sendPosition(lat, lon) {
-        const payload = { type: "position", lat: lat, lon: lon };
-        if (
-          window.Protobject &&
-          Protobject.Core &&
-          typeof Protobject.Core.send === "function"
-        ) {
-          try {
-            Protobject.Core.send(payload);
-          } catch (e) {}
-        }
-        window.dispatchEvent(
-          new CustomEvent("proto:position", { detail: payload })
-        );
-      }
-
-      // Protobject callbacks
-      function onArucoData(data) {
-        // data: { id: { position:{x,y}, size } ... }
-        const cornerIds = parseIds(document.getElementById("cornerIds").value);
-        const telId = parseInt(document.getElementById("telId").value) || 10;
-        // register corner pixel centers (assuming preview coords align with our preview; Protobject preview may be separate — works best if camera preview overlays map)
-        Object.keys(data).forEach((k) => {
-          const id = parseInt(k);
-          const p = data[k].position;
-          // heuristic: if position normalized (<1), scale to container
-          let px = p.x,
-            py = p.y;
-          if (px <= 1.01 && py <= 1.01) {
-            px *= mapWrap.clientWidth;
-            py *= mapWrap.clientHeight;
-          }
-          cornerPixels[id] = { x: px, y: py };
-        });
-
-        // show dots for known corner ids
-        for (let i = 0; i < 4; i++) {
-          const id = cornerIds[i];
-          if (cornerPixels[id]) {
-            dotEls[i].style.left = cornerPixels[id].x + "px";
-            dotEls[i].style.top = cornerPixels[id].y + "px";
-            dotEls[i].style.display = "block";
-          } else dotEls[i].style.display = "none";
-        }
-
-        // if H not ready, try build
-        if (!H) buildCalibration(cornerIds);
-
-        // handle telescope marker
-        if (data[telId]) {
-          const p = data[telId].position;
-          let px = p.x,
-            py = p.y;
-          if (px <= 1.01 && py <= 1.01) {
-            px *= mapWrap.clientWidth;
-            py *= mapWrap.clientHeight;
-          }
-          if (!H) return;
-          const merc = applyH(H, px, py);
-          const lat = yToLat(merc.y);
-          const lon = xToLon(merc.x);
-          sendPosition(lat, lon);
-          status(`lat ${lat.toFixed(4)} lon ${lon.toFixed(4)}`);
-        }
-      }
-
-      // buttons
-      document.getElementById("startBtn").onclick = () => {
-        if (!window.Protobject || !Protobject.Aruco) {
-          status("Protobject.Aruco no disponible");
+      function startCamera() {
+        if (cameraStarted) {
+          showMessage("Cámara ya iniciada.", "warn");
           return;
         }
-        Protobject.Aruco.start(200, 0);
-        Protobject.Aruco.onData(onArucoData);
-        running = true;
-        status("running");
-      };
-      document.getElementById("stopBtn").onclick = () => {
-        running = false;
-        if (window.Protobject && Protobject.Aruco)
-          Protobject.Aruco.hidePreview();
-        status("stopped");
-      };
-      document.getElementById("showPrev").onclick = () => {
-        if (!window.Protobject || !Protobject.Aruco) return;
-        // place preview overlay near top-left of screen (Protobject uses page coords)
-        const r = mapWrap.getBoundingClientRect();
-        Protobject.Aruco.showPreview({
-          top: r.top + 10,
-          left: r.left + 10,
-          width: 320,
-          height: 240,
-        });
-        status("preview shown");
-      };
-      document.getElementById("hidePrev").onclick = () => {
-        if (window.Protobject && Protobject.Aruco)
-          Protobject.Aruco.hidePreview();
-        status("preview hidden");
-      };
+        try {
+          Protobject.Aruco.start(1000, 1);
+          Protobject.Aruco.showPreview({
+            top: 55,
+            left: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          });
+          cameraStarted = true;
+          showMessage("Cámara iniciada correctamente.", "info");
+        } catch (error) {
+          showMessage("Error al iniciar la cámara: " + error.message, "error");
+        }
+      }
 
-      // auto compute on load (use defaults)
-      window.addEventListener("load", () =>
-        setTimeout(() => {
-          const ids = parseIds(document.getElementById("cornerIds").value);
-          buildCalibration(ids);
-        }, 300)
-      );
+      function startDetection() {
+        if (!cameraStarted) {
+          startCamera();
+        }
+        detectionActive = true;
+        showMessage("Detección activada.", "info");
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      }
+
+      function stopDetection() {
+        detectionActive = false;
+        showMessage("Detección detenida.", "info");
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        // NO detenemos la cámara ni ocultamos la vista previa para que siga activa
+      }
+
+      // Escuchar datos de marcadores y procesar solo si detección está activa
+      Protobject.Aruco.onData((data) => {
+        if (!detectionActive) return;
+
+        try {
+          const detectedIDs = Object.keys(data).map((id) => parseInt(id));
+          showMessage(
+            "Marcadores detectados: " + detectedIDs.join(", "),
+            "info"
+          );
+
+          const expectedMarkers = [
+            cornerMarkers.topLeft,
+            cornerMarkers.topRight,
+            cornerMarkers.bottomLeft,
+            cornerMarkers.bottomRight,
+            telescopeMarker,
+          ];
+
+          const missingMarkers = expectedMarkers.filter(
+            (id) => !detectedIDs.includes(id)
+          );
+
+          if (missingMarkers.length > 0) {
+            showMessage(
+              "Marcadores faltantes: " + missingMarkers.join(", "),
+              "warn"
+            );
+            return;
+          }
+
+          showMessage("Todos los marcadores detectados correctamente.", "info");
+
+          const tl = data[cornerMarkers.topLeft].position;
+          const tr = data[cornerMarkers.topRight].position;
+          const bl = data[cornerMarkers.bottomLeft].position;
+          const br = data[cornerMarkers.bottomRight].position;
+          const tPos = data[telescopeMarker].position;
+
+          const mapWidth = tr.x - tl.x;
+          const mapHeight = bl.y - tl.y;
+
+          if (mapWidth === 0 || mapHeight === 0) {
+            showMessage(
+              "Dimensiones inválidas del mapa (ancho o alto es 0).",
+              "error"
+            );
+            return;
+          }
+
+          const normX = (tPos.x - tl.x) / mapWidth;
+          const normY = (tPos.y - tl.y) / mapHeight;
+
+          const lon = -180 + normX * 360;
+          const lat = 90 - normY * 180;
+
+          showMessage(
+            `Coordenadas enviadas: lat=${lat.toFixed(4)}, lon=${lon.toFixed(
+              4
+            )}`,
+            "info"
+          );
+
+          Protobject.Core.send({ h: lon, v: lat }).to("index.html");
+        } catch (error) {
+          showMessage(
+            "Error al procesar datos de Aruco: " + error.message,
+            "error"
+          );
+        }
+      });
+
+      startBtn.addEventListener("click", startDetection);
+      stopBtn.addEventListener("click", stopDetection);
     </script>
   </body>
 </html>
