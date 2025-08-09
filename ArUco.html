@@ -2,848 +2,377 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
-    <title>ArUco control (Prototipo)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ArUco Prototipo (móvil)</title>
     <style>
-      /* Mobile-first, landscape-friendly */
       :root {
-        --bg: #0b0b0c;
-        --card: #111214;
-        --accent: #2dd4bf;
-        --muted: #9aa0a6;
-        --danger: #ff6b6b;
-        --gap: 10px;
+        --bg: #0b0b10;
+        --panel: #121218;
+        --accent: #2ea1ff;
+        --muted: #9aa;
       }
-      html,
       body {
-        height: 100%;
         margin: 0;
-        background: linear-gradient(180deg, #050607, #0b0b0c);
-        color: #e6eef0;
-        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-      }
-      .app {
+        font-family: system-ui, Segoe UI, Roboto, Arial;
+        background: var(--bg);
+        color: #fff;
         display: flex;
         flex-direction: column;
-        gap: var(--gap);
-        padding: 12px;
-        box-sizing: border-box;
-        height: 100%;
+        height: 100vh;
       }
       header {
+        padding: 10px;
         display: flex;
+        gap: 8px;
         align-items: center;
-        gap: 12px;
+        background: var(--panel);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
       }
       header h1 {
-        font-size: 1.05rem;
+        font-size: 16px;
         margin: 0;
+        flex: 1;
       }
-      .top-actions {
-        margin-left: auto;
+      .controls {
         display: flex;
         gap: 8px;
       }
       button {
-        background: var(--card);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        color: inherit;
-        padding: 10px 12px;
-        border-radius: 10px;
-        font-size: 0.95rem;
-        touch-action: manipulation;
-      }
-      button.primary {
-        background: linear-gradient(90deg, var(--accent), #10b981);
-        color: #022;
+        background: var(--accent);
+        border: none;
+        padding: 8px 10px;
+        border-radius: 8px;
+        color: #012;
         font-weight: 600;
       }
-      button.warn {
-        background: var(--danger);
-        color: #fff;
+      small {
+        color: var(--muted);
+        font-size: 12px;
       }
       main {
-        display: flex;
         flex: 1;
-        gap: 12px;
-        align-items: stretch;
-        min-height: 0;
-      }
-      /* left column: camera */
-      .camera-col {
-        flex: 2;
         display: flex;
         flex-direction: column;
+        padding: 10px;
         gap: 8px;
-        min-width: 0;
+        overflow: auto;
       }
-      .preview-wrap {
+      #previewWrap {
         position: relative;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #000;
+        border-radius: 8px;
+        background: #06060a;
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
+        min-height: 220px;
       }
-      video#cameraView {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform-origin: center center;
-      }
-      canvas#overlay {
-        position: absolute;
-        left: 0;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-      }
-      .status-chip {
-        position: absolute;
-        left: 12px;
-        top: 12px;
-        background: rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(6px);
-        padding: 8px 10px;
-        border-radius: 10px;
-        font-size: 0.85rem;
-      }
-      /* right column: controls */
-      .control-col {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 220px;
-      }
-      .card {
-        background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.02),
-          rgba(255, 255, 255, 0.015)
-        );
-        padding: 10px;
-        border-radius: 12px;
-        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.6);
-        overflow: auto;
-      }
-      .markers-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .marker-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.01);
-      }
-      label.small {
-        font-size: 0.8rem;
-        color: var(--muted);
+      #mapImg {
+        max-width: 100%;
+        max-height: 100%;
         display: block;
-        margin-bottom: 6px;
       }
-      input[type="number"],
-      input[type="text"] {
-        width: 100%;
-        padding: 8px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        background: transparent;
-        color: inherit;
+      .dot {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        transform: translate(-50%, -50%);
+        border: 2px solid #001;
+      }
+      #status {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 6px 0;
       }
       .row {
         display: flex;
         gap: 8px;
-      }
-      .hint {
-        font-size: 0.8rem;
-        color: var(--muted);
-        margin-top: 6px;
-      }
-      footer {
-        display: flex;
-        gap: 8px;
         align-items: center;
-        justify-content: center;
-        padding-top: 6px;
       }
-      @media (orientation: portrait) {
-        /* in portrait we stack simpler */
-        main {
-          flex-direction: column;
-        }
-        .control-col {
-          min-width: unset;
-        }
+      input {
+        background: #0b0b10;
+        border: 1px solid #222;
+        padding: 8px;
+        border-radius: 8px;
+        color: #fff;
       }
     </style>
   </head>
   <body>
-    <div class="app">
-      <header>
-        <h1>Telescopio — ArUco Control</h1>
-        <div class="top-actions">
-          <button id="btnStart" class="primary">Iniciar detección</button>
-          <button id="btnStop">Parar</button>
-          <button id="btnPreview">Mostrar preview</button>
-        </div>
-      </header>
+    <header>
+      <h1>ArUco — Calibración esquinas</h1>
+      <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn">Stop</button>
+      </div>
+    </header>
 
-      <main>
-        <section class="camera-col card">
-          <div class="preview-wrap" id="previewWrap">
-            <!-- Video & overlay -->
-            <video id="cameraView" autoplay playsinline muted></video>
-            <canvas id="overlay"></canvas>
-            <div class="status-chip" id="statusChip">Estado: detenido</div>
-          </div>
-          <div style="display: flex; gap: 8px">
-            <button id="btnFlip">Cambiar cámara</button>
-            <button id="btnCalibrate">Calibrar mapa</button>
-            <div style="flex: 1"></div>
-            <label
-              style="align-self: center; font-size: 0.9rem; color: var(--muted)"
-              >Orientación: <strong id="orientLabel">landscape</strong></label
-            >
-          </div>
-        </section>
+    <main>
+      <div class="row">
+        <label><small>IDs esquinas (TL,TR,BR,BL)</small></label>
+        <input id="cornerIds" value="0,1,2,3" style="width: 140px" />
+        <label><small>ID telescopio</small></label>
+        <input id="telId" value="10" style="width: 70px" />
+        <button id="showPrev" style="padding: 8px">Preview</button>
+        <button id="hidePrev" style="padding: 8px">Hide</button>
+      </div>
 
-        <aside class="control-col">
-          <div class="card">
-            <label class="small">Información de detección</label>
-            <div id="detectedCount">Marcadores visibles: 0</div>
-            <div
-              id="detectedList"
-              class="markers-list"
-              style="margin-top: 8px"
-            ></div>
-            <div class="hint">
-              Se espera que uses marcadores fijos (IDs 1..6) y un marcador móvil
-              (ID 99) en la base del telescopio.
-            </div>
-          </div>
+      <div id="previewWrap">
+        <img
+          id="mapImg"
+          src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/1280px-World_map_-_low_resolution.svg.png"
+          alt="map"
+        />
+        <div id="dot0" class="dot" style="display: none"></div>
+        <div id="dot1" class="dot" style="display: none"></div>
+        <div id="dot2" class="dot" style="display: none"></div>
+        <div id="dot3" class="dot" style="display: none"></div>
+      </div>
 
-          <div class="card">
-            <label class="small">Ajustes</label>
-            <div style="display: flex; gap: 8px; margin-top: 8px">
-              <input id="freqMs" type="number" value="200" min="50" step="50" />
-              <button id="btnApplyFreq">Aplicar frecuencia (ms)</button>
-            </div>
-            <div style="margin-top: 8px">
-              <label class="small">ID marcador telescopio</label>
-              <input id="telescopId" type="number" value="99" />
-            </div>
-            <div style="margin-top: 8px">
-              <label class="small">Diccionario ArUco recomendado</label>
-              <div style="font-size: 0.95rem; color: var(--muted)">
-                5x5_100 (si Protobject lo permite). Si Protobject ya está
-                configurado, usa el default.
-              </div>
-            </div>
-          </div>
-
-          <div class="card" id="calibCard">
-            <label class="small">Calibración del mapa</label>
-            <div
-              style="font-size: 0.9rem; color: var(--muted); margin-bottom: 8px"
-            >
-              Asigna coordenadas reales (m) para al menos 3 marcadores fijos
-              para habilitar la conversión píxel → mapa.
-            </div>
-            <div id="calibForm"></div>
-            <div style="display: flex; gap: 8px; margin-top: 8px">
-              <button id="btnSaveCalib">Guardar calibración</button>
-              <button id="btnClearCalib">Limpiar</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <label class="small">Última posición del telescopio</label>
-            <pre
-              id="lastPos"
-              style="white-space: pre-wrap; margin: 0; color: var(--muted)"
-            >
-—</pre
-            >
-            <div style="display: flex; gap: 8px; margin-top: 8px">
-              <button id="btnSend" class="primary">
-                Enviar a Protobject/Stellarium
-              </button>
-              <button id="btnExport">Export JSON</button>
-            </div>
-          </div>
-        </aside>
-      </main>
-
-      <footer>
-        <small style="color: var(--muted)"
-          >Consejo: usa orientación landscape en móvil para mejor experiencia de
-          video.</small
-        >
-      </footer>
-    </div>
+      <div id="status">Estado: idle</div>
+    </main>
 
     <script>
-      /************************************************************************
-       * Prototipo: interfaz móvil para detección ArUco con Protobject.Aruco
-       * - Usa Protobject.Aruco.start(...) cuando esté disponible
-       * - Tiene fallback a getUserMedia para mostrar cámara en el video
-       * - Provee calibración simple (mínimo 3 puntos) para transformar px->map (affine LS)
-       ************************************************************************/
+      /* Minimal pipeline:
+ - Protobject.Aruco.start(freq)
+ - detect corner markers IDs -> build homography pixel -> mercator (meters)
+ - detect telescope marker -> map pixel->mercator -> lat/lon -> send Protobject.Core.send({type:'position',lat,lon})
+*/
 
-      // ---------- CONFIG ----------
-      const TEL_ID_DEFAULT = 99;
-      const FIXED_MARKER_IDS = [1, 2, 3, 4, 5, 6]; // configurable
-      let useProtobject = typeof Protobject !== "undefined" && Protobject.Aruco;
-      let currentCameraDeviceId = null;
-      let facing = "environment"; // prefer rear camera
-      let detectorRunning = false;
-      let detectionFreq = 200; // ms
-      let lastData = {};
-      let calibration = {}; // markerId -> { mapX, mapY }
-      let lastMapTransform = null; // transform object
-      let telescopIdInput = document.getElementById("telescopId");
+      // Mercator helpers
+      const R = 6378137;
+      const lonToX = (lon) => (R * lon * Math.PI) / 180;
+      const latToY = (lat) => {
+        const rad = (lat * Math.PI) / 180;
+        return R * Math.log(Math.tan(Math.PI / 4 + rad / 2));
+      };
+      const xToLon = (x) => ((x / R) * 180) / Math.PI;
+      const yToLat = (y) => {
+        const z = Math.exp(y / R);
+        return ((2 * Math.atan(z) - Math.PI / 2) * 180) / Math.PI;
+      };
 
-      // UI references
-      const video = document.getElementById("cameraView");
-      const overlay = document.getElementById("overlay");
-      const ctx = overlay.getContext("2d");
-      const statusChip = document.getElementById("statusChip");
-      const detectedCount = document.getElementById("detectedCount");
-      const detectedList = document.getElementById("detectedList");
-      const lastPos = document.getElementById("lastPos");
-      const orientLabel = document.getElementById("orientLabel");
-      const calibForm = document.getElementById("calibForm");
-
-      // Resize overlay to match video
-      function fitCanvas() {
-        overlay.width = video.clientWidth;
-        overlay.height = video.clientHeight;
-      }
-      window.addEventListener("resize", fitCanvas);
-      video.addEventListener("loadedmetadata", fitCanvas);
-
-      // Orientation label
-      function updateOrientationLabel() {
-        const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-        orientLabel.textContent = isPortrait ? "portrait" : "landscape";
-      }
-      updateOrientationLabel();
-      window.addEventListener("orientationchange", updateOrientationLabel);
-
-      // ---------- Camera Access (fallback) ----------
-      async function startCameraFallback() {
-        try {
-          const constraints = {
-            audio: false,
-            video: { facingMode: facing },
-          };
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          video.srcObject = stream;
-          await video.play();
-          statusChip.textContent = "Estado: cámara activa (fallback)";
-        } catch (err) {
-          console.error("No se pudo acceder a la cámara:", err);
-          statusChip.textContent = "Error: No se pudo abrir la cámara";
-        }
-      }
-
-      // ---------- Protobject wrapper ----------
-      function protStart(freqMs = 200, camId = 0) {
-        try {
-          Protobject.Aruco.start(freqMs, camId);
-          statusChip.textContent = "Estado: Protobject.Aruco iniciado";
-          detectorRunning = true;
-        } catch (e) {
-          console.warn("Protobject.Aruco.start falló:", e);
-          statusChip.textContent = "Protobject start falló, usando fallback";
-          detectorRunning = false;
-          startCameraFallback();
-        }
-      }
-      function protStop() {
-        try {
-          Protobject.Aruco.hidePreview();
-          // si existe un stop específico:
-          if (Protobject.Aruco.stop) Protobject.Aruco.stop();
-        } catch (e) {}
-        statusChip.textContent = "Estado: detenido";
-        detectorRunning = false;
-      }
-      function protShowPreview(opts) {
-        try {
-          Protobject.Aruco.showPreview(opts);
-        } catch (e) {
-          console.warn("Protobject.showPreview no disponible", e);
-        }
-      }
-
-      // ---------- Detection handling ----------
-      // process marker data object from Protobject.Aruco.onData
-      function handleArucoData(data) {
-        lastData = data || {};
-        renderMarkersOverlay(data);
-        renderMarkersList(data);
-        // find telescope marker
-        const tid = parseInt(telescopIdInput.value || TEL_ID_DEFAULT, 10);
-        if (data && data[tid]) {
-          const posPx = data[tid].position; // {x, y} in pixels relative to preview
-          // map transform: px -> map coords (meters)
-          if (lastMapTransform) {
-            const mapP = pxToMap(posPx);
-            lastPos.textContent = JSON.stringify(
-              { id: tid, px: posPx, map: mapP },
-              null,
-              2
-            );
-          } else {
-            lastPos.textContent = JSON.stringify(
-              { id: tid, px: posPx },
-              null,
-              2
-            );
+      // Simple linear solver for 8x8 (homography)
+      function solve(A, b) {
+        const n = b.length;
+        const M = A.map((r, i) => r.concat([b[i]]));
+        for (let k = 0; k < n; k++) {
+          let i_max = k;
+          for (let i = k + 1; i < n; i++)
+            if (Math.abs(M[i][k]) > Math.abs(M[i_max][k])) i_max = i;
+          if (Math.abs(M[i_max][k]) < 1e-12) return null;
+          [M[k], M[i_max]] = [M[i_max], M[k]];
+          const piv = M[k][k];
+          for (let j = k; j <= n; j++) M[k][j] /= piv;
+          for (let i = 0; i < n; i++) {
+            if (i === k) continue;
+            const f = M[i][k];
+            for (let j = k; j <= n; j++) M[i][j] -= f * M[k][j];
           }
-        } else {
-          // no telescope visible
         }
+        return M.map((r) => r[n]);
       }
-
-      function renderMarkersList(data) {
-        detectedList.innerHTML = "";
-        if (!data) {
-          detectedCount.textContent = "Marcadores visibles: 0";
-          return;
-        }
-        const entries = Object.entries(data);
-        detectedCount.textContent = `Marcadores visibles: ${entries.length}`;
-        entries.forEach(([id, info]) => {
-          const el = document.createElement("div");
-          el.className = "marker-item";
-          el.innerHTML = `<div><strong>ID ${id}</strong> · size:${Math.round(
-            info.size
-          )}</div>
-                      <div style="text-align:right">${Math.round(
-                        info.position.x
-                      )}, ${Math.round(info.position.y)}</div>`;
-          detectedList.appendChild(el);
-        });
-      }
-
-      function renderMarkersOverlay(data) {
-        // clear
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-        if (!data) return;
-        // draw each marker center and id
-        Object.entries(data).forEach(([id, info]) => {
-          const x = (info.position.x / 100) * overlay.width; // NOTE: Protobject positions may be in px relative to preview; adjust if needed
-          const y = (info.position.y / 100) * overlay.height;
-          // If Protobject provides absolute pixels, use them directly; here we try to be flexible
-          // draw circle
-          ctx.beginPath();
-          ctx.arc(x, y, 12, 0, Math.PI * 2);
-          ctx.fillStyle =
-            parseInt(id) === parseInt(telescopIdInput.value || TEL_ID_DEFAULT)
-              ? "rgba(45,212,191,0.95)"
-              : "rgba(255,255,255,0.1)";
-          ctx.fill();
-          ctx.font = "14px system-ui";
-          ctx.fillStyle = "#fff";
-          ctx.fillText("ID " + id, x + 14, y + 6);
-        });
-      }
-
-      // ---------- Calibración: asignar coordenadas reales a markers detectados ----------
-      function rebuildCalibForm() {
-        calibForm.innerHTML = "";
-        FIXED_MARKER_IDS.forEach((id) => {
-          const div = document.createElement("div");
-          div.style.display = "grid";
-          div.style.gridTemplateColumns = "1fr 1fr";
-          div.style.gap = "6px";
-          div.style.marginBottom = "8px";
-          div.innerHTML = `
-        <div>
-          <label class="small">ID ${id} (m) X</label>
-          <input data-id="${id}" class="calx" type="number" step="0.001" placeholder="ej: 0.0" />
-        </div>
-        <div>
-          <label class="small">ID ${id} (m) Y</label>
-          <input data-id="${id}" class="caly" type="number" step="0.001" placeholder="ej: 0.0" />
-        </div>`;
-          calibForm.appendChild(div);
-        });
-      }
-      rebuildCalibForm();
-
-      document.getElementById("btnSaveCalib").addEventListener("click", () => {
-        calibration = {};
-        const xs = calibForm.querySelectorAll(".calx");
-        xs.forEach((inp) => {
-          const id = parseInt(inp.dataset.id, 10);
-          const x = parseFloat(inp.value);
-          const y = parseFloat(
-            calibForm.querySelector('.caly[data-id="' + id + '"]').value
-          );
-          if (!isNaN(x) && !isNaN(y)) calibration[id] = { mapX: x, mapY: y };
-        });
-        const keys = Object.keys(calibration);
-        if (keys.length < 3) {
-          alert(
-            "Necesitas al menos 3 puntos de calibración para estimar una transformación afín."
-          );
-          return;
-        }
-        lastMapTransform = computeAffineFromMatches(calibration, lastData);
-        alert(
-          "Calibración guardada con " +
-            keys.length +
-            " puntos. Transformación estimada."
-        );
-      });
-
-      document.getElementById("btnClearCalib").addEventListener("click", () => {
-        calibration = {};
-        lastMapTransform = null;
-        rebuildCalibForm();
-        alert("Calibración borrada.");
-      });
-
-      // Compute affine transform px->map using least-squares (requires at least 3 matches)
-      // We need pairs: pixel positions (from lastData) and map coords (from calibration)
-      function computeAffineFromMatches(calib, data) {
-        // prepare arrays A * params = B, where params is 6 elements of affine matrix
-        // For each point: [px, py, 1, 0, 0, 0] * params = mapX
-        //                [0, 0, 0, px, py, 1] * params = mapY
-        const pairs = [];
-        Object.entries(calib).forEach(([id, m]) => {
-          if (data && data[id]) {
-            // Protobject gives positions relative to preview - may be px or normalized [0..100], adjust later if needed
-            const px = data[id].position.x;
-            const py = data[id].position.y;
-            pairs.push({ px, py, mx: m.mapX, my: m.mapY });
-          }
-        });
-        if (pairs.length < 3) {
-          console.warn(
-            "No hay suficientes pares detectados ahora mismo para calcular la transformación."
-          );
-          return null;
-        }
-        // Build matrices
-        // A: (2n x 6), P: (6 x 1), B: (2n x 1)
+      function computeHomography(upts, xpts) {
         const A = [];
-        const B = [];
-        // Detect whether positions are normalized (0..100) or pixels: try to detect scale by checking max value
-        // If video is available, and px values look <= 100, we assume normalized percent -> convert to px using overlay dims
-        const samplePx = pairs[0].px;
-        const needsScale = samplePx <= 100; // simple heuristic
-        const scaleX = overlay.width / 100;
-        const scaleY = overlay.height / 100;
-        pairs.forEach((p) => {
-          const px = needsScale ? p.px * scaleX : p.px;
-          const py = needsScale ? p.py * scaleY : p.py;
-          A.push([px, py, 1, 0, 0, 0]);
-          A.push([0, 0, 0, px, py, 1]);
-          B.push(p.mx);
-          B.push(p.my);
-        });
-        // Solve least squares: params = (A^T A)^{-1} A^T B
-        // Compute AtA and AtB
-        const AT = transpose(A);
-        const ATA = multiply(AT, A); // 6x6
-        const ATB = multiplyVec(AT, B); // 6x1
-        const ATA_inv = invertMatrix(ATA);
-        if (!ATA_inv) {
-          console.warn("No invertible matrix en calibración.");
-          return null;
+        const b = [];
+        for (let i = 0; i < 4; i++) {
+          const u = upts[i].x,
+            v = upts[i].y;
+          const X = xpts[i].x,
+            Y = xpts[i].y;
+          A.push([u, v, 1, 0, 0, 0, -u * X, -v * X]);
+          b.push(X);
+          A.push([0, 0, 0, u, v, 1, -u * Y, -v * Y]);
+          b.push(Y);
         }
-        const params = multiplyMatVec(ATA_inv, ATB); // 6 elements
-        // Return transform function closure
-        return {
-          params,
-          pxIsNormalized: needsScale,
-          scaleX,
-          scaleY,
-        };
+        const h = solve(A, b);
+        if (!h) return null;
+        h.push(1);
+        return [
+          [h[0], h[1], h[2]],
+          [h[3], h[4], h[5]],
+          [h[6], h[7], h[8]],
+        ];
+      }
+      function applyH(H, u, v) {
+        const a = H[0][0] * u + H[0][1] * v + H[0][2];
+        const b = H[1][0] * u + H[1][1] * v + H[1][2];
+        const c = H[2][0] * u + H[2][1] * v + H[2][2];
+        return { x: a / c, y: b / c };
       }
 
-      function pxToMap(pos) {
-        if (!lastMapTransform) return null;
-        const { params, pxIsNormalized, scaleX, scaleY } = lastMapTransform;
-        const px = pxIsNormalized ? pos.x * scaleX : pos.x;
-        const py = pxIsNormalized ? pos.y * scaleY : pos.y;
-        const a = params;
-        const mapX = a[0] * px + a[1] * py + a[2];
-        const mapY = a[3] * px + a[4] * py + a[5];
-        return { mapX, mapY };
+      // UI refs
+      const status = (id) =>
+        (document.getElementById("status").innerText = "Estado: " + id);
+      const dotEls = [
+        document.getElementById("dot0"),
+        document.getElementById("dot1"),
+        document.getElementById("dot2"),
+        document.getElementById("dot3"),
+      ];
+      const mapWrap = document.getElementById("previewWrap");
+
+      // state
+      let H = null;
+      let cornerPixels = {}; // id -> {x,y}
+      let cornerMerc = []; // ordered TL,TR,BR,BL
+      let running = false;
+
+      function parseIds(str) {
+        return str
+          .split(",")
+          .map((s) => parseInt(s.trim()))
+          .filter((n) => !isNaN(n));
       }
 
-      // ---------- Linear algebra helpers (small, self-contained) ----------
-      function transpose(M) {
-        const rows = M.length,
-          cols = M[0].length;
-        const T = Array.from({ length: cols }, () => Array(rows).fill(0));
-        for (let i = 0; i < rows; i++)
-          for (let j = 0; j < cols; j++) T[j][i] = M[i][j];
-        return T;
-      }
-      function multiply(A, B) {
-        // A: m x n, B: n x p
-        const m = A.length,
-          n = A[0].length,
-          p = B[0].length;
-        const C = Array.from({ length: m }, () => Array(p).fill(0));
-        for (let i = 0; i < m; i++)
-          for (let k = 0; k < n; k++)
-            for (let j = 0; j < p; j++) C[i][j] += A[i][k] * B[k][j];
-        return C;
-      }
-      function multiplyVec(A, v) {
-        // A: m x n, v: n x 1 (array)
-        const m = A.length,
-          n = A[0].length;
-        const out = Array(m).fill(0);
-        for (let i = 0; i < m; i++) {
-          let s = 0;
-          for (let j = 0; j < n; j++) s += A[i][j] * v[j];
-          out[i] = s;
-        }
-        return out;
-      }
-      function multiplyMatVec(A, v) {
-        // A: n x n (square), v: n
-        const n = A.length;
-        const out = Array(n).fill(0);
-        for (let i = 0; i < n; i++) {
-          let s = 0;
-          for (let j = 0; j < n; j++) s += A[i][j] * v[j];
-          out[i] = s;
-        }
-        return out;
-      }
-      function invertMatrix(M) {
-        // Gaussian elimination for small matrices (n <= 12)
-        const n = M.length;
-        // build augmented [M | I]
-        const A = M.map((r, i) =>
-          r.concat(Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)))
-        );
-        // forward
-        for (let i = 0; i < n; i++) {
-          // find pivot
-          let maxRow = i;
-          for (let k = i + 1; k < n; k++)
-            if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
-          if (Math.abs(A[maxRow][i]) < 1e-12) return null; // singular
-          // swap
-          const tmp = A[i];
-          A[i] = A[maxRow];
-          A[maxRow] = tmp;
-          // normalize
-          const pivot = A[i][i];
-          for (let j = i; j < 2 * n; j++) A[i][j] /= pivot;
-          // eliminate
-          for (let k = 0; k < n; k++)
-            if (k !== i) {
-              const factor = A[k][i];
-              for (let j = i; j < 2 * n; j++) A[k][j] -= factor * A[i][j];
-            }
-        }
-        // extract inverse
-        const inv = A.map((r) => r.slice(n));
-        return inv;
-      }
-
-      // ---------- Buttons & events ----------
-      document
-        .getElementById("btnStart")
-        .addEventListener("click", async () => {
-          detectionFreq = parseInt(
-            document.getElementById("freqMs").value || "200",
-            10
-          );
-          if (useProtobject) {
-            try {
-              protStart(detectionFreq, 0);
-              // register callback
-              if (Protobject.Aruco && Protobject.Aruco.onData) {
-                Protobject.Aruco.onData((d) => {
-                  // d is { id: {position:{x,y}, size } }
-                  handleArucoData(d);
-                });
-              }
-              // try show preview
-              try {
-                protShowPreview({ top: 50, left: 10, width: 640, height: 480 });
-              } catch (e) {}
-            } catch (e) {
-              console.warn("Protobject start error", e);
-              // fallback
-              await startCameraFallback();
-            }
-          } else {
-            // fallback: start camera and simulate periodic "detection" (if you implement client-side ArUco detector)
-            await startCameraFallback();
-            // If you want to run client-side ArUco detection in-browser, you'd need a WASM/OpenCV build; here we rely on Protobject.
+      // compute homography from detected corner markers or fallback to container corners + provided lat/lon defaults (global Mercator extents)
+      function buildCalibration(cornerIds) {
+        // expect 4 ids in order TL,TR,BR,BL
+        const w = mapWrap.clientWidth,
+          h = mapWrap.clientHeight;
+        const upts = [];
+        for (let i = 0; i < 4; i++) {
+          const id = cornerIds[i];
+          if (cornerPixels[id])
+            upts.push({ x: cornerPixels[id].x, y: cornerPixels[id].y });
+          else {
+            // fallback to container corners
+            const fallback = [
+              { x: 0, y: 0 },
+              { x: w, y: 0 },
+              { x: w, y: h },
+              { x: 0, y: h },
+            ][i];
+            upts.push(fallback);
           }
-          detectorRunning = true;
-          statusChip.textContent = "Estado: detectando";
-        });
-
-      document.getElementById("btnStop").addEventListener("click", () => {
-        if (useProtobject) protStop();
-        // stop camera stream fallback
-        if (video.srcObject) {
-          const tracks = video.srcObject.getTracks();
-          tracks.forEach((t) => t.stop());
-          video.srcObject = null;
         }
-        detectorRunning = false;
-        statusChip.textContent = "Estado: detenido";
-      });
+        // Mercator target points: use full-world mercator corners by default (lon -180..180, lat ~85..-85)
+        const latlon = [
+          { lat: 85, lon: -180 },
+          { lat: 85, lon: 180 },
+          { lat: -85, lon: 180 },
+          { lat: -85, lon: -180 },
+        ];
+        const xpts = latlon.map((p) => ({
+          x: lonToX(p.lon),
+          y: latToY(p.lat),
+        }));
+        H = computeHomography(upts, xpts);
+        if (H) status("calibrated");
+        else status("calibration error");
+      }
 
-      document.getElementById("btnPreview").addEventListener("click", () => {
-        // toggle preview: call Protobject preview or simply show/hide video element
-        if (useProtobject) {
+      // send function
+      function sendPosition(lat, lon) {
+        const payload = { type: "position", lat: lat, lon: lon };
+        if (
+          window.Protobject &&
+          Protobject.Core &&
+          typeof Protobject.Core.send === "function"
+        ) {
           try {
-            protShowPreview({ top: 30, left: 10, width: 640, height: 480 });
-          } catch (e) {
-            alert("Preview Protobject no disponible.");
-          }
-        } else {
-          alert("Usando fallback: la vista de cámara está en la página.");
+            Protobject.Core.send(payload);
+          } catch (e) {}
         }
-      });
-
-      document.getElementById("btnFlip").addEventListener("click", async () => {
-        // flip camera between user/environment
-        facing = facing === "environment" ? "user" : "environment";
-        // restart fallback camera
-        if (!useProtobject) {
-          if (video.srcObject) {
-            video.srcObject.getTracks().forEach((t) => t.stop());
-          }
-          await startCameraFallback();
-        } else {
-          // If Protobject supports selecting camera id, you'd call Protobject.Aruco.start with that id
-          alert(
-            "Cambio de cámara: si usas Protobject, pasa un cameraId a start() (según API)"
-          );
-        }
-      });
-
-      // Apply frequency
-      document.getElementById("btnApplyFreq").addEventListener("click", () => {
-        detectionFreq = parseInt(
-          document.getElementById("freqMs").value || "200",
-          10
+        window.dispatchEvent(
+          new CustomEvent("proto:position", { detail: payload })
         );
-        alert(
-          "Frecuencia actualizada a " +
-            detectionFreq +
-            " ms. Reinicia detección para aplicar (si usas Protobject)."
-        );
-      });
+      }
 
-      // Calibrate button: attempt to auto-fill calibration form using currently visible fixed markers
-      document.getElementById("btnCalibrate").addEventListener("click", () => {
-        if (!lastData) {
-          alert(
-            "No hay datos de marcadores actualmente. Inicia detección y asegúrate que los marcadores fijos estén visibles."
-          );
-          return;
-        }
-        // try to fill fields for markers present both in FIXED_MARKER_IDS and lastData
-        FIXED_MARKER_IDS.forEach((id) => {
-          const elx = calibForm.querySelector('.calx[data-id="' + id + '"]');
-          const ely = calibForm.querySelector('.caly[data-id="' + id + '"]');
-          if (lastData[id] && elx && ely) {
-            // naive default: set map coords to 0..1 grid depending on id (you should replace with real coordinates)
-            elx.value = (id % 3) * 0.5; // demo default
-            ely.value = Math.floor(id / 3) * 0.5;
+      // Protobject callbacks
+      function onArucoData(data) {
+        // data: { id: { position:{x,y}, size } ... }
+        const cornerIds = parseIds(document.getElementById("cornerIds").value);
+        const telId = parseInt(document.getElementById("telId").value) || 10;
+        // register corner pixel centers (assuming preview coords align with our preview; Protobject preview may be separate — works best if camera preview overlays map)
+        Object.keys(data).forEach((k) => {
+          const id = parseInt(k);
+          const p = data[k].position;
+          // heuristic: if position normalized (<1), scale to container
+          let px = p.x,
+            py = p.y;
+          if (px <= 1.01 && py <= 1.01) {
+            px *= mapWrap.clientWidth;
+            py *= mapWrap.clientHeight;
           }
+          cornerPixels[id] = { x: px, y: py };
         });
-        alert(
-          "Se han auto-llenado valores demo en el formulario. Reemplaza por coordenadas reales (m)."
-        );
-      });
 
-      // Send to Protobject/Stellarium (user should implement actual sending)
-      document.getElementById("btnSend").addEventListener("click", () => {
-        const tid = parseInt(telescopIdInput.value || TEL_ID_DEFAULT, 10);
-        if (!lastData || !lastData[tid]) {
-          alert("Marcador del telescopio no visible");
+        // show dots for known corner ids
+        for (let i = 0; i < 4; i++) {
+          const id = cornerIds[i];
+          if (cornerPixels[id]) {
+            dotEls[i].style.left = cornerPixels[id].x + "px";
+            dotEls[i].style.top = cornerPixels[id].y + "px";
+            dotEls[i].style.display = "block";
+          } else dotEls[i].style.display = "none";
+        }
+
+        // if H not ready, try build
+        if (!H) buildCalibration(cornerIds);
+
+        // handle telescope marker
+        if (data[telId]) {
+          const p = data[telId].position;
+          let px = p.x,
+            py = p.y;
+          if (px <= 1.01 && py <= 1.01) {
+            px *= mapWrap.clientWidth;
+            py *= mapWrap.clientHeight;
+          }
+          if (!H) return;
+          const merc = applyH(H, px, py);
+          const lat = yToLat(merc.y);
+          const lon = xToLon(merc.x);
+          sendPosition(lat, lon);
+          status(`lat ${lat.toFixed(4)} lon ${lon.toFixed(4)}`);
+        }
+      }
+
+      // buttons
+      document.getElementById("startBtn").onclick = () => {
+        if (!window.Protobject || !Protobject.Aruco) {
+          status("Protobject.Aruco no disponible");
           return;
         }
-        const px = lastData[tid].position;
-        const mapP = pxToMap(px);
-        if (!mapP) {
-          alert(
-            "No hay calibración activa: define al menos 3 puntos fijos y guarda la calibración."
-          );
-          return;
-        }
-        // Build payload
-        const payload = {
-          timestamp: Date.now(),
-          id: tid,
-          px,
-          map: mapP,
-          // optionally add orientation if you compute it
-        };
-        // stub: replace with actual Protobject or websocket call
-        console.log("Enviar payload ->", payload);
-        alert(
-          "Payload preparado. Implementa la función sendToProtobject(payload) para transmitirlo."
-        );
-      });
-
-      document.getElementById("btnExport").addEventListener("click", () => {
-        const tid = parseInt(telescopIdInput.value || TEL_ID_DEFAULT, 10);
-        const payload = { lastData, calibration, transform: lastMapTransform };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json",
+        Protobject.Aruco.start(200, 0);
+        Protobject.Aruco.onData(onArucoData);
+        running = true;
+        status("running");
+      };
+      document.getElementById("stopBtn").onclick = () => {
+        running = false;
+        if (window.Protobject && Protobject.Aruco)
+          Protobject.Aruco.hidePreview();
+        status("stopped");
+      };
+      document.getElementById("showPrev").onclick = () => {
+        if (!window.Protobject || !Protobject.Aruco) return;
+        // place preview overlay near top-left of screen (Protobject uses page coords)
+        const r = mapWrap.getBoundingClientRect();
+        Protobject.Aruco.showPreview({
+          top: r.top + 10,
+          left: r.left + 10,
+          width: 320,
+          height: 240,
         });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "aruco_state.json";
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+        status("preview shown");
+      };
+      document.getElementById("hidePrev").onclick = () => {
+        if (window.Protobject && Protobject.Aruco)
+          Protobject.Aruco.hidePreview();
+        status("preview hidden");
+      };
 
-      // ---------- Utility: how to access camera on mobile ----------
-      // Use navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      // When using Protobject.Aruco, you call Protobject.Aruco.start(frequency, cameraId).
-      // Many mobile browsers require HTTPS and user gesture to allow camera access.
-
-      // ---------- Init ----------
-      (function init() {
-        // if Protobject exists, ensure onData subscription is active (if user started)
-        if (useProtobject && Protobject.Aruco && Protobject.Aruco.onData) {
-          Protobject.Aruco.onData((d) => {
-            // Protobject probably sends coordinates in pixels relative to the preview canvas it shows.
-            // We pass through the raw object to our handler.
-            handleArucoData(d);
-          });
-        }
-        // show calibration fields
-        rebuildCalibForm();
-        // start camera fallback pre-warmed (optional) — comment if you don't want it immediately
-        // startCameraFallback();
-      })();
+      // auto compute on load (use defaults)
+      window.addEventListener("load", () =>
+        setTimeout(() => {
+          const ids = parseIds(document.getElementById("cornerIds").value);
+          buildCalibration(ids);
+        }, 300)
+      );
     </script>
   </body>
 </html>

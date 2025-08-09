@@ -116,11 +116,78 @@
         canvas_blur.style.filter = `blur(${blur}px)`;
       }
 
+      // ---------------------------
+      // Nuevo: recibir posiciones desde ArUco
+      // ---------------------------
+      // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
+      let pendingArUcoPosition = null;
+      function applyArUcoPosition(lat, lon) {
+        // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
+        if (!engine || !engine.core) {
+          pendingArUcoPosition = { lat, lon };
+          return;
+        }
+        try {
+          engine.core.observer.latitude = lat * (Math.PI / 180);
+          engine.core.observer.longitude = lon * (Math.PI / 180);
+          // Opcional: mantener elevación previa o poner 0 si desconocida
+          engine.core.observer.elevation = engine.core.observer.elevation || 0;
+          engine.core.observer.name = "ArUco Position";
+          // Actualizar tiempo local para que la vista sea consistente (opcional):
+          engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
+          // Centrar la vista del observador
+          engine.core.observer.pitch = 0;
+          engine.core.observer.yaw = 0;
+          // Notificación visual mínima: actualiza footer/progress si lo deseas
+          const progress = document.getElementById("progress");
+          if (progress)
+            progress.innerText = `Location: ${lat.toFixed(4)}, ${lon.toFixed(
+              4
+            )}`;
+        } catch (e) {
+          console.error("Error aplicando posición ArUco:", e);
+        }
+      }
+
+      // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
+      window.addEventListener("proto:position", (ev) => {
+        const d = ev?.detail || {};
+        if (d.lat !== undefined && d.lon !== undefined) {
+          applyArUcoPosition(d.lat, d.lon);
+        }
+      });
+
+      // ---------------------------
+      // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
+      /* 
+  Protobject.Core.onReceived((data) => {
+    if (data.f !== undefined) updateStellariumFov(data.f);
+    else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+    else data.h !== undefined || data.v !== undefined;
+    updateStellariumView(data);
+  });
+  */
+      // ---------------------------
+
+      // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
       Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f);
-        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-        else data.h !== undefined || data.v !== undefined;
-        updateStellariumView(data);
+        // Nuevo: posición proveniente de ArUco vía Protobject.Core.send
+        if (
+          data &&
+          data.type === "position" &&
+          data.lat !== undefined &&
+          data.lon !== undefined
+        ) {
+          applyArUcoPosition(data.lat, data.lon);
+          return; // ya procesado
+        }
+
+        // Comportamientos existentes
+        if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
+        if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
+        if (data.h !== undefined || data.v !== undefined)
+          updateStellariumView(data); // Movimiento
+        if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
       });
 
       function toggleEyepieceOverlay() {
@@ -146,18 +213,7 @@
         }
       }
 
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
-        if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
-        if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
-        if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
-      });
-
-      let flatpickrSyncInterval = null;
-      let activeFlatpickr = null;
-      let isUserTouchingCalendar = false;
-      let lastManualChange = 0;
-
+      // Si al montar el engine había una posición pendiente, aplícala
       StelWebEngine({
         wasmFile:
           "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
@@ -165,6 +221,15 @@
         onReady(stel) {
           engine = stel;
           const core = stel.core;
+
+          // Aplicación del pending ArUco position si existe
+          if (pendingArUcoPosition) {
+            applyArUcoPosition(
+              pendingArUcoPosition.lat,
+              pendingArUcoPosition.lon
+            );
+            pendingArUcoPosition = null;
+          }
 
           core.observer.utc = toJulianDateIso("2024-06-27T23:15:00Z");
           core.observer.latitude = -33.4489 * (Math.PI / 180);
@@ -261,7 +326,7 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             if (label === "Pollution") {
-              btn.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+              btn.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
               btn.onclick = () => {
                 let overlay = document.getElementById("pollution-overlay");
                 const isActive = btn.classList.toggle("active");
@@ -385,12 +450,13 @@
           }, 30);
         }
 
-        updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+        updateSpeedButtons(); // ← Aggiorna subito la UI dei bottones
       }
-    </script>
-    <script>
-      let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
 
+      // ---------------------------
+      // Gestión de ciudades (se mantiene)
+      // ---------------------------
+      let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
       let cities = {};
 
       fetch("data/cities.json")
@@ -403,31 +469,34 @@
         .then((data) => {
           cities = data;
           console.log("Ciudades cargadas:", cities);
-
           console.log("Datos de la ciudad seleccionada:", cities[selectedCity]);
         })
         .catch((error) => {
           console.error("Error al cargar el JSON:", error);
         });
 
+      // ---------------------------
+      // showLocationSelector: CAUTELA — modal de selección original comentado y reemplazado por mensaje informativo
+      // ---------------------------
       function showLocationSelector() {
-        const modal = document.getElementById("modal-container");
-        const locationBtn = document.querySelector(
-          '.control-button[onclick="showLocationSelector()"]'
-        );
+        /* --- Código original comentado (no borrado) ---
+    const modal = document.getElementById("modal-container");
+    const locationBtn = document.querySelector(
+      '.control-button[onclick="showLocationSelector()"]'
+    );
 
-        const isVisible = modal.style.display === "block";
+    const isVisible = modal.style.display === "block";
 
-        if (isVisible) {
-          modal.style.display = "none";
-          locationBtn.classList.remove("active");
-          return;
-        }
+    if (isVisible) {
+      modal.style.display = "none";
+      locationBtn.classList.remove("active");
+      return;
+    }
 
-        let buttonsHtml = "<h3>Select Location</h3>";
-        for (const city in cities) {
-          const isSelected = city === selectedCity;
-          buttonsHtml += `
+    let buttonsHtml = "<h3>Select Location</h3>";
+    for (const city in cities) {
+      const isSelected = city === selectedCity;
+      buttonsHtml += `
       <button class="control-button" style="
         display: block;
         width: 100%;
@@ -437,15 +506,34 @@
       " onclick="applyLocation('${city}')">
         ${city}
       </button>`;
-        }
+    }
 
-        modal.innerHTML = buttonsHtml;
+    modal.innerHTML = buttonsHtml;
+    modal.style.display = "block";
+    locationBtn.classList.add("active");
+    --- fin código original --- */
+
+        // Nueva implementación mínima: informar que la ubicación la controla ArUco
+        const modal = document.getElementById("modal-container");
+        const locationBtn = document.querySelector(
+          '.control-button[onclick="showLocationSelector()"]'
+        );
+        const isVisible = modal.style.display === "block";
+        if (isVisible) {
+          modal.style.display = "none";
+          locationBtn.classList.remove("active");
+          return;
+        }
+        modal.innerHTML = `
+      <div style="padding:12px;color:#fff;font-size:14px;">
+        <strong>Location source:</strong> ArUco tracker.<br>
+        Move the telescope on the physical map to change observer position.
+      </div>`;
         modal.style.display = "block";
         locationBtn.classList.add("active");
       }
 
-      // Light pollution section
-
+      // Light pollution section (se mantiene)
       let pollutionOverlayTimer = null;
 
       function updatePollutionOverlay(forceHide = false) {
@@ -463,33 +551,23 @@
 
         // Fondo visual del overlay
         overlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
-          rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
-          rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
-          rgba(100,50,25,${0.000 + 0.0035 * (pollution - 1)}) 65%, 
-          rgba(100,50,25,${0.000 + 0.001 * (pollution - 1)}) 80%, 
-          rgba(0,0,0,0.0) 100%)`;
+      rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
+      rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
+      rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
+      rgba(100,50,25,${0.0 + 0.0035 * (pollution - 1)}) 65%, 
+      rgba(100,50,25,${0.0 + 0.001 * (pollution - 1)}) 80%, 
+      rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
         if (engine.core) {
           engine.core.bortle_index = pollution; // de 1 a 9
           engine.core.milkyway.visible = pollution < 6;
-
-          // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
           engine.core.display_limit_mag = 7.5 - 0.8 * (pollution - 1);
-          
-          // Escala relativa de estrellas: reducir progresivamente
-          //engine.core.star_relative_scale = Math.max(0.3, 1.2 - 0.1 * pollution);
-          
-          // Escala lineal: reducir más agresivamente en ciudades
-          
-          //engine.core.star_linear_scale = Math.max(0.2, 1.0 - 0.08 * pollution);
         }
       }
 
       function setSelectedCityWithPollution(city) {
         selectedCity = city;
-        // Update overlay if active
         const overlay = document.getElementById("pollution-overlay");
         if (overlay && overlay.style.display !== "none") {
           updatePollutionOverlay();
