@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Aruco Tracking Control</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Aruco Tracking — Estable</title>
     <style>
       body {
         margin: 0;
-        background: black;
-        color: white;
+        background: #000;
+        color: #fff;
         font-family: sans-serif;
         text-align: center;
       }
@@ -17,13 +17,12 @@
         bottom: 0;
         left: 0;
         width: 100%;
-        max-height: 100px;
-        overflow-y: auto;
-        background: rgba(0, 0, 0, 0.5);
-        color: #fff;
+        max-height: 140px;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.6);
         font-family: monospace;
         font-size: 0.9em;
-        padding: 10px;
+        padding: 8px;
         box-sizing: border-box;
         text-align: left;
         z-index: 1000;
@@ -41,9 +40,9 @@
         margin: 10px 0;
       }
       button {
-        font-size: 1.2em;
-        margin: 0 10px;
-        padding: 0.5em 1em;
+        font-size: 1.05rem;
+        margin: 0 8px;
+        padding: 0.4rem 0.8rem;
         cursor: pointer;
       }
     </style>
@@ -53,35 +52,44 @@
       <button id="startBtn">Start Detection</button>
       <button id="stopBtn" disabled>Stop Detection</button>
     </div>
-
     <div id="log"></div>
 
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
+    <!-- numeric.js para resolver sistemas lineales -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
 
     <script>
       const startBtn = document.getElementById("startBtn");
       const stopBtn = document.getElementById("stopBtn");
       const logDiv = document.getElementById("log");
 
-      // IDs marcadores esquinas y telescopio
       const cornerMarkers = {
-        topLeft: 0,
-        topRight: 1,
-        bottomLeft: 2,
-        bottomRight: 3,
-      };
-      const telescopeMarker = 10;
-
+        topLeft: 4,
+        topRight: 5,
+        bottomLeft: 6,
+        bottomRight: 7,
+      }; // Ajusta IDs si hace falta
+      const telescopeMarker = 9; // Ajusta según tu etiqueta
       let detectionActive = false;
       let cameraStarted = false;
 
-      function showMessage(message, type = "info") {
-        const entry = document.createElement("div");
-        entry.className = type;
-        entry.textContent = `[${type.toUpperCase()}] ${message}`;
-        logDiv.appendChild(entry);
+      // Parámetros
+      const N = 5; // frames para suavizar
+      const MIN_DELTA = 0.0008; // umbral de cambio en grados (ajusta)
+      const REPROJ_THRESHOLD = 0.04; // en coordenadas normalizadas [0..1]
+      const MIN_AREA = 2000; // área mínima de la cuadrilátero en píxeles (ajusta)
+
+      let coordBuffer = [];
+      let lastSent = null;
+
+      function showMessage(msg, type = "info") {
+        const d = document.createElement("div");
+        d.className = type;
+        d.textContent = `[${type.toUpperCase()}] ${msg}`;
+        logDiv.appendChild(d);
         logDiv.scrollTop = logDiv.scrollHeight;
+        console.log(msg);
       }
 
       function startCamera() {
@@ -98,99 +106,246 @@
             height: window.innerHeight,
           });
           cameraStarted = true;
-          showMessage("Cámara iniciada correctamente.", "info");
-        } catch (error) {
-          showMessage("Error al iniciar la cámara: " + error.message, "error");
+          showMessage("Cámara iniciada.", "info");
+        } catch (e) {
+          showMessage("Error iniciando cámara: " + e.message, "error");
         }
       }
-
       function startDetection() {
-        if (!cameraStarted) {
-          startCamera();
-        }
+        if (!cameraStarted) startCamera();
         detectionActive = true;
-        showMessage("Detección activada.", "info");
         startBtn.disabled = true;
         stopBtn.disabled = false;
+        showMessage("Detección activada", "info");
       }
-
       function stopDetection() {
         detectionActive = false;
-        showMessage("Detección detenida.", "info");
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        // NO detenemos la cámara ni ocultamos la vista previa para que siga activa
+        showMessage("Detección detenida.", "info");
       }
 
-      // Escuchar datos de marcadores y procesar solo si detección está activa
+      // Ordena 4 puntos en [tl,tr,br,bl] de forma robusta (usa coordenadas en píxeles)
+      function orderCorners(pts) {
+        // pts: array de {x,y}
+        const sorted = pts.slice().sort((a, b) => a.y - b.y); // ascendente y
+        const top = sorted.slice(0, 2).sort((a, b) => a.x - b.x);
+        const bottom = sorted.slice(2, 4).sort((a, b) => a.x - b.x);
+        return [top[0], top[1], bottom[1], bottom[0]]; // tl, tr, br, bl
+      }
+
+      // Resuelve homografía poniendo h33 = 1 y resolviendo 8x8 (más estable y evita SVD mal usada)
+      function computeHomography(srcPts, dstPts) {
+        // srcPts, dstPts arrays de 4 [x,y] (dst en normalized coords)
+        const A = [],
+          b = [];
+        for (let i = 0; i < 4; i++) {
+          const x = srcPts[i][0],
+            y = srcPts[i][1];
+          const u = dstPts[i][0],
+            v = dstPts[i][1];
+          A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
+          b.push(u);
+          A.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
+          b.push(v);
+        }
+        try {
+          const h8 = numeric.solve(A, b); // devuelve 8 valores
+          return [
+            [h8[0], h8[1], h8[2]],
+            [h8[3], h8[4], h8[5]],
+            [h8[6], h8[7], 1],
+          ];
+        } catch (e) {
+          showMessage("Error resolviendo homografía: " + e.message, "warn");
+          return null;
+        }
+      }
+
+      function applyHomography(H, x, y) {
+        const denom = H[2][0] * x + H[2][1] * y + H[2][2];
+        if (!isFinite(denom) || Math.abs(denom) < 1e-8) return null;
+        const X = (H[0][0] * x + H[0][1] * y + H[0][2]) / denom;
+        const Y = (H[1][0] * x + H[1][1] * y + H[1][2]) / denom;
+        return [X, Y];
+      }
+
+      function reprojectionError(H, srcPts, dstPts) {
+        let sum = 0;
+        for (let i = 0; i < 4; i++) {
+          const p = applyHomography(H, srcPts[i][0], srcPts[i][1]);
+          if (p === null) return Infinity;
+          const dx = p[0] - dstPts[i][0];
+          const dy = p[1] - dstPts[i][1];
+          sum += Math.sqrt(dx * dx + dy * dy);
+        }
+        return sum / 4.0; // mean error
+      }
+
+      function median(arr) {
+        const s = arr.slice().sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+      }
+
+      // Callback principal
       Protobject.Aruco.onData((data) => {
         if (!detectionActive) return;
-
         try {
-          const detectedIDs = Object.keys(data).map((id) => parseInt(id));
-          showMessage(
-            "Marcadores detectados: " + detectedIDs.join(", "),
-            "info"
-          );
+          const ids = Object.keys(data).map((id) => parseInt(id));
+          showMessage("Marcadores detectados: " + ids.join(", "), "info");
 
-          const expectedMarkers = [
+          const expected = [
             cornerMarkers.topLeft,
             cornerMarkers.topRight,
             cornerMarkers.bottomLeft,
             cornerMarkers.bottomRight,
             telescopeMarker,
           ];
+          const missing = expected.filter((id) => !ids.includes(id));
+          if (missing.length) {
+            showMessage("Faltan ids: " + missing.join(", "), "warn");
+            return;
+          }
 
-          const missingMarkers = expectedMarkers.filter(
-            (id) => !detectedIDs.includes(id)
-          );
+          // extraer posiciones
+          const pTL = data[cornerMarkers.topLeft].position;
+          const pTR = data[cornerMarkers.topRight].position;
+          const pBL = data[cornerMarkers.bottomLeft].position;
+          const pBR = data[cornerMarkers.bottomRight].position;
+          const pT = data[telescopeMarker].position;
 
-          if (missingMarkers.length > 0) {
+          // validación básica
+          const pts = [
+            { x: pTL.x, y: pTL.y },
+            { x: pTR.x, y: pTR.y },
+            { x: pBR.x, y: pBR.y },
+            { x: pBL.x, y: pBL.y },
+          ];
+          if (pts.some((p) => !isFinite(p.x) || !isFinite(p.y))) {
+            showMessage("Posiciones inválidas en esquinas", "error");
+            return;
+          }
+
+          // área aproximada del bounding box (detecta si A4 muy pequeño)
+          const minX = Math.min(...pts.map((p) => p.x)),
+            maxX = Math.max(...pts.map((p) => p.x));
+          const minY = Math.min(...pts.map((p) => p.y)),
+            maxY = Math.max(...pts.map((p) => p.y));
+          const area = (maxX - minX) * (maxY - minY);
+          if (area < MIN_AREA) {
             showMessage(
-              "Marcadores faltantes: " + missingMarkers.join(", "),
+              "Área del mapa muy pequeña (" +
+                Math.round(area) +
+                "). Acércate o aumenta resolución.",
+              "warn"
+            );
+          }
+
+          // ordenar esquinas robustamente (canvas coords)
+          const ordered = orderCorners(pts); // devuelve [tl,tr,br,bl]
+          const srcPts = ordered.map((p) => [p.x, p.y]);
+          const dstPts = [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1],
+          ];
+
+          const H = computeHomography(srcPts, dstPts);
+          if (!H) {
+            showMessage("Homografía no válida, saltando frame.", "warn");
+            return;
+          }
+
+          // comprobar reproyección
+          const reproj = reprojectionError(H, srcPts, dstPts);
+          if (reproj > REPROJ_THRESHOLD) {
+            showMessage(
+              "Reprojection error alto: " +
+                reproj.toFixed(4) +
+                " (umbral " +
+                REPROJ_THRESHOLD +
+                ") — frame rechazado",
               "warn"
             );
             return;
           }
 
-          showMessage("Todos los marcadores detectados correctamente.", "info");
+          // aplicar homografía al marcador del telescopio
+          const mapped = applyHomography(H, pT.x, pT.y);
+          if (!mapped) {
+            showMessage("Denominador homografía ≅ 0 — frame rechazado", "warn");
+            return;
+          }
+          let normX = mapped[0],
+            normY = mapped[1];
 
-          const tl = data[cornerMarkers.topLeft].position;
-          const tr = data[cornerMarkers.topRight].position;
-          const bl = data[cornerMarkers.bottomLeft].position;
-          const br = data[cornerMarkers.bottomRight].position;
-          const tPos = data[telescopeMarker].position;
-
-          const mapWidth = tr.x - tl.x;
-          const mapHeight = bl.y - tl.y;
-
-          if (mapWidth === 0 || mapHeight === 0) {
+          // si valores locos, rechazar
+          if (
+            !isFinite(normX) ||
+            !isFinite(normY) ||
+            Math.abs(normX) > 100 ||
+            Math.abs(normY) > 100
+          ) {
             showMessage(
-              "Dimensiones inválidas del mapa (ancho o alto es 0).",
+              "Coordenadas normalizadas inválidas: " + normX + "," + normY,
               "error"
             );
             return;
           }
 
-          const normX = (tPos.x - tl.x) / mapWidth;
-          const normY = (tPos.y - tl.y) / mapHeight;
+          // clip a [ -0.2, 1.2 ] para evitar saltos extremos (ajusta si quieres)
+          normX = Math.max(-0.2, Math.min(1.2, normX));
+          normY = Math.max(-0.2, Math.min(1.2, normY));
 
+          // convertir a lat/lon
           const lon = -180 + normX * 360;
           const lat = 90 - normY * 180;
 
+          // buffer y filtro por mediana
+          coordBuffer.push({ lat, lon });
+          if (coordBuffer.length > N) coordBuffer.shift();
+
+          const medLat = median(coordBuffer.map((c) => c.lat));
+          const medLon = median(coordBuffer.map((c) => c.lon));
+
+          // no enviar si cambio pequeño
+          if (
+            lastSent &&
+            Math.abs(medLat - lastSent.lat) < MIN_DELTA &&
+            Math.abs(medLon - lastSent.lon) < MIN_DELTA
+          ) {
+            showMessage(
+              "Cambio mínimo; no se envía (Δ < " + MIN_DELTA + ")",
+              "info"
+            );
+            return;
+          }
+
+          // evita envíos con valores absurdos
+          if (Math.abs(medLat) > 1000 || Math.abs(medLon) > 1000) {
+            showMessage(
+              "Valores fuera de rango: lat=" +
+                medLat.toFixed(3) +
+                ", lon=" +
+                medLon.toFixed(3),
+              "warn"
+            );
+            return;
+          }
+
+          lastSent = { lat: medLat, lon: medLon };
           showMessage(
-            `Coordenadas enviadas: lat=${lat.toFixed(4)}, lon=${lon.toFixed(
-              4
-            )}`,
+            `Enviando: lat=${medLat.toFixed(5)}, lon=${medLon.toFixed(
+              5
+            )} (reproj=${reproj.toFixed(4)})`,
             "info"
           );
-
-          Protobject.Core.send({ h: lon, v: lat }).to("index.html");
-        } catch (error) {
-          showMessage(
-            "Error al procesar datos de Aruco: " + error.message,
-            "error"
-          );
+          Protobject.Core.send({ h: medLon, v: medLat }).to("index.html");
+        } catch (err) {
+          showMessage("Error procesando frame: " + err.message, "error");
+          console.error(err);
         }
       });
 
