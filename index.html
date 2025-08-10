@@ -9,7 +9,7 @@
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
     <link rel="stylesheet" href="stellarium.styles.css" />
-    
+
     <style>
       #modal-container::-webkit-scrollbar {
         display: none;
@@ -46,7 +46,7 @@
 
       let pollutionOverlay = null;
     </script>
-    
+
     <script>
       const BUTTONS = [
         {
@@ -191,10 +191,11 @@
             key: "gaia",
           });
 
-          core.skycultures.addDataSource({
-            url: baseUrl + "skycultures/v3/western",
-            key: "western",
-          });
+          // core.skycultures.addDataSource({
+          //   url: baseUrl + "skycultures/v3/western",
+          //   key: "western",
+          // });
+
           core.dsos.addDataSource({
             url:
               baseUrl +
@@ -220,10 +221,10 @@
             url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
             key: "mpc_comets",
           });
-          core.satellites.addDataSource({
-            url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-            key: "jsonl/sat",
-          });
+          // core.satellites.addDataSource({
+          //   url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+          //   key: "jsonl/sat",
+          // });
 
           [
             "moon",
@@ -247,6 +248,20 @@
             });
           });
 
+          setTimeout(() => {
+            if (core.planets.hints_visible) {
+              core.planets.hints_visible = false;
+              core.dsos.hints_visible = false;
+              core.minor_planets.hints_visible = false; // Vesta de mierda
+              // core.dss.hints_visible = false;
+              // core.milkyway.hints_visible = false;
+              // core.stars.hints_visible = false;
+              // core.comets.hints_visible = false;
+
+              core.cardinals.visible = false;
+            }
+          }, 500);
+
           const footer = document.getElementById("footer-buttons");
           BUTTONS.forEach(({ label, img, path, attr }) => {
             const btn = document.createElement("div");
@@ -254,7 +269,7 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             if (label === "Pollution") {
-              btn.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+              btn.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
               btn.onclick = () => {
                 let overlay = document.getElementById("pollution-overlay");
                 const isActive = btn.classList.toggle("active");
@@ -401,8 +416,10 @@
 
       function setDatetimeInterval() {
         datetimeInterval = setInterval(() => {
-          Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to("telescope.html")
-        }, 300)
+          Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to(
+            "telescope.html"
+          );
+        }, 300);
       }
 
       function clearDatetimeInterval() {
@@ -410,7 +427,7 @@
       }
 
       function applyPollution(bortle) {
-        updatePollutionOverlay({ bortle })
+        updatePollutionOverlay({ bortle });
       }
     </script>
     <script>
@@ -457,19 +474,20 @@
       let pollutionOverlayTimer = null;
 
       function updatePollutionOverlay({ forceHide = false, bortle }) {
-        console.log('function call')
+        console.log("function call");
         // const overlay = document.getElementById("pollution-overlay");
         // if (!overlay) return;
         if (!pollutionOverlay) return;
 
-        console.log('setting city')
+        console.log("setting city");
         const city = cities[selectedCity];
-        console.log('city:', city);
-        const pollution =
-        bortle 
-        ? bortle
-        : city && city.contaminacion !== undefined ? city.contaminacion : 1;
-        console.log('pollution:', pollution);
+        console.log("city:", city);
+        const pollution = bortle
+          ? bortle
+          : city && city.contaminacion !== undefined
+          ? city.contaminacion
+          : 1;
+        console.log("pollution:", pollution);
 
         // Mostrar overlay
         pollutionOverlay.style.transition = "opacity 1s";
@@ -481,8 +499,8 @@
           rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
           rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
           rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
-          rgba(100,50,25,${0.000 + 0.0035 * (pollution - 1)}) 65%, 
-          rgba(100,50,25,${0.000 + 0.001 * (pollution - 1)}) 80%, 
+          rgba(100,50,25,${0.0 + 0.0035 * (pollution - 1)}) 65%, 
+          rgba(100,50,25,${0.0 + 0.001 * (pollution - 1)}) 80%, 
           rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
@@ -492,12 +510,12 @@
 
           // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
           engine.core.display_limit_mag = 7.5 - 0.8 * (pollution - 1);
-          
+
           // Escala relativa de estrellas: reducir progresivamente
           //engine.core.star_relative_scale = Math.max(0.3, 1.2 - 0.1 * pollution);
-          
+
           // Escala lineal: reducir más agresivamente en ciudades
-          
+
           //engine.core.star_linear_scale = Math.max(0.2, 1.0 - 0.08 * pollution);
         }
       }
@@ -506,27 +524,27 @@
         selectedCity = city;
         // Update overlay if active
         // const overlay = document.getElementById("pollution-overlay");
-        console.log('city selected:', selectedCity);
+        console.log("city selected:", selectedCity);
         if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
-          console.log('first if');
+          console.log("first if");
           updatePollutionOverlay({});
         }
       }
 
       async function applyLocation({ cityName, lat, lon, elev }) {
-        const data = cityName 
+        const data = cityName
           ? cities[cityName]
-          : (lat || lat == 0) && (lon || lon == 0) 
-            ? { lat, lon, elev }
-            : null;
+          : (lat || lat == 0) && (lon || lon == 0)
+          ? { lat, lon, elev }
+          : null;
         if (!data || !engine) return;
 
-        const latLon = {lat: data.lat, lng: data.lon};
+        const latLon = { lat: data.lat, lng: data.lon };
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName || 'Custom';
+        engine.core.observer.name = cityName || "Custom";
 
         // Apply this only to custom locations
         const bortle_index = await getBortleIndex(latLon);
@@ -538,7 +556,7 @@
         engine.core.observer.pitch = 0;
         engine.core.observer.yaw = 0;
 
-        setSelectedCityWithPollution(cityName || 'Custom'); // APLICAR POLLUTION PERSONALIZADA
+        setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
         // showLocationSelector();
       }
 
