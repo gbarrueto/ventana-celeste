@@ -9,21 +9,12 @@
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
     />
     <link rel="stylesheet" href="stellarium.styles.css" />
-
-    <style>
-      #modal-container::-webkit-scrollbar {
-        display: none;
-      }
-    </style>
   </head>
   <body>
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
-    <script src="util/lp/pako_inflate.min.js"></script>
-    <script src="util/lp/getLpFromCoords.js"></script>
-    <script src="data/locations/cities.js"></script>
 
     <div class="topbar">
       <span class="title">Stellarium<sup>Web</sup></span>
@@ -45,6 +36,7 @@
       let datetimeInterval = null;
 
       let pollutionOverlay = null;
+
     </script>
 
     <script>
@@ -146,10 +138,10 @@
         }
       }
 
-      let flatpickrSyncInterval = null;
-      let activeFlatpickr = null;
-      let isUserTouchingCalendar = false;
-      let lastManualChange = 0;
+      // let flatpickrSyncInterval = null;
+      // let activeFlatpickr = null;
+      // let isUserTouchingCalendar = false;
+      // let lastManualChange = 0;
 
       StelWebEngine({
         wasmFile:
@@ -164,6 +156,7 @@
           core.observer.longitude = -70.6693 * (Math.PI / 180);
           core.observer.elevation = 570;
           core.observer.name = "Santiago, Chile";
+          core.bortle_index = 9;
 
           const baseUrl =
             "https://telescope.alessiobellino.com/stardata/cache/";
@@ -268,60 +261,60 @@
             btn.className = "stel-button";
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
-            if (label === "Pollution") {
-              btn.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-              btn.onclick = () => {
-                let overlay = document.getElementById("pollution-overlay");
-                const isActive = btn.classList.toggle("active");
-                if (isActive) {
-                  if (!overlay) {
-                    overlay = document.createElement("div");
-                    overlay.id = "pollution-overlay";
-                    overlay.style.position = "absolute";
-                    overlay.style.top = 0;
-                    overlay.style.left = 0;
-                    overlay.style.width = "100%";
-                    overlay.style.height = "100%";
-                    overlay.style.pointerEvents = "none";
-                    overlay.style.zIndex = 5;
-                    const stel = document.getElementById("stel");
-                    stel.appendChild(overlay);
-                  }
-                  overlay.style.display = "block";
-                  updatePollutionOverlay();
-                  if (pollutionOverlayTimer)
-                    clearInterval(pollutionOverlayTimer);
-                  pollutionOverlayTimer = setInterval(
-                    () => updatePollutionOverlay(),
-                    1000
-                  );
-                } else {
-                  if (overlay) {
-                    overlay.style.opacity = 0;
-                    setTimeout(() => {
-                      overlay.style.display = "none";
-                    }, 1000);
-                  }
-                  if (pollutionOverlayTimer) {
-                    clearInterval(pollutionOverlayTimer);
-                    pollutionOverlayTimer = null;
-                  }
-                  if (overlay) {
-                    overlay.style.opacity = 0;
-                    setTimeout(() => {
-                      overlay.style.display = "none";
-                    }, 1000);
-                  }
-
-                  if (engine.core) {
-                    engine.core.bortle_index = 1;
-                    engine.core.display_limit_mag = 7.5;
-                    engine.core.star_relative_scale = 1.1;
-                    engine.core.star_linear_scale = 0.8;
-                  }
-                }
-              };
-            } else {
+            //if (label === "Pollution") {
+            //  btn.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+            //  btn.onclick = () => {
+            //    let overlay = document.getElementById("pollution-overlay");
+            //    const isActive = btn.classList.toggle("active");
+            //    if (isActive) {
+            //      if (!overlay) {
+            //        overlay = document.createElement("div");
+            //        overlay.id = "pollution-overlay";
+            //        overlay.style.position = "absolute";
+            //        overlay.style.top = 0;
+            //        overlay.style.left = 0;
+            //        overlay.style.width = "100%";
+            //        overlay.style.height = "100%";
+            //        overlay.style.pointerEvents = "none";
+            //        overlay.style.zIndex = 5;
+            //        const stel = document.getElementById("stel");
+            //        stel.appendChild(overlay);
+            //      }
+            //      overlay.style.display = "block";
+            //      updatePollutionOverlay();
+            //      if (pollutionOverlayTimer)
+            //        clearInterval(pollutionOverlayTimer);
+            //      pollutionOverlayTimer = setInterval(
+            //        () => updatePollutionOverlay(),
+            //        1000
+            //      );
+            //    } else {
+            //      if (overlay) {
+            //        overlay.style.opacity = 0;
+            //        setTimeout(() => {
+            //          overlay.style.display = "none";
+            //        }, 1000);
+            //      }
+            //      if (pollutionOverlayTimer) {
+            //        clearInterval(pollutionOverlayTimer);
+            //        pollutionOverlayTimer = null;
+            //      }
+            //      if (overlay) {
+            //        overlay.style.opacity = 0;
+            //        setTimeout(() => {
+            //          overlay.style.display = "none";
+            //        }, 1000);
+            //      }
+//
+            //      if (engine.core) {
+            //        engine.core.bortle_index = 1;
+            //        engine.core.display_limit_mag = 7.5;
+            //        engine.core.star_relative_scale = 1.1;
+            //        engine.core.star_linear_scale = 0.8;
+            //      }
+            //    }
+            //  };
+            //} else {
               btn.onclick = () => {
                 const obj = path.split(".").reduce((o, k) => o && o[k], core);
                 if (obj) {
@@ -329,9 +322,11 @@
                   btn.classList.toggle("active", obj[attr]);
                 }
               };
-            }
+            //}
             footer.appendChild(btn);
           });
+
+          // On object click listener
 
           stel.change((obj, attr) => {
             if (attr === "hovered") return;
@@ -431,85 +426,83 @@
       }
     </script>
     <script>
-      let selectedCity = "Santiago"; // valor por defecto (Santiago, Chile)
 
-      let cities = cities_data;
-
-      function showLocationSelector() {
-        const modal = document.getElementById("modal-container");
-        const locationBtn = document.querySelector(
-          '.control-button[onclick="showLocationSelector()"]'
-        );
-
-        const isVisible = modal.style.display === "block";
-
-        if (isVisible) {
-          modal.style.display = "none";
-          locationBtn.classList.remove("active");
-          return;
-        }
-
-        let buttonsHtml = "<h3>Select Location</h3>";
-        for (const city in cities) {
-          const isSelected = city === selectedCity;
-          buttonsHtml += `
-      <button class="control-button" style="
-        display: block;
-        width: 100%;
-        margin-bottom: 0.5rem;
-        background-color: ${isSelected ? "#4caf50" : "rgba(255,255,255,0.1)"};
-        font-weight: ${isSelected ? "bold" : "normal"};
-      " onclick="applyLocation('${city}')">
-        ${city}
-      </button>`;
-        }
-
-        modal.innerHTML = buttonsHtml;
-        modal.style.display = "block";
-        locationBtn.classList.add("active");
-      }
+// 
+      // function showLocationSelector() {
+      //   const modal = document.getElementById("modal-container");
+      //   const locationBtn = document.querySelector(
+      //     '.control-button[onclick="showLocationSelector()"]'
+      //   );
+// 
+      //   const isVisible = modal.style.display === "block";
+// 
+      //   if (isVisible) {
+      //     modal.style.display = "none";
+      //     locationBtn.classList.remove("active");
+      //     return;
+      //   }
+// 
+      //   let buttonsHtml = "<h3>Select Location</h3>";
+      //   for (const city in cities) {
+      //     const isSelected = city === selectedCity;
+      //     buttonsHtml += `
+      // <button class="control-button" style="
+      //   display: block;
+      //   width: 100%;
+      //   margin-bottom: 0.5rem;
+      //   background-color: ${isSelected ? "#4caf50" : "rgba(255,255,255,0.1)"};
+      //   font-weight: ${isSelected ? "bold" : "normal"};
+      // " onclick="applyLocation('${city}')">
+      //   ${city}
+      // </button>`;
+      //   }
+// 
+      //   modal.innerHTML = buttonsHtml;
+      //   modal.style.display = "block";
+      //   locationBtn.classList.add("active");
+      // }
 
       // Light pollution section
 
       let pollutionOverlayTimer = null;
 
       function updatePollutionOverlay({ forceHide = false, bortle }) {
-        console.log("function call");
+        // console.log("function call");
         // const overlay = document.getElementById("pollution-overlay");
         // if (!overlay) return;
         if (!pollutionOverlay) return;
 
-        console.log("setting city");
-        const city = cities[selectedCity];
-        console.log("city:", city);
-        const pollution = bortle
-          ? bortle
-          : city && city.contaminacion !== undefined
-          ? city.contaminacion
-          : 1;
-        console.log("pollution:", pollution);
+        // console.log("setting city");
+        //const city = cities[selectedCity];
+        // console.log("city:", city);
+        // const pollution = bortle
+        //   ? bortle
+        //   : city && city.contaminacion !== undefined
+        //   ? city.contaminacion
+        //   : 1;
+        // console.log("pollution:", pollution);
 
         // Mostrar overlay
         pollutionOverlay.style.transition = "opacity 1s";
-        pollutionOverlay.style.opacity = 0.1 * pollution;
+        pollutionOverlay.style.opacity = 0.1 * bortle;
         pollutionOverlay.style.display = "block";
 
         // Fondo visual del overlay
         pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
-          rgba(255,200,100,${0.02 + 0.06 * (pollution - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (pollution - 1)}) 20%, 
-          rgba(200,100,50,${0.01 + 0.015 * (pollution - 1)}) 50%,
-          rgba(100,50,25,${0.0 + 0.0035 * (pollution - 1)}) 65%, 
-          rgba(100,50,25,${0.0 + 0.001 * (pollution - 1)}) 80%, 
+          rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
+          rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
+          rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
+          rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
+          rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
           rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
         if (engine.core) {
-          engine.core.bortle_index = pollution; // de 1 a 9
-          engine.core.milkyway.visible = pollution < 6;
+          engine.core.bortle_index = bortle; // de 1 a 9
+          engine.core.milkyway.visible = bortle < 6;
 
           // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
-          engine.core.display_limit_mag = 7.5 - 0.8 * (pollution - 1);
+          engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
 
           // Escala relativa de estrellas: reducir progresivamente
           //engine.core.star_relative_scale = Math.max(0.3, 1.2 - 0.1 * pollution);
@@ -520,62 +513,76 @@
         }
       }
 
-      function setSelectedCityWithPollution(city) {
-        selectedCity = city;
-        // Update overlay if active
-        // const overlay = document.getElementById("pollution-overlay");
-        console.log("city selected:", selectedCity);
-        if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
-          console.log("first if");
-          updatePollutionOverlay({});
-        }
-      }
+      // function setSelectedCityWithPollution(city) {
+      //   selectedCity = city;
+      //   // Update overlay if active
+      //   // const overlay = document.getElementById("pollution-overlay");
+      //   //console.log("city selected:", selectedCity);
+      //   if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
+      //     //console.log("first if");
+      //     updatePollutionOverlay({});
+      //   }
+      // }
 
-      async function applyLocation({ cityName, lat, lon, elev }) {
-        const data = cityName
-          ? cities[cityName]
-          : (lat || lat == 0) && (lon || lon == 0)
-          ? { lat, lon, elev }
-          : null;
-        if (!data || !engine) return;
+      async function applyLocation({ cityName = "Custom", lat = 0, lon = 0, elev = 0, bortle_index = 0 }) {
 
-        const latLon = { lat: data.lat, lng: data.lon };
+        // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+
+        const data = {
+          cityName,
+          lat: lat,
+          lon: lon,
+          elev: elev,
+          contaminacion: bortle_index,
+        };
+        
+        if (!engine) return;
+
+        // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
         engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName || "Custom";
+        engine.core.observer.name = cityName;
 
-        // Apply this only to custom locations
-        const bortle_index = await getBortleIndex(latLon);
+        // Set LP to new location
 
-        console.log("Bortle index for", cityName, ":", bortle_index);
+        const latLon = { lat: data.lat, lng: data.lon };
+        // const bortle_index = data.contaminacion || await getBortleIndex(latLon);
+
+        applyPollution(bortle_index);
+
+        //console.log("Bortle index for", cityName, ":", bortle_index);
 
         const localTime = new Date();
         engine.core.observer.utc = toJulianDateIso(localTime.toISOString());
-        engine.core.observer.pitch = 0;
-        engine.core.observer.yaw = 0;
+        //engine.core.observer.pitch = 0;
+        //engine.core.observer.yaw = 0;
 
-        setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
+        
+        //setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
+
+        // updatePollutionOverlay
+
         // showLocationSelector();
       }
 
-      function updateSpeedButtons() {
-        document
-          .querySelectorAll("#modal-container .control-button")
-          .forEach((btn) => {
-            const text = btn.textContent.trim();
-
-            const match =
-              (timeSpeed === 0 && text.startsWith("🟥")) ||
-              (timeSpeed === 1 && text.startsWith("🕒")) ||
-              (timeSpeed === 10 && text.includes("10x")) ||
-              (timeSpeed === 60 && text.includes("60x")) ||
-              (timeSpeed === 3600 && text.includes("3600x"));
-
-            btn.classList.toggle("active", match);
-          });
-      }
+      // function updateSpeedButtons() {
+      //   document
+      //     .querySelectorAll("#modal-container .control-button")
+      //     .forEach((btn) => {
+      //       const text = btn.textContent.trim();
+// 
+      //       const match =
+      //         (timeSpeed === 0 && text.startsWith("🟥")) ||
+      //         (timeSpeed === 1 && text.startsWith("🕒")) ||
+      //         (timeSpeed === 10 && text.includes("10x")) ||
+      //         (timeSpeed === 60 && text.includes("60x")) ||
+      //         (timeSpeed === 3600 && text.includes("3600x"));
+// 
+      //       btn.classList.toggle("active", match);
+      //     });
+      // }
 
       function fromJulianDateToDate(jd) {
         return new Date((jd - 2440587.5) * 86400000);
