@@ -14,7 +14,6 @@ function displayLocation(e) {
         currentLon = data.lon;
         currentElev = data.elev;
       }
-
       buttonsHtml += `
       <button class="control-button ${isSelected ? 'active' : ''}"
         onclick="applyLocation({ e: event, cityName: '${city}' }); updateLocationInputValues('${city}')">
@@ -73,7 +72,7 @@ function displayLocation(e) {
   }
 }
 
-function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
+async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
   if (e) {
     const activeButton = document.querySelector(
       '.control-button.active'
@@ -85,14 +84,28 @@ function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
 
   selectedCity = cityName;
 
-  pollution = cities[cityName] ? cities[cityName].contaminacion : 1;
+  if (cities[cityName]) {
+    lon = cities[cityName].lon;
+    lat = cities[cityName].lat;
+    elev = cities[cityName].elev;
+    pollution = cities[cityName].contaminacion;
+  }
+  else {
+    pollution = await getBortleIndex({ lat, lon });
+    console.log("This location calculaterd pollution:", pollution);
+  }
+  // pollution = cities[cityName] ? cities[cityName].contaminacion : await getBortleIndex({ lat, lon });
+
+  
+
   updatePollution();
 
   const data = {
     cityName: cityName,
     lon,
     lat,
-    elev
+    elev,
+    bortle_index: pollution
   }
 
   Protobject.Core.send(data).to("index.html");

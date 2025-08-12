@@ -5,8 +5,7 @@ Protobject.Core.onReceived((data) => {
   if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
   
   // Aplicar ubicacion
-  if (data.cityName !== undefined) applyLocation({ cityName: data.cityName});
-  if (data.lat !== undefined && data.lon !== undefined) applyLocation({ lat: data.lat, lon: data.lon, elev: data.elev });
+  if (data.cityName && data.lat !== undefined && data.lon !== undefined) applyLocation({cityName: data.cityName, lat: data.lat, lon: data.lon, elev: data.elev, bortle_index: data.bortle_index});
 
   // Date && Time
   if (data.speed !== undefined) setSpeed(data.speed);
