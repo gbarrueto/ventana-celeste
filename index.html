@@ -526,7 +526,7 @@
 
       async function applyLocation({ cityName = "Custom", lat = 0, lon = 0, elev = 0, bortle_index = 0 }) {
 
-        console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+        // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
 
         const data = {
           cityName,
@@ -538,7 +538,7 @@
         
         if (!engine) return;
 
-        if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
+        // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
