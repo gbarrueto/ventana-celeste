@@ -33,6 +33,6 @@ function updateDisplayBlur() {
   Protobject.Core.send({ blur: blurEffect }).to("index.html");
 }
 
-function toggleEyepieceOverlay() {
-  Protobject.Core.send({ toggleSignal: true }).to("index.html");
+function toggleEyepieceOverlay(eyepieceSignal) {
+  Protobject.Core.send({ eyepieceSignal }).to("index.html");
 }

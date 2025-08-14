@@ -37,6 +37,11 @@
       position: absolute;
     }
 
+    .view-mode-container {
+      position: absolute;
+      top: 30%;
+    }
+
     #fovDisplay {
       position: absolute;
       top: 10px;
@@ -71,11 +76,17 @@
     <div id="fovDisplay">FOV: 3.228859</div>
   </div>
 
+  <!-- View Mode -->
+  <div class="view-mode-container">
+    <p>Tipo de Vista</p>
+    <button onclick="toggleEyepieceOverlay(true)">Telescopio</button>
+    <button onclick="toggleEyepieceOverlay(false)">Guia</button>
+  </div>
+
   <!-- Focuser Slider -->
   <div class="slide-container">
     <div class="blur-text-container">
       <p class="blur-title">Enfocador</p>
-      <!-- <p id="blurText"></p> -->
     </div>
     <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
 
@@ -94,7 +105,7 @@
     <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
 
     <section id="zoomOptions">
-      <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button>
+      <!-- <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button> -->
       <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
       <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
       <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
