@@ -36,7 +36,6 @@
       let datetimeInterval = null;
 
       let pollutionOverlay = null;
-
     </script>
 
     <script>
@@ -155,21 +154,20 @@
           applyArUcoPosition(d.lat, d.lon);
         }
       });
-
       // ---------------------------
       // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
-      /* 
-  Protobject.Core.onReceived((data) => {
-    if (data.f !== undefined) updateStellariumFov(data.f);
-    else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-    else data.h !== undefined || data.v !== undefined;
-    updateStellariumView(data);
-  });
-  */
+      /*
+      Protobject.Core.onReceived((data) => {
+        if (data.f !== undefined) updateStellariumFov(data.f);
+        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+        else data.h !== undefined || data.v !== undefined;
+        updateStellariumView(data);
+      });
+      */
       // ---------------------------
 
       // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
-    
+
       function toggleEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -200,7 +198,6 @@
         onReady(stel) {
           engine = stel;
           const core = stel.core;
-
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
@@ -313,12 +310,12 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             btn.onclick = () => {
-                const obj = path.split(".").reduce((o, k) => o && o[k], core);
-                if (obj) {
-                  obj[attr] = !obj[attr];
-                  btn.classList.toggle("active", obj[attr]);
-                }
-              };
+              const obj = path.split(".").reduce((o, k) => o && o[k], core);
+              if (obj) {
+                obj[attr] = !obj[attr];
+                btn.classList.toggle("active", obj[attr]);
+              }
+            };
             //}
             footer.appendChild(btn);
           });
@@ -343,12 +340,12 @@
               const dec = stel.anpm(coords[1]);
               const mag = s.getInfo("vmag");
               info.innerHTML = `
-              <h3>${name}</h3>
-              <p><strong>Magnitude:</strong> ${
-                mag !== undefined ? mag.toFixed(2) : "Unknown"
-              }</p>
-              <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-              <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
+                  <h3>${name}</h3>
+                  <p><strong>Magnitude:</strong> ${
+                    mag !== undefined ? mag.toFixed(2) : "Unknown"
+                  }</p>
+                  <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
+                  <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
               info.style.display = "block";
             } else {
               info.style.display = "none";
@@ -422,22 +419,21 @@
       }
     </script>
     <script>
-
-// 
+      //
       // function showLocationSelector() {
       //   const modal = document.getElementById("modal-container");
       //   const locationBtn = document.querySelector(
       //     '.control-button[onclick="showLocationSelector()"]'
       //   );
-// 
+      //
       //   const isVisible = modal.style.display === "block";
-// 
+      //
       //   if (isVisible) {
       //     modal.style.display = "none";
       //     locationBtn.classList.remove("active");
       //     return;
       //   }
-// 
+      //
       //   let buttonsHtml = "<h3>Select Location</h3>";
       //   for (const city in cities) {
       //     const isSelected = city === selectedCity;
@@ -452,7 +448,7 @@
       //   ${city}
       // </button>`;
       //   }
-// 
+      //
       //   modal.innerHTML = buttonsHtml;
       //   modal.style.display = "block";
       //   locationBtn.classList.add("active");
@@ -520,8 +516,13 @@
       //   }
       // }
 
-      async function applyLocation({ cityName = "Custom", lat = 0, lon = 0, elev = 0, bortle_index = 0 }) {
-
+      async function applyLocation({
+        cityName = "Custom",
+        lat = 0,
+        lon = 0,
+        elev = 0,
+        bortle_index = 0,
+      }) {
         // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
 
         const data = {
@@ -531,7 +532,7 @@
           elev: elev,
           contaminacion: bortle_index,
         };
-        
+
         if (!engine) return;
 
         // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
@@ -555,7 +556,6 @@
         //engine.core.observer.pitch = 0;
         //engine.core.observer.yaw = 0;
 
-        
         //setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
 
         // updatePollutionOverlay
@@ -568,14 +568,14 @@
       //     .querySelectorAll("#modal-container .control-button")
       //     .forEach((btn) => {
       //       const text = btn.textContent.trim();
-// 
+      //
       //       const match =
       //         (timeSpeed === 0 && text.startsWith("🟥")) ||
       //         (timeSpeed === 1 && text.startsWith("🕒")) ||
       //         (timeSpeed === 10 && text.includes("10x")) ||
       //         (timeSpeed === 60 && text.includes("60x")) ||
       //         (timeSpeed === 3600 && text.includes("3600x"));
-// 
+      //
       //       btn.classList.toggle("active", match);
       //     });
       // }

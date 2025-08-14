@@ -3,17 +3,26 @@ Protobject.Core.onReceived((data) => {
   if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
   if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
   if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
-  
+  if (data.lat !== undefined && data.lon !== undefined)
+    applyArUcoPosition(data.lat, data.lon); // Aruco
+
   // Aplicar ubicacion
-  if (data.cityName && data.lat !== undefined && data.lon !== undefined) applyLocation({cityName: data.cityName, lat: data.lat, lon: data.lon, elev: data.elev, bortle_index: data.bortle_index});
+  if (data.cityName && data.lat !== undefined && data.lon !== undefined)
+    applyLocation({
+      cityName: data.cityName,
+      lat: data.lat,
+      lon: data.lon,
+      elev: data.elev,
+      bortle_index: data.bortle_index,
+    });
 
   // Date && Time
   if (data.speed !== undefined) setSpeed(data.speed);
   if (data.date !== undefined) updateDate(data.date);
   if (data.setDatetimeInterval !== undefined) {
-    data.setDatetimeInterval == true 
+    data.setDatetimeInterval == true
       ? setDatetimeInterval()
-      : clearDatetimeInterval()
+      : clearDatetimeInterval();
   }
 
   // Pollution
