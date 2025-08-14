@@ -115,6 +115,48 @@
         canvas_blur.style.filter = `blur(${blur}px)`;
       }
 
+      // ---------------------------
+      // Nuevo: recibir posiciones desde ArUco
+      // ---------------------------
+      // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
+      let pendingArUcoPosition = null;
+      function applyArUcoPosition(lat, lon) {
+        // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
+        if (!engine || !engine.core) {
+          pendingArUcoPosition = { lat, lon };
+          return;
+        }
+        try {
+          engine.core.observer.latitude = lat * (Math.PI / 180);
+          engine.core.observer.longitude = lon * (Math.PI / 180);
+          // Opcional: mantener elevación previa o poner 0 si desconocida
+          engine.core.observer.elevation = engine.core.observer.elevation || 0;
+          engine.core.observer.name = "ArUco Position";
+          // Actualizar tiempo local para que la vista sea consistente (opcional):
+          engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
+          // Centrar la vista del observador
+          engine.core.observer.pitch = 0;
+          engine.core.observer.yaw = 0;
+          // Notificación visual mínima: actualiza footer/progress si lo deseas
+          const progress = document.getElementById("progress");
+          if (progress)
+            progress.innerText = `Location: ${lat.toFixed(4)}, ${lon.toFixed(
+              4
+            )}`;
+        } catch (e) {
+          console.error("Error aplicando posición ArUco:", e);
+        }
+      }
+
+      // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
+      window.addEventListener("proto:position", (ev) => {
+        const d = ev?.detail || {};
+        if (d.lat !== undefined && d.lon !== undefined) {
+          applyArUcoPosition(d.lat, d.lon);
+        }
+      });
+
+ 
       function setEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) return;
@@ -135,18 +177,13 @@
         newOverlay.style.backgroundPosition = "center";
         document.body.appendChild(newOverlay);
       }
-
+    
       function removeEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
           overlay.remove();
         }
       }
-
-      // let flatpickrSyncInterval = null;
-      // let activeFlatpickr = null;
-      // let isUserTouchingCalendar = false;
-      // let lastManualChange = 0;
 
       StelWebEngine({
         wasmFile:
@@ -155,6 +192,7 @@
         onReady(stel) {
           engine = stel;
           const core = stel.core;
+
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
@@ -266,61 +304,7 @@
             btn.className = "stel-button";
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
-            //if (label === "Pollution") {
-            //  btn.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-            //  btn.onclick = () => {
-            //    let overlay = document.getElementById("pollution-overlay");
-            //    const isActive = btn.classList.toggle("active");
-            //    if (isActive) {
-            //      if (!overlay) {
-            //        overlay = document.createElement("div");
-            //        overlay.id = "pollution-overlay";
-            //        overlay.style.position = "absolute";
-            //        overlay.style.top = 0;
-            //        overlay.style.left = 0;
-            //        overlay.style.width = "100%";
-            //        overlay.style.height = "100%";
-            //        overlay.style.pointerEvents = "none";
-            //        overlay.style.zIndex = 5;
-            //        const stel = document.getElementById("stel");
-            //        stel.appendChild(overlay);
-            //      }
-            //      overlay.style.display = "block";
-            //      updatePollutionOverlay();
-            //      if (pollutionOverlayTimer)
-            //        clearInterval(pollutionOverlayTimer);
-            //      pollutionOverlayTimer = setInterval(
-            //        () => updatePollutionOverlay(),
-            //        1000
-            //      );
-            //    } else {
-            //      if (overlay) {
-            //        overlay.style.opacity = 0;
-            //        setTimeout(() => {
-            //          overlay.style.display = "none";
-            //        }, 1000);
-            //      }
-            //      if (pollutionOverlayTimer) {
-            //        clearInterval(pollutionOverlayTimer);
-            //        pollutionOverlayTimer = null;
-            //      }
-            //      if (overlay) {
-            //        overlay.style.opacity = 0;
-            //        setTimeout(() => {
-            //          overlay.style.display = "none";
-            //        }, 1000);
-            //      }
-//
-            //      if (engine.core) {
-            //        engine.core.bortle_index = 1;
-            //        engine.core.display_limit_mag = 7.5;
-            //        engine.core.star_relative_scale = 1.1;
-            //        engine.core.star_linear_scale = 0.8;
-            //      }
-            //    }
-            //  };
-            //} else {
-              btn.onclick = () => {
+            btn.onclick = () => {
                 const obj = path.split(".").reduce((o, k) => o && o[k], core);
                 if (obj) {
                   obj[attr] = !obj[attr];
@@ -406,7 +390,6 @@
             engine.core.observer.utc += jdStep;
           }, 30);
         }
-
         // updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
       }
 
@@ -467,8 +450,7 @@
       //   locationBtn.classList.add("active");
       // }
 
-      // Light pollution section
-
+      // Light pollution section (se mantiene)
       let pollutionOverlayTimer = null;
 
       function updatePollutionOverlay({ forceHide = false, bortle }) {
@@ -493,6 +475,7 @@
         pollutionOverlay.style.display = "block";
 
         // Fondo visual del overlay
+
         pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
           rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
           rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
