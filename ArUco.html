@@ -49,15 +49,20 @@
     <script>
       const logDiv = document.getElementById("log");
 
-      // IDs de marcadores
-      const cornerMarkers = {
-        topLeft: 0,
-        topRight: 1,
-        bottomLeft: 2,
-        bottomRight: 3,
+      // IDs de marcadores (ejemplo: 0–7 son esquinas distribuidas por el mapa)
+      const referenceMarkers = {
+        0: [0.035, 0.05], // top-left
+        1: [0.965, 0.05], // top-right
+        2: [0.965, 0.95], // bottom-right
+        3: [0.035, 0.95], // bottom-left
+        4: [0.5, 0.05], // top middle
+        5: [0.5, 0.95], // bottom middle
+        6: [0.035, 0.5], // left middle
+        7: [0.965, 0.5], // right middle
       };
-      const telescopeMarker = 4; // ID real del telescopio (Aruco)
-      const N = 5; // muestras para el promedio
+
+      const telescopeMarker = 10; // ID real del telescopio
+      const N = 5; // muestras para promedio
       const MIN_DELTA = 0.0008;
       const REPROJ_THRESHOLD = 0.04;
 
@@ -90,33 +95,33 @@
         }
       }
 
-      function orderCorners(pts) {
-        const sorted = pts.slice().sort((a, b) => a.y - b.y);
-        const top = sorted.slice(0, 2).sort((a, b) => a.x - b.x);
-        const bottom = sorted.slice(2, 4).sort((a, b) => a.x - b.x);
-        return [top[0], top[1], bottom[1], bottom[0]];
-      }
+      // ---------------- Homografía con mínimos cuadrados ----------------
 
-      function computeHomography(srcPts, dstPts) {
+      function computeHomographyLS(srcPts, dstPts) {
         const A = [],
           b = [];
-        for (let i = 0; i < 4; i++) {
-          const [x, y] = srcPts[i],
-            [u, v] = dstPts[i];
+        for (let i = 0; i < srcPts.length; i++) {
+          const [x, y] = srcPts[i];
+          const [u, v] = dstPts[i];
           A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
           b.push(u);
           A.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
           b.push(v);
         }
         try {
-          const h8 = numeric.solve(A, b);
+          // resolver en mínimos cuadrados
+          const At = numeric.transpose(A);
+          const AtA = numeric.dot(At, A);
+          const Atb = numeric.dot(At, b);
+          const h8 = numeric.solve(AtA, Atb);
+
           return [
             [h8[0], h8[1], h8[2]],
             [h8[3], h8[4], h8[5]],
             [h8[6], h8[7], 1],
           ];
         } catch (e) {
-          showMessage("Error resolviendo homografía: " + e.message, "warn");
+          showMessage("Error resolviendo homografía LS: " + e.message, "warn");
           return null;
         }
       }
@@ -131,14 +136,14 @@
 
       function reprojectionError(H, srcPts, dstPts) {
         let sum = 0;
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < srcPts.length; i++) {
           const p = applyHomography(H, srcPts[i][0], srcPts[i][1]);
           if (!p) return Infinity;
           const dx = p[0] - dstPts[i][0];
           const dy = p[1] - dstPts[i][1];
           sum += Math.sqrt(dx * dx + dy * dy);
         }
-        return sum / 4;
+        return sum / srcPts.length;
       }
 
       function median(arr) {
@@ -147,50 +152,50 @@
         return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
       }
 
+      // ---------------- Conversión a Mercator ----------------
+
+      function normToLonLat(normX, normY) {
+        const lon = -180 + normX * 360;
+        // mercator inversa
+        const mercY = Math.PI * (1 - 2 * normY);
+        const lat = (180 / Math.PI) * Math.atan(Math.sinh(mercY));
+        return [lat, lon];
+      }
+
+      // ---------------- Main loop ----------------
+
       Protobject.Aruco.onData((data) => {
         try {
           const ids = Object.keys(data).map((id) => parseInt(id));
+
           if (stage === "calibration") {
-            const needed = Object.values(cornerMarkers);
-            if (!needed.every((id) => ids.includes(id))) {
-              showMessage("Faltan esquinas para calibrar.", "warn");
+            const commonIds = ids.filter(
+              (id) => referenceMarkers[id] !== undefined
+            );
+            if (commonIds.length < 4) {
+              showMessage("Faltan marcadores para calibrar.", "warn");
               return;
             }
-            const pts = [
-              {
-                x: data[cornerMarkers.topLeft].position.x,
-                y: data[cornerMarkers.topLeft].position.y,
-              },
-              {
-                x: data[cornerMarkers.topRight].position.x,
-                y: data[cornerMarkers.topRight].position.y,
-              },
-              {
-                x: data[cornerMarkers.bottomRight].position.x,
-                y: data[cornerMarkers.bottomRight].position.y,
-              },
-              {
-                x: data[cornerMarkers.bottomLeft].position.x,
-                y: data[cornerMarkers.bottomLeft].position.y,
-              },
-            ];
-            const ordered = orderCorners(pts);
-            const srcPts = ordered.map((p) => [p.x, p.y]);
-            const dstPts = [
-              [0, 0],
-              [1, 0],
-              [1, 1],
-              [0, 1],
-            ];
-            const H = computeHomography(srcPts, dstPts);
+            const srcPts = [],
+              dstPts = [];
+            for (let id of commonIds) {
+              const p = data[id].position;
+              srcPts.push([p.x, p.y]);
+              dstPts.push(referenceMarkers[id]); // coords normalizadas [0,1]
+            }
+            const H = computeHomographyLS(srcPts, dstPts);
             if (!H) return;
+
             if (reprojectionError(H, srcPts, dstPts) > REPROJ_THRESHOLD) {
               showMessage("Error alto en calibración.", "warn");
               return;
             }
             savedHomography = H;
             stage = "tracking";
-            showMessage("Calibración completa. Pasando a seguimiento.", "info");
+            showMessage(
+              "Calibración completa con " + commonIds.length + " marcadores.",
+              "info"
+            );
             return;
           }
 
@@ -204,13 +209,11 @@
             if (!mapped) return;
             let [normX, normY] = mapped;
 
-            // límites para evitar ruido extremo
+            // límites
             normX = Math.max(-0.2, Math.min(1.2, normX));
             normY = Math.max(-0.2, Math.min(1.2, normY));
 
-            // convertir a coordenadas simuladas
-            const lon = -180 + normX * 360;
-            const lat = 90 - normY * 180;
+            const [lat, lon] = normToLonLat(normX, normY);
 
             coordBuffer.push({ lat, lon });
             if (coordBuffer.length > N) coordBuffer.shift();
@@ -237,9 +240,7 @@
               "info"
             );
 
-            // ahora enviamos lat/lon reales al index.html
             Protobject.Core.send({ lat: medLat, lon: medLon }).to("index.html");
-            // Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
           }
         } catch (err) {
           showMessage("Error: " + err.message, "error");
