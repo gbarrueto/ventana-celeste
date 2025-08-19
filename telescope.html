@@ -1,210 +1,221 @@
 <!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controllo Orientamento e FOV</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controllo Orientamento e FOV</title>
 
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-    />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+  />
 
-    <link rel="stylesheet" href="telescope/Slider/slider.css" />
-    <link rel="stylesheet" href="telescope/Zoom/zoom.css" />
-    <link rel="stylesheet" href="telescope/Menu/menu.css" />
-    <link rel="stylesheet" href="telescope/Menu/Location/location.css" />
-    <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css" />
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        overflow: hidden;
-        background: #02040a;
-        color: #e3eaff;
-        font-family: sans-serif;
-      }
+  <link rel="stylesheet" href="telescope/Slider/slider.css">
+  <link rel="stylesheet" href="telescope/Zoom/zoom.css">
+  <link rel="stylesheet" href="telescope/Menu/menu.css">
+  <link rel="stylesheet" href="telescope/Menu/Location/location.css">
+  <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #02040a;
+      color: #e3eaff;
+      font-family: sans-serif;
+    }
 
-      body {
-        display: grid;
-      }
+    body {
+      display: grid;
+    }
 
-      #touchArea {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-        /* position: relative; */
-        position: absolute;
-      }
+    #touchArea {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      /* position: relative; */
+      position: absolute;
+    }
 
-      #fovDisplay {
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        /* background: rgba(0, 0, 0, 0.7); */
-        color: #e3eaff;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 1.5em;
-        pointer-events: none;
-      }
+    .view-mode-container {
+      position: absolute;
+      top: 30%;
+    }
 
-      .button {
-        padding: 0.3em 0.8em;
-        background-color: transparent;
-        border: 1px solid #e3eaff;
-        color: #e3eaff;
-        border-radius: 1em;
-      }
-    </style>
-  </head>
-  <body>
-    <script src="https://app.protobject.com/framework/p.js"></script>
-    <script src="config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="data/locations/cities.js"></script>
+    #fovDisplay {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      /* background: rgba(0, 0, 0, 0.7); */
+      color: #e3eaff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.5em;
+      pointer-events: none;
+    }
 
-    <!-- Touchable Screen -->
-    <div id="touchArea">
-      <div id="fovDisplay">FOV: 3.228859</div>
+    .button {
+      padding: 0.3em 0.8em;
+      background-color: transparent;
+      border: 1px solid #e3eaff;
+      color: #e3eaff;
+      border-radius: 1em;
+    }
+
+  </style>
+</head>
+<body>
+  <script src="https://app.protobject.com/framework/p.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="data/locations/cities.js"></script>
+  
+  <!-- Touchable Screen -->
+  <div id="touchArea">
+    <div id="fovDisplay">FOV: 3.228859</div>
+  </div>
+
+  <!-- View Mode -->
+  <div class="view-mode-container">
+    <p>Tipo de Vista</p>
+    <button onclick="toggleEyepieceOverlay(true)">Telescopio</button>
+    <button onclick="toggleEyepieceOverlay(false)">Guia</button>
+  </div>
+
+  <!-- Focuser Slider -->
+  <div class="slide-container">
+    <div class="blur-text-container">
+      <p class="blur-title">Enfocador</p>
     </div>
+    <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
 
-    <!-- Focuser Slider -->
-    <div class="slide-container">
-      <div class="blur-text-container">
-        <p class="blur-title">Enfocador</p>
-        <!-- <p id="blurText"></p> -->
-      </div>
-      <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">
-        +
-      </button>
+    <input 
+    id="blurSlider"
+    class="slider"
+    type="range" 
+    min="0" max="10" value="0" step="0.001"
+    orient="vertical">
+    
+    <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
+  </div>
 
-      <input
-        id="blurSlider"
-        class="slider"
-        type="range"
-        min="0"
-        max="10"
-        value="0"
-        step="0.001"
-        orient="vertical"
-      />
+  <!-- Zoom Buttons -->
+  <div class="zoom-container">
+    <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
 
-      <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">
-        -
-      </button>
-    </div>
+    <section id="zoomOptions">
+      <!-- <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button> -->
+      <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
+      <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
+      <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
+      <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
+    </section>
+  </div>
 
-    <!-- Zoom Buttons -->
-    <div class="zoom-container">
-      <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">
-        Zoom
-      </button>
+  <!-- Menu -->
+  <div id="menuContainer">
+    <section class="header">
+      <button
+        onclick="closeMenu()"
+      >X</button>
+    </section>
 
-      <section id="zoomOptions">
-        <button class="button zoom-button" onclick="toggleEyepieceOverlay()">
-          E
-        </button>
-        <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
-        <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
-        <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
-        <button class="button zoom-button" onclick="applyZoom(2028)">
-          x512
-        </button>
-      </section>
-    </div>
+    <!-- Options -->
+    <section id="optionsSection">
+      <button class="button option-button" onclick="displayLocation(event)">Ubicacion</button>
+      <button class="button option-button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      <button class="button option-button" onclick="displayPollution(event)">Contaminacion Luminica</button>
+    </section>
 
-    <!-- Menu -->
-    <div id="menuContainer">
-      <section class="header">
-        <button onclick="closeMenu()">X</button>
-      </section>
+    <!-- Option Interaction -->
+    <section id="interactionSection"></section>
+  </div>
 
-      <!-- Options -->
-      <section id="optionsSection">
-        <button class="button option-button" onclick="displayLocation(event)">
-          Ubicacion
-        </button>
-        <button class="button option-button" onclick="displayDateTime(event)">
-          Fecha y Tiempo
-        </button>
-        <button class="button option-button" onclick="displayPollution(event)">
-          Contaminacion Luminica
-        </button>
-      </section>
+  <button 
+    id="openMenuButton"
+    onclick="openMenu()"
+  >|||</button>
 
-      <!-- Option Interaction -->
-      <section id="interactionSection"></section>
-    </div>
+  
 
-    <button id="openMenuButton" onclick="openMenu()">|||</button>
+  <!-- Variables - Parameters - Constants -->
+  <script>
+    let oldFov;
+    const MIN_FOV = 0.000005;
+    const MAX_FOV = 3.228859;
+    const minLogFov = Math.log(MIN_FOV);
+    const maxLogFov = Math.log(MAX_FOV);
+    let logFov = maxLogFov;
+    let lastY = null;
+    const sensitivity = 0.5;
 
-    <!-- Variables - Parameters - Constants -->
-    <script>
-      let oldFov;
-      const MIN_FOV = 0.000005;
-      const MAX_FOV = 3.228859;
-      const minLogFov = Math.log(MIN_FOV);
-      const maxLogFov = Math.log(MAX_FOV);
-      let logFov = maxLogFov;
-      let lastY = null;
-      const sensitivity = 0.5;
+    let currentBlur = 5;
+    let blurTarget = currentBlur;
 
-      let currentBlur = 5;
-      let blurTarget = currentBlur;
+    let selectedCity = 'Santiago';
+    let cities = cities_data;
 
-      let selectedCity = "Santiago";
-      let cities = cities_data;
+    let currentLat = 0;
+    let currentLon = 0;
+    let currentElev = 0;
 
-      let currentLat = 0;
-      let currentLon = 0;
-      let currentElev = 0;
+    const fovDisplay = document.getElementById("fovDisplay");
+    const touchArea = document.getElementById("touchArea");
 
-      const fovDisplay = document.getElementById("fovDisplay");
-      const touchArea = document.getElementById("touchArea");
+    const blurSlider = document.getElementById('blurSlider');
+    // const blurText = document.getElementById('blurText');
 
-      const blurSlider = document.getElementById("blurSlider");
-      // const blurText = document.getElementById('blurText');
+    const zoomOptions = document.getElementById('zoomOptions')
 
-      const zoomOptions = document.getElementById("zoomOptions");
+    const menu = document.getElementById('menuContainer');
+    const interactionSection = document.getElementById('interactionSection');
 
-      const menu = document.getElementById("menuContainer");
-      const interactionSection = document.getElementById("interactionSection");
+    let latInput = undefined;
+    let lonInput = undefined;
+    let elevInput = undefined;
 
-      let latInput = undefined;
-      let lonInput = undefined;
-      let elevInput = undefined;
+    let pollutionInput = undefined;
 
-      let pollutionInput = undefined;
+    let flatpickrSyncInterval = null;
+    let activeFlatpickr = null;
+    let isUserTouchingCalendar = false;
+    let lastManualChange = 0;
 
-      let flatpickrSyncInterval = null;
-      let activeFlatpickr = null;
-      let isUserTouchingCalendar = false;
-      let lastManualChange = 0;
+    let engineUTC = null;
+    let timeSpeed = 0;
 
-      let engineUTC = null;
-      let timeSpeed = 0;
+    let pollution = cities[selectedCity].contaminacion;
+  </script>
 
-      let pollution = cities[selectedCity].contaminacion;
-    </script>
+  <script src="telescope/utils/updateDisplay.js"></script>
+  <script src="telescope/utils/lp/pako_inflate.min.js"></script>
+  <script src="telescope/utils/lp/getLpFromCoords.js"></script>
+  <script src="telescope/Menu/menu.js"></script>
+  <script src="telescope/Menu/DateTime/datetime.js"></script>
+  <script src="telescope/Menu/Location/location.js"></script>
+  <script src="telescope/Menu/Pollution/pollution.js"></script>
+  <script src="telescope/utils/protobject.js"></script>
 
-    <script src="telescope/utils/updateDisplay.js"></script>
-    <script src="telescope/utils/lp/pako_inflate.min.js"></script>
-    <script src="telescope/utils/lp/getLpFromCoords.js"></script>
-    <script src="telescope/Menu/menu.js"></script>
-    <script src="telescope/Menu/DateTime/datetime.js"></script>
-    <script src="telescope/Menu/Location/location.js"></script>
-    <script src="telescope/Menu/Pollution/pollution.js"></script>
-    <script src="telescope/utils/protobject.js"></script>
+  <script>
+    function updateBlur(direction = 1) {
+      currentBlur += direction * 0.001;
+      currentBlur = Math.max(0, Math.min(10, currentBlur));
 
-    <script>
-      function updateBlur(direction = 1) {
-        currentBlur += direction * 0.001;
-        currentBlur = Math.max(0, Math.min(10, currentBlur));
+      updateDisplayBlur();
+    }    
+  </script>
 
-        updateDisplayBlur();
+  <script>
+
+    blurSlider.value = currentBlur;
+    // blurText.textContent = currentBlur;
+
+    touchArea.addEventListener("touchstart", (e) => {
+      // if (e.target.closest('.slider')) return; // Ignore slider input
+
+      if (e.touches.length === 1) {
+        lastY = e.touches[0].clientY;
       }
     </script>
 

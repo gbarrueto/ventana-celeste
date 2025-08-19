@@ -2,10 +2,12 @@ Protobject.Core.onReceived((data) => {
   if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
   if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
   if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
-  if (data.toggleSignal !== undefined) toggleEyepieceOverlay(); // Vista ocular
+
   if (data.lat !== undefined && data.lon !== undefined)
     applyArUcoPosition(data.lat, data.lon); // Aruco
 
+  if (data.eyepieceSignal !== undefined) data.eyepieceSignal === true ? setEyepieceOverlay() : removeEyepieceOverlay(); // Vista ocular
+  
   // Aplicar ubicacion
   if (data.cityName && data.lat !== undefined && data.lon !== undefined)
     applyLocation({
