@@ -36,7 +36,6 @@
       let datetimeInterval = null;
 
       let pollutionOverlay = null;
-
     </script>
 
     <script>
@@ -120,7 +119,7 @@
       // ---------------------------
       // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
       let pendingArUcoPosition = null;
-      function applyArUcoPosition(lat, lon) {
+      async function applyArUcoPosition(lat, lon) {
         // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
         if (!engine || !engine.core) {
           pendingArUcoPosition = { lat, lon };
@@ -139,10 +138,12 @@
           engine.core.observer.yaw = 0;
           // Notificación visual mínima: actualiza footer/progress si lo deseas
           const progress = document.getElementById("progress");
-          if (progress)
-            progress.innerText = `Location: ${lat.toFixed(4)}, ${lon.toFixed(
-              4
-            )}`;
+          if (progress) {
+            const country = await getCountryFromLatLon(lat, lon);
+            progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
+              5
+            )})`;
+          }
         } catch (e) {
           console.error("Error aplicando posición ArUco:", e);
         }
@@ -155,6 +156,38 @@
           applyArUcoPosition(d.lat, d.lon);
         }
       });
+
+      async function getCountryFromLatLon(lat, lon) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+          const res = await fetch(url, {
+            headers: {
+              "User-Agent": "ArucoTracker/1.0 (tu-email@dominio.com)", // requerido por Nominatim
+            },
+          });
+          if (!res.ok) throw new Error("Respuesta no válida");
+
+          const data = await res.json();
+          return data.address.country || "Desconocido";
+        } catch (err) {
+          console.error("Error geocodificando:", err);
+          return "Desconocido";
+        }
+      }
+
+      // ---------------------------
+      // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
+      /*
+      Protobject.Core.onReceived((data) => {
+        if (data.f !== undefined) updateStellariumFov(data.f);
+        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+        else data.h !== undefined || data.v !== undefined;
+        updateStellariumView(data);
+      });
+      */
+      // ---------------------------
+
+      // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
  
       function setEyepieceOverlay() {
@@ -192,7 +225,6 @@
         onReady(stel) {
           engine = stel;
           const core = stel.core;
-
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
@@ -305,12 +337,12 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             btn.onclick = () => {
-                const obj = path.split(".").reduce((o, k) => o && o[k], core);
-                if (obj) {
-                  obj[attr] = !obj[attr];
-                  btn.classList.toggle("active", obj[attr]);
-                }
-              };
+              const obj = path.split(".").reduce((o, k) => o && o[k], core);
+              if (obj) {
+                obj[attr] = !obj[attr];
+                btn.classList.toggle("active", obj[attr]);
+              }
+            };
             //}
             footer.appendChild(btn);
           });
@@ -335,23 +367,23 @@
               const dec = stel.anpm(coords[1]);
               const mag = s.getInfo("vmag");
               info.innerHTML = `
-              <h3>${name}</h3>
-              <p><strong>Magnitude:</strong> ${
-                mag !== undefined ? mag.toFixed(2) : "Unknown"
-              }</p>
-              <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-              <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
+                  <h3>${name}</h3>
+                  <p><strong>Magnitude:</strong> ${
+                    mag !== undefined ? mag.toFixed(2) : "Unknown"
+                  }</p>
+                  <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
+                  <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
               info.style.display = "block";
             } else {
               info.style.display = "none";
             }
 
-            const progress = core.progressbars[0];
-            if (progress) {
-              document.getElementById("progress").innerText = `${
-                progress.label
-              }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
-            }
+            // const progress = core.progressbars[0];
+            // if (progress) {
+            //   document.getElementById("progress").innerText = `${
+            //     progress.label
+            //   }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
+            // }
           });
 
           pollutionOverlay = document.createElement("div");
@@ -414,22 +446,21 @@
       }
     </script>
     <script>
-
-// 
+      //
       // function showLocationSelector() {
       //   const modal = document.getElementById("modal-container");
       //   const locationBtn = document.querySelector(
       //     '.control-button[onclick="showLocationSelector()"]'
       //   );
-// 
+      //
       //   const isVisible = modal.style.display === "block";
-// 
+      //
       //   if (isVisible) {
       //     modal.style.display = "none";
       //     locationBtn.classList.remove("active");
       //     return;
       //   }
-// 
+      //
       //   let buttonsHtml = "<h3>Select Location</h3>";
       //   for (const city in cities) {
       //     const isSelected = city === selectedCity;
@@ -444,7 +475,7 @@
       //   ${city}
       // </button>`;
       //   }
-// 
+      //
       //   modal.innerHTML = buttonsHtml;
       //   modal.style.display = "block";
       //   locationBtn.classList.add("active");
@@ -512,8 +543,13 @@
       //   }
       // }
 
-      async function applyLocation({ cityName = "Custom", lat = 0, lon = 0, elev = 0, bortle_index = 0 }) {
-
+      async function applyLocation({
+        cityName = "Custom",
+        lat = 0,
+        lon = 0,
+        elev = 0,
+        bortle_index = 0,
+      }) {
         // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
 
         const data = {
@@ -523,7 +559,7 @@
           elev: elev,
           contaminacion: bortle_index,
         };
-        
+
         if (!engine) return;
 
         // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
@@ -547,7 +583,6 @@
         //engine.core.observer.pitch = 0;
         //engine.core.observer.yaw = 0;
 
-        
         //setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
 
         // updatePollutionOverlay
@@ -560,14 +595,14 @@
       //     .querySelectorAll("#modal-container .control-button")
       //     .forEach((btn) => {
       //       const text = btn.textContent.trim();
-// 
+      //
       //       const match =
       //         (timeSpeed === 0 && text.startsWith("🟥")) ||
       //         (timeSpeed === 1 && text.startsWith("🕒")) ||
       //         (timeSpeed === 10 && text.includes("10x")) ||
       //         (timeSpeed === 60 && text.includes("60x")) ||
       //         (timeSpeed === 3600 && text.includes("3600x"));
-// 
+      //
       //       btn.classList.toggle("active", match);
       //     });
       // }
