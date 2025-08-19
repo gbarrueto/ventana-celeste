@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lámpara — Contaminación Lumínica</title>
+    <style>
+      body {
+        margin: 0;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
+
+    <script>
+      // Crear lámpara blanca en el centro de la pantalla
+      const lamp = new Protobject.Lamp({
+        width: "200px",
+        height: "200px",
+        top: "calc(50% - 100px)",
+        left: "calc(50% - 100px)",
+      });
+
+      lamp.setStyle({
+        borderRadius: "50%",
+        boxShadow: "0 0 30px rgba(255, 255, 255, 0.3)",
+        transition: "background 0.2s ease, box-shadow 0.2s ease",
+      });
+
+      // Escuchar datos entrantes
+      Protobject.Core.onData((data) => {
+        // Asegurarse de que el valor sea un número del 1 al 9
+        const value = parseInt(data);
+
+        if (isNaN(value) || value < 1 || value > 9) return;
+
+        // Mapear valor (1–9) a intensidad (10%–100%)
+        const intensity = value / 9; // entre 0.11 y 1
+
+        // Calcular color blanco con esa intensidad
+        const brightness = Math.round(intensity * 255);
+
+        lamp.setColor({ r: brightness, g: brightness, b: brightness });
+
+        // Ajustar también el resplandor (box-shadow) para mayor efecto visual
+        const glowOpacity = 0.2 + intensity * 0.8; // 0.2 a 1
+        const glowSize = 20 + intensity * 60; // tamaño del resplandor
+
+        lamp.setStyle({
+          boxShadow: `0 0 ${glowSize}px rgba(255, 255, 255, ${glowOpacity})`,
+        });
+      });
+    </script>
+  </body>
+</html>
