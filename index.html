@@ -119,7 +119,7 @@
       // ---------------------------
       // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
       let pendingArUcoPosition = null;
-      function applyArUcoPosition(lat, lon) {
+      async function applyArUcoPosition(lat, lon) {
         // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
         if (!engine || !engine.core) {
           pendingArUcoPosition = { lat, lon };
@@ -138,10 +138,12 @@
           engine.core.observer.yaw = 0;
           // Notificación visual mínima: actualiza footer/progress si lo deseas
           const progress = document.getElementById("progress");
-          if (progress)
-            progress.innerText = `Location: ${lat.toFixed(4)}, ${lon.toFixed(
-              4
-            )}`;
+          if (progress) {
+            const country = await getCountryFromLatLon(lat, lon);
+            progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
+              5
+            )})`;
+          }
         } catch (e) {
           console.error("Error aplicando posición ArUco:", e);
         }
@@ -154,6 +156,25 @@
           applyArUcoPosition(d.lat, d.lon);
         }
       });
+
+      async function getCountryFromLatLon(lat, lon) {
+        try {
+          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+          const res = await fetch(url, {
+            headers: {
+              "User-Agent": "ArucoTracker/1.0 (tu-email@dominio.com)", // requerido por Nominatim
+            },
+          });
+          if (!res.ok) throw new Error("Respuesta no válida");
+
+          const data = await res.json();
+          return data.address.country || "Desconocido";
+        } catch (err) {
+          console.error("Error geocodificando:", err);
+          return "Desconocido";
+        }
+      }
+
       // ---------------------------
       // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
       /*
@@ -351,12 +372,12 @@
               info.style.display = "none";
             }
 
-            const progress = core.progressbars[0];
-            if (progress) {
-              document.getElementById("progress").innerText = `${
-                progress.label
-              }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
-            }
+            // const progress = core.progressbars[0];
+            // if (progress) {
+            //   document.getElementById("progress").innerText = `${
+            //     progress.label
+            //   }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
+            // }
           });
 
           pollutionOverlay = document.createElement("div");

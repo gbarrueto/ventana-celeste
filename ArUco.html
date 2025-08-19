@@ -63,7 +63,7 @@
 
       const telescopeMarker = 10; // ID real del telescopio
       const N = 5; // muestras para promedio
-      const MIN_DELTA = 0.0008;
+      const MIN_DELTA = 0.009;
       const REPROJ_THRESHOLD = 0.04;
 
       let coordBuffer = [];
@@ -172,7 +172,7 @@
             const commonIds = ids.filter(
               (id) => referenceMarkers[id] !== undefined
             );
-            if (commonIds.length < 4) {
+            if (commonIds.length < 8) {
               showMessage("Faltan marcadores para calibrar.", "warn");
               return;
             }
@@ -226,12 +226,6 @@
               Math.abs(medLat - lastSent.lat) < MIN_DELTA &&
               Math.abs(medLon - lastSent.lon) < MIN_DELTA
             ) {
-              showMessage(
-                `No hay cambio significativo: lat=${medLat.toFixed(
-                  5
-                )}, lon=${medLon.toFixed(5)}`,
-                "info"
-              );
               return;
             }
             lastSent = { lat: medLat, lon: medLon };
