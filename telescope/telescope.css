@@ -1,0 +1,157 @@
+html, body {
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background: #02040a;
+  color: #f3f6ff;
+  font-family: sans-serif;
+  padding: 2px;
+}
+/* 
+body {
+  display: grid;
+} */
+
+.main-container {
+  display: grid;
+  grid-template-rows: 5% auto;
+  height: 100%;
+  width: 100%;
+}
+
+.container {
+  display: block;
+  padding: 2px;
+  height: 100%;
+  /* width: 100%; */
+  align-content: center;
+  text-align: center;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 10% auto;
+  padding: 5px 10px;
+  height: 100%;
+}
+
+.header-container {
+  display: flex;
+}
+
+.image-button {
+  padding: 0;
+  background-position: center;
+  background-size: 100% 100%;
+  background-color: transparent;
+  /* border: none; */
+}
+
+.menu-image {
+  background-image: url('../images/menu.png');
+}
+
+#startContainer .header-container {
+  justify-content: end;
+}
+
+
+/* MODES IMAGES */
+
+.simple-mode-image {
+  background-image: url('../svg/simple-mode.svg');
+}
+.advanced-mode-image {
+  background-image: url('../svg/advanced-mode.svg');
+}
+
+
+/* SLIDER */
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 80%;
+  background: transparent; 
+}
+
+.v-slider {
+  writing-mode: vertical-rl;
+}
+
+/*** Track style ***/
+/* Chrome, Safari, Opera, and Edge Chromium */
+::-webkit-slider-runnable-track {
+  background: #e3eaff;
+  height: 100%;
+  width: 25%;
+  border-radius: 10em;
+  max-width: .5rem;
+}
+
+/* Firefox */
+::-moz-range-track {
+  background: #e3eaff;
+  height: 100%;
+  width: 25%;
+  border-radius: 10em;
+  max-width: .5rem;
+}
+
+/*** Thumb style ***/
+/* Chrome, Safari, Opera, and Edge Chromium */
+::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #bca898;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 10rem;
+  border: 1px solid #cdd7f5;
+  margin-right: calc(-1rem / 2); /* Center thumb */
+}
+
+/* Firefox */
+::-moz-range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #bca898;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 10rem;
+  border: 1px solid #cdd7f5;
+}
+
+
+
+/* #touchArea {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  position: absolute;
+}
+
+.view-mode-container {
+  position: absolute;
+  top: 30%;
+}
+
+#fovDisplay {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #e3eaff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1.5em;
+  pointer-events: none;
+}
+
+.button {
+  padding: 0.3em 0.8em;
+  background-color: transparent;
+  border: 1px solid #e3eaff;
+  color: #e3eaff;
+  border-radius: 1em;
+} */

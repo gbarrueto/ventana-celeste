@@ -1,7 +1,6 @@
 
 function updateDisplayFov() {
   const fov = Math.exp(logFov);
-  fovDisplay.textContent = `FOV: ${fov.toFixed(6)}`;
   
   if (oldFov !== fov) {
     Protobject.Core.send({ f: fov }).to("index.html");
