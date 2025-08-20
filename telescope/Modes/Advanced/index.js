@@ -1,17 +1,17 @@
 const advancedModeContent = `
   <div id="advancedMode" class="grid-container no-display">
-    <section class="container">
-      <button class="button">Telescopio</button>
-      <button class="button">Guia</button>
+    <section id="viewModeContainer" class="container">
+      <button class="button" onclick="toggleEyepieceOverlay(true, event)">Telescopio</button>
+      <button class="button active" onclick="toggleEyepieceOverlay(false, event)">Guia</button>
     </section>
 
     <section class="container">
       <p>Oculares</p>
-      <div class="grid-container">
-        <button class="button">x1</button>
-        <button class="button">x16</button>
-        <button class="button">x64</button>
-        <button class="button">x512</button>
+      <div id="lensContainer" class="grid-container">
+        <button class="button active" onclick="applyZoom(4, event)">x1</button>
+        <button class="button" onclick="applyZoom(32, event)">x16</button>
+        <button class="button" onclick="applyZoom(256, event)">x64</button>
+        <button class="button" onclick="applyZoom(2028, event)">x512</button>
       </div>
     </section>
 

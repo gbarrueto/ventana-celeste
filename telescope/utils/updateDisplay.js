@@ -32,6 +32,14 @@ function updateDisplayBlur() {
   Protobject.Core.send({ blur: blurEffect }).to("index.html");
 }
 
-function toggleEyepieceOverlay(eyepieceSignal) {
+function toggleEyepieceOverlay(eyepieceSignal, event) {
+  const button = document.querySelector(
+    '#viewModeContainer .active'
+  );
+  if (button) {
+    button.classList.toggle('active')
+  }
+  event.target.classList.toggle('active');
+
   Protobject.Core.send({ eyepieceSignal }).to("index.html");
 }

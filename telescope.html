@@ -39,42 +39,7 @@
     </section>
 
     <!-- Mode Content -->
-    <section id="modeContent" class="container">
-
-      <!-- View Mode -->
-      <!-- <div class="view-mode-container">
-        <p>Tipo de Vista</p>
-        <button onclick="toggleEyepieceOverlay(true)">Telescopio</button>
-        <button onclick="toggleEyepieceOverlay(false)">Guia</button>
-      </div> -->
-    
-      <!-- Focuser Slider -->
-      <!-- <div class="slide-container">
-        <div class="blur-text-container">
-          <p class="blur-title">Enfocador</p>
-        </div>
-        <input 
-          id="blurSlider"
-          class="slider"
-          type="range" 
-          min="0" max="10" value="0" step="0.001"
-          orient="vertical">
-      </div> -->
-      
-      <!-- Zoom Buttons -->
-      <!-- <div class="zoom-container">
-        <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
-    
-        <section id="zoomOptions"> -->
-          <!-- <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button> -->
-          <!-- <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
-          <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
-          <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
-          <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
-        </section>
-      </div> -->
-    </section>
-  
+    <section id="modeContent" class="container"></section>
   </div>
 
 
@@ -153,32 +118,6 @@
 
     blurSlider.value = currentBlur;
     // blurText.textContent = currentBlur;
-
-    touchArea.addEventListener("touchstart", (e) => {
-      // if (e.target.closest('.slider')) return; // Ignore slider input
-
-      if (e.touches.length === 1) {
-        lastY = e.touches[0].clientY;
-      }
-    });
-
-    touchArea.addEventListener("touchmove", (e) => {
-      // if (e.target.closest('.slider')) return; // Ignore slider input
-
-      e.preventDefault();
-      if (e.touches.length === 1 && lastY !== null) {
-        const currentY = e.touches[0].clientY;
-        const deltaY = currentY - lastY;
-        logFov += deltaY * sensitivity * 0.01;
-        logFov = Math.max(minLogFov, Math.min(maxLogFov, logFov));
-        updateDisplayFov();
-        lastY = currentY;
-      }
-    }, { passive: false });
-
-    touchArea.addEventListener("touchend", () => {
-      lastY = null;
-    });
 
     updateDisplayFov();
   </script>

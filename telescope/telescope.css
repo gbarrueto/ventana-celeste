@@ -68,6 +68,30 @@ body {
   height: 3em;
 }
 
+#advancedMode {
+  height: 100%;
+  grid-template-rows: auto auto auto;
+}
+
+#lensContainer {
+  grid-template-columns: 35% 35%;
+  grid-template-rows: auto auto;
+  gap: 1em;
+  justify-content: space-around;
+}
+
+.button {
+  background: transparent;
+  padding: 0.3em 0.8em;
+  border: 1px solid #e3eaff;
+  color: #e3eaff;
+  border-radius: 1em;
+}
+
+.button.active {
+  background-color: #0b5394;
+}
+
 
 /* MODES IMAGES */
 
@@ -84,31 +108,50 @@ body {
 .slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 80%;
+  /* height: 80%; */
   background: transparent; 
 }
 
 .v-slider {
+  height: 80%;
   writing-mode: vertical-rl;
+}
+
+.h-slider {
+  width: 80%;
 }
 
 /*** Track style ***/
 /* Chrome, Safari, Opera, and Edge Chromium */
 ::-webkit-slider-runnable-track {
   background: #e3eaff;
+  border-radius: 10em;
+}
+.v-slider::-webkit-slider-runnable-track {
   height: 100%;
   width: 25%;
-  border-radius: 10em;
   max-width: .5rem;
+}
+.h-slider::-webkit-slider-runnable-track {
+  height: 25%;
+  width: 100%;
+  max-height: .5rem;
 }
 
 /* Firefox */
 ::-moz-range-track {
   background: #e3eaff;
+  border-radius: 10em;
+}
+.v-slider::-moz-range-track {
   height: 100%;
   width: 25%;
-  border-radius: 10em;
   max-width: .5rem;
+}
+.h-slider::-moz-range-track {
+  height: 25%;
+  width: 100%;
+  max-height: .5rem;
 }
 
 /*** Thumb style ***/
@@ -121,7 +164,7 @@ body {
   width: 1.5rem;
   border-radius: 10rem;
   border: 1px solid #cdd7f5;
-  margin-right: calc(-1rem / 2); /* Center thumb */
+  margin-right: calc(-1rem / 2);
 }
 
 /* Firefox */
@@ -134,37 +177,3 @@ body {
   border-radius: 10rem;
   border: 1px solid #cdd7f5;
 }
-
-
-
-/* #touchArea {
-  width: 100%;
-  height: 100%;
-  touch-action: none;
-  position: absolute;
-}
-
-.view-mode-container {
-  position: absolute;
-  top: 30%;
-}
-
-#fovDisplay {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #e3eaff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 1.5em;
-  pointer-events: none;
-}
-
-.button {
-  padding: 0.3em 0.8em;
-  background-color: transparent;
-  border: 1px solid #e3eaff;
-  color: #e3eaff;
-  border-radius: 1em;
-} */
