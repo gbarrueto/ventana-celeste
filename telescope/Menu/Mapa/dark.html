@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Light Pollution Atlas 2024</title>
+    <meta charset="utf-8" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="src/Control.Geocoder.css" />
+    <link rel="stylesheet" href="src/L.Control.Range.css" />
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      html,
+      body,
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+      sup {
+        vertical-align: baseline;
+        position: relative;
+        top: -0.4em;
+      }
+    </style>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="src/Control.Geocoder.js"></script>
+    <script src="src/L.Control.Range.js"></script>
+    <script src="src/pako_inflate.min.js"></script>
+
+    <script>
+      const mapLink =
+        '<a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a>';
+      const infoLink =
+        '<a href="https://djlorenz.github.io/astronomy/lp/" target="_blank">Light Pollution Atlas Information</a>';
+
+      // Base OSM
+      const standard = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution: "&copy; " + mapLink + " Contributors | " + infoLink,
+          maxZoom: 19,
+        }
+      );
+
+      // Capa 2024
+      const lightpollution2024 = L.tileLayer(
+        "/tiles2024/tile_{z}_{x}_{y}.png",
+        {
+          minZoom: 2,
+          maxNativeZoom: 8,
+          maxZoom: 19,
+          tileSize: 1024,
+          zoomOffset: -2,
+          opacity: 0.5,
+        }
+      );
+
+      // Mapa
+      const map = L.map("map", {
+        center: [0, 0],
+        zoom: 2,
+        layers: [standard, lightpollution2024],
+        tap: false,
+      });
+
+      // Control escala
+      L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
+
+      // Geocoder
+      const geocoder = L.Control.geocoder({
+        defaultMarkGeocode: false,
+      })
+        .on("markgeocode", function (e) {
+          const center = e.geocode.center;
+          const lat = center.lat;
+          const lng = center.lng;
+          if (lat >= -80 && lat <= 80 && lng >= -360 && lng <= 360) {
+            L.marker([lat, lng], {
+              title: "Lat, Lon = " + lat + ", " + lng,
+              opacity: 0.7,
+            }).addTo(map);
+            map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
+            getInfoFromLonLat(center, 2024);
+          }
+        })
+        .addTo(map);
+
+      let popup;
+      let popuplatlng;
+
+      // Click para info
+      map.on("click", function (e) {
+        getInfoFromLonLat(e.latlng, 2024);
+        popuplatlng = e.latlng;
+      });
+
+      // --- Funciones auxiliares ---
+      function getInfoFromLonLat(elatlng, year) {
+        if (year !== 2024) return;
+
+        const lonFromDateLine = mod(elatlng.lng + 180.0, 360.0);
+        const latFromStart = elatlng.lat + 65.0;
+        const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
+        const tiley = Math.floor(latFromStart / 5.0) + 1;
+
+        if (tiley >= 1 && tiley <= 28) {
+          // modificarrrrrr !!!!!
+          const url =
+            "http://telescope.alessiobellino.com/data/binary_tiles/" +
+            year +
+            "/binary_tile_" +
+            tilex +
+            "_" +
+            tiley +
+            ".dat.gz";
+
+          const ix = Math.round(
+            120 * (lonFromDateLine - 5.0 * (tilex - 1) + 1 / 240)
+          );
+          const iy = Math.round(
+            120 * (latFromStart - 5.0 * (tiley - 1) + 1 / 240)
+          );
+
+          const xhr = new XMLHttpRequest();
+          xhr.responseType = "arraybuffer";
+          xhr.onload = function () {
+            const data_array = new Int8Array(pako.ungzip(xhr.response));
+            const first_number =
+              128 * Number(data_array[0]) + Number(data_array[1]);
+
+            let change = 0.0;
+            for (let i = 1; i < iy; i++) {
+              change += Number(data_array[600 * i + 1]);
+            }
+            for (let i = 1; i < ix; i++) {
+              change += Number(data_array[600 * (iy - 1) + 1 + i]);
+            }
+
+            const compressed = first_number + change;
+            const brightnessRatio = compressed2full(compressed);
+            const mpsas =
+              22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
+
+            popup = L.popup()
+              .setLatLng(elatlng)
+              .setContent(
+                "<b>Year:</b> " +
+                  year +
+                  "<br><b>Lat, Lon:</b><br>" +
+                  elatlng.lat.toFixed(4) +
+                  ", " +
+                  (lonFromDateLine - 180).toFixed(4) +
+                  "<br><b>Brightness:</b><br> " +
+                  mpsas.toFixed(2) +
+                  " mag/arcsec<sup>2</sup><br>" +
+                  round_brightness(brightnessRatio) +
+                  " ratio (= artificial / natural)"
+              )
+              .openOn(map);
+          };
+          xhr.open("GET", url, true);
+          xhr.send();
+        } else {
+          L.popup()
+            .setLatLng(elatlng)
+            .setContent(
+              "<b>Lat, Lon:</b><br>" +
+                elatlng.lat.toFixed(4) +
+                ", " +
+                (lonFromDateLine - 180).toFixed(4) +
+                "<br>Clicked location is out of bounds.<br>Atlas covers 65S to 75N latitude."
+            )
+            .openOn(map);
+        }
+      }
+
+      function mod(n, m) {
+        return ((n % m) + m) % m;
+      }
+
+      function compressed2full(x) {
+        return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
+      }
+
+      function round_brightness(b) {
+        if (b < 0.1) return b.toFixed(3);
+        else if (b < 3) return b.toFixed(2);
+        else return b.toFixed(1);
+      }
+
+      // Slider opacidad
+      const control = L.control.range({
+        position: "topright",
+        min: 0,
+        max: 100,
+        value: 50,
+        step: 1,
+        orient: "vertical",
+        icon: false,
+      });
+      control.on("change input", function (e) {
+        lightpollution2024.setOpacity(e.value / 100);
+      });
+      map.addControl(control);
+    </script>
+  </body>
+</html>
