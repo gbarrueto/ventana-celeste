@@ -72,7 +72,7 @@ function displayLocation(e) {
   }
 }
 
-async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
+async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
   if (e) {
     const activeButton = document.querySelector(
       '.control-button.active'
@@ -89,15 +89,15 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
     lat = cities[cityName].lat;
     elev = cities[cityName].elev;
     pollution = cities[cityName].contaminacion;
+    tz = cities[cityName].tz;
   }
   else {
     pollution = await getBortleIndex({ lat, lon });
-    console.log("This location calculaterd pollution:", pollution);
+    // console.log("This location calculaterd pollution:", pollution);
   }
   // pollution = cities[cityName] ? cities[cityName].contaminacion : await getBortleIndex({ lat, lon });
 
-  
-
+  updateTimeZone(tz || -4);
   updatePollution();
 
   const data = {
@@ -166,4 +166,9 @@ function submitLocation() {
     lon: currentLon,
     elev: currentElev
   })
+}
+
+function updateTimeZone(newTZ) {
+  currentTZ = newTZ;
+  console.log("Time zone updated to:", currentTZ);
 }
