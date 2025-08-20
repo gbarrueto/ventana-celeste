@@ -1,5 +1,5 @@
 const advancedModeContent = `
-  <div id="advancedMode" class="container" style="display: none;">
+  <div id="advancedMode" class="grid-container no-display">
     <section class="container">
       <button class="button">Telescopio</button>
       <button class="button">Guia</button>

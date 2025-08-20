@@ -34,7 +34,7 @@
         onclick="openMenu()">
       </button>
       <div class="header-container">
-        <button id="modeButton" class="image-button advanced-mode-image" onclick="toggleMode()"></button>
+        <button id="modeButton" class="image-button simple-mode-image advanced-mode-image" onclick="toggleMode()"></button>
       </div>
     </section>
 
@@ -107,15 +107,20 @@
   <script>
     modeContainer.innerHTML = simpleModeContent + advancedModeContent;
 
-    if (modes.simple) {
-      document.getElementById('simpleMode').style.display = 'block';
-    }
-    else {
-      document.getElementById('advancedMode').style.display = 'block';
-    }
-
     const blurSlider = document.getElementById('focusSlider');
     const zoomSlider = document.getElementById('zoomSlider');
+    
+    const simpleModeElement = document.getElementById('simpleMode');
+    const advancedModeElement = document.getElementById('advancedMode');
+
+    if (modes.simple === true) {
+      simpleModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+    }
+    else {
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
@@ -129,6 +134,13 @@
 
 
   <script>
+    function toggleMode() {
+      simpleModeElement.classList.toggle('no-display');
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
+
     function updateBlur(direction = 1) {
       currentBlur += direction * 0.001;
       currentBlur = Math.max(0, Math.min(10, currentBlur));

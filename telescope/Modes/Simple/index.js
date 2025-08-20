@@ -1,5 +1,5 @@
 const simpleModeContent = `
-  <div id="simpleMode" class="container" style="display: none;">
+  <div id="simpleMode" class="container no-display">
     <p>Zoom</p>
 
     <input 

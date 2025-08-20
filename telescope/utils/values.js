@@ -44,6 +44,8 @@ const interactionSection = document.getElementById('interactionSection');
 
 const modeContainer = document.getElementById('modeContent');
 
+const modeButtonElement = document.getElementById('modeButton');
+
 let latInput = undefined;
 let lonInput = undefined;
 let elevInput = undefined;

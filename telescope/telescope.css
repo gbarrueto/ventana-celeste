@@ -28,6 +28,10 @@ body {
   text-align: center;
 }
 
+.grid-container {
+  display: grid;
+}
+
 .header {
   display: grid;
   grid-template-columns: 10% auto;
@@ -53,6 +57,15 @@ body {
 
 #startContainer .header-container {
   justify-content: end;
+}
+
+.no-display {
+  display: none;
+}
+
+#modeButton {
+  width: 3em;
+  height: 3em;
 }
 
 
