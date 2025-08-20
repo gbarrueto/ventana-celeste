@@ -1,7 +1,7 @@
 function displayPollution(e) {
   optionSelection(e);
 
-  let pollutionSection = document.getElementById('pollutionSection')
+  let pollutionSection = document.getElementById("pollutionSection");
 
   if (!pollutionSection) {
     let section = `
@@ -15,18 +15,17 @@ function displayPollution(e) {
     `;
 
     interactionSection.insertAdjacentHTML("beforeend", section);
-    pollutionInput = document.querySelector(
-      '#pollutionSection input'
-    )
-    pollutionInput.addEventListener('input', () => {
+    pollutionInput = document.querySelector("#pollutionSection input");
+    pollutionInput.addEventListener("input", () => {
       pollution = pollutionInput.value;
       Protobject.Core.send({ bortle: pollutionInput.value }).to("index.html");
-    })
+      Protobject.Core.send({ bortle: pollutionInput.value }).to("Lamp.html");
+    });
     return;
   }
 
-  pollutionSection.style.display = 'grid';
-  pollutionSection.classList.add('active');
+  pollutionSection.style.display = "grid";
+  pollutionSection.classList.add("active");
 }
 
 function updatePollution() {
