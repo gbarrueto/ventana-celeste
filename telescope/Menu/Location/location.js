@@ -32,6 +32,7 @@ function displayLocation(e) {
     mapDiv.style.display = 'block';
     mapDiv.classList.add('active');
   }
+}
 
 async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
   if (e) {
