@@ -16,16 +16,21 @@ function displayLocation(e) {
   optionSelection(e); // mantiene la selección de botón
 
   // Limpiar sección de interacción
-  interactionSection.innerHTML = "";
+  // interactionSection.innerHTML = "";
 
   // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
   if (!mapDiv) {
     mapDiv = document.createElement("div");
     mapDiv.id = "map";
+    mapDiv.classList.add('active')
     mapDiv.style.width = "100%";
     mapDiv.style.height = "400px"; // ajusta a tu preferencia
     interactionSection.appendChild(mapDiv);
+  }
+  else {
+    mapDiv.style.display = 'block';
+    mapDiv.classList.add('active');
   }
 
   // Inicializar Leaflet solo una vez
