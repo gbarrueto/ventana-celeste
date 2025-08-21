@@ -27,9 +27,11 @@ let blurTarget = currentBlur;
 let selectedCity = 'Santiago';
 let cities = cities_data;
 
-let currentLat = 0;
-let currentLon = 0;
-let currentElev = 0;
+const defaultCityData = cities[selectedCity]
+let currentLat = defaultCityData.lat;
+let currentLon = defaultCityData.lon;
+let currentElev = defaultCityData.elev;
+let currentTZ = defaultCityData.tz;
 
 const fovDisplay = document.getElementById("fovDisplay");
 const touchArea = document.getElementById("touchArea");

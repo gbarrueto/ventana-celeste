@@ -28,7 +28,6 @@ Protobject.Core.onReceived((data) => {
   if (data.speed !== undefined) setSpeed(data.speed);
   // Actualizar fecha interna del core
   if (data.date !== undefined) updateDate(data.date);
-  // Comentado: No es necesario enviar el tiempo a telescope
   if (data.setDatetimeInterval !== undefined) {
     data.setDatetimeInterval == true
       ? setDatetimeInterval()
