@@ -16,6 +16,12 @@
   <link rel="stylesheet" href="telescope/Menu/menu.css">
   <link rel="stylesheet" href="telescope/Menu/Location/location.css">
   <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <!-- <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" /> -->
+  <link rel="stylesheet" href="Menu/Mapa/src/L.Control.Range.css" />
 </head>
 
 <body>
@@ -123,6 +129,11 @@
   <script src="telescope/Menu/Pollution/pollution.js"></script>
   <script src="telescope/utils/protobject.js"></script>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script> -->
+  <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
+  <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
+
 
   <script>
     function toggleMode() {
@@ -139,12 +150,9 @@
       updateDisplayBlur();
     }    
   </script>
-
+    
   <script>
-
     blurSlider.value = currentBlur;
-    // blurText.textContent = currentBlur;
-
     updateDisplayFov();
   </script>
 
@@ -167,22 +175,27 @@
         this.initSensors();
       },
       initSensors() {
-        if ('AbsoluteOrientationSensor' in window) {
+        if ("AbsoluteOrientationSensor" in window) {
           try {
             const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
-            sensor.addEventListener('reading', () => this.calculateOrientation(sensor.quaternion));
+            sensor.addEventListener("reading", () =>
+              this.calculateOrientation(sensor.quaternion)
+            );
             sensor.start();
           } catch (error) {
-            console.error('Sensor error:', error);
+            console.error("Sensor error:", error);
           }
         } else {
-          console.error('AbsoluteOrientationSensor non supportato.');
+          console.error("AbsoluteOrientationSensor non supportato.");
         }
       },
       calculateOrientation(q) {
         if (!q) return;
         const [x, y, z, w] = q;
-        const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+        const pitch = Math.atan2(
+          2 * (w * x + y * z),
+          1 - 2 * (x * x + y * y)
+        );
         const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
         const fov = Math.exp(logFov);
@@ -199,7 +212,7 @@
         this.oldY += (pitch - this.oldY) * sensitivity;
 
         Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
-      }
+      },
     };
 
     Orientation.start();

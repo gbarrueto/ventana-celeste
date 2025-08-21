@@ -36,7 +36,6 @@
       let datetimeInterval = null;
 
       let pollutionOverlay = null;
-
     </script>
 
     <script>
@@ -120,7 +119,7 @@
       // ---------------------------
       // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
       let pendingArUcoPosition = null;
-      function applyArUcoPosition(lat, lon) {
+      async function applyArUcoPosition(lat, lon) {
         // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
         if (!engine || !engine.core) {
           pendingArUcoPosition = { lat, lon };
@@ -139,10 +138,12 @@
           engine.core.observer.yaw = 0;
           // Notificación visual mínima: actualiza footer/progress si lo deseas
           const progress = document.getElementById("progress");
-          if (progress)
-            progress.innerText = `Location: ${lat.toFixed(4)}, ${lon.toFixed(
-              4
-            )}`;
+          if (progress) {
+            const country = await getCountryFromLatLon(lat, lon);
+            progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
+              5
+            )})`;
+          }
         } catch (e) {
           console.error("Error aplicando posición ArUco:", e);
         }
@@ -156,11 +157,52 @@
         }
       });
 
- 
+      let lastGeocodeTime = 0;
+      let lastCountry = "Desconocido";
+
+      async function getCountryFromLatLon(lat, lon) {
+        const now = Date.now();
+        if (now - lastGeocodeTime < 1000) {
+          return lastCountry; // evita request si no pasó 1s
+        }
+        lastGeocodeTime = now;
+
+        try {
+          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
+          const res = await fetch(url, {
+            headers: {
+              "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
+            },
+          });
+          if (!res.ok) throw new Error("Respuesta no válida");
+          const data = await res.json();
+          lastCountry = data.address.country || "Desconocido";
+          return lastCountry;
+        } catch (err) {
+          console.error("Error geocodificando:", err);
+          return lastCountry;
+        }
+      }
+
+      // ---------------------------
+      // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
+      /*
+      Protobject.Core.onReceived((data) => {
+        if (data.f !== undefined) updateStellariumFov(data.f);
+        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
+        else data.h !== undefined || data.v !== undefined;
+        updateStellariumView(data);
+      });
+      */
+      // ---------------------------
+
+      // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
+
       function setEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) return;
-        
+
         const newOverlay = document.createElement("div");
         newOverlay.id = "eyepiece-overlay";
         newOverlay.style.position = "absolute";
@@ -177,7 +219,7 @@
         newOverlay.style.backgroundPosition = "center";
         document.body.appendChild(newOverlay);
       }
-    
+
       function removeEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -192,7 +234,6 @@
         onReady(stel) {
           engine = stel;
           const core = stel.core;
-
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = -33.4489 * (Math.PI / 180);
@@ -305,12 +346,12 @@
             btn.innerHTML = `<img src="${img}" title="${label}" />`;
             // Custom pollution overlay
             btn.onclick = () => {
-                const obj = path.split(".").reduce((o, k) => o && o[k], core);
-                if (obj) {
-                  obj[attr] = !obj[attr];
-                  btn.classList.toggle("active", obj[attr]);
-                }
-              };
+              const obj = path.split(".").reduce((o, k) => o && o[k], core);
+              if (obj) {
+                obj[attr] = !obj[attr];
+                btn.classList.toggle("active", obj[attr]);
+              }
+            };
             //}
             footer.appendChild(btn);
           });
@@ -335,23 +376,23 @@
               const dec = stel.anpm(coords[1]);
               const mag = s.getInfo("vmag");
               info.innerHTML = `
-              <h3>${name}</h3>
-              <p><strong>Magnitude:</strong> ${
-                mag !== undefined ? mag.toFixed(2) : "Unknown"
-              }</p>
-              <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-              <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
+                  <h3>${name}</h3>
+                  <p><strong>Magnitude:</strong> ${
+                    mag !== undefined ? mag.toFixed(2) : "Unknown"
+                  }</p>
+                  <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
+                  <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
               info.style.display = "block";
             } else {
               info.style.display = "none";
             }
 
-            const progress = core.progressbars[0];
-            if (progress) {
-              document.getElementById("progress").innerText = `${
-                progress.label
-              }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
-            }
+            // const progress = core.progressbars[0];
+            // if (progress) {
+            //   document.getElementById("progress").innerText = `${
+            //     progress.label
+            //   }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
+            // }
           });
 
           pollutionOverlay = document.createElement("div");
@@ -414,22 +455,21 @@
       }
     </script>
     <script>
-
-// 
+      //
       // function showLocationSelector() {
       //   const modal = document.getElementById("modal-container");
       //   const locationBtn = document.querySelector(
       //     '.control-button[onclick="showLocationSelector()"]'
       //   );
-// 
+      //
       //   const isVisible = modal.style.display === "block";
-// 
+      //
       //   if (isVisible) {
       //     modal.style.display = "none";
       //     locationBtn.classList.remove("active");
       //     return;
       //   }
-// 
+      //
       //   let buttonsHtml = "<h3>Select Location</h3>";
       //   for (const city in cities) {
       //     const isSelected = city === selectedCity;
@@ -444,7 +484,7 @@
       //   ${city}
       // </button>`;
       //   }
-// 
+      //
       //   modal.innerHTML = buttonsHtml;
       //   modal.style.display = "block";
       //   locationBtn.classList.add("active");
@@ -476,13 +516,13 @@
 
         // Fondo visual del overlay
 
-        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
-          rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
-          rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
-          rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
-          rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
-          rgba(0,0,0,0.0) 100%)`;
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom,
+              rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%,
+              rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%,
+              rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
+              rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%,
+              rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%,
+              rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
         if (engine.core) {
@@ -512,9 +552,17 @@
       //   }
       // }
 
-      async function applyLocation({ cityName = "Custom", lat = 0, lon = 0, elev = 0, bortle_index = 0 }) {
-
+      async function applyLocation({
+        cityName = "Custom",
+        lat = 0,
+        lon = 0,
+        elev = 0,
+        bortle_index = 0,
+      }) {
         // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+
+        Protobject.Core.send(bortle_index).to("Lamp.html");
+        console.log("sending data to Lamp.html");
 
         const data = {
           cityName,
@@ -523,7 +571,7 @@
           elev: elev,
           contaminacion: bortle_index,
         };
-        
+
         if (!engine) return;
 
         // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
@@ -547,7 +595,6 @@
         //engine.core.observer.pitch = 0;
         //engine.core.observer.yaw = 0;
 
-        
         //setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
 
         // updatePollutionOverlay
@@ -560,14 +607,14 @@
       //     .querySelectorAll("#modal-container .control-button")
       //     .forEach((btn) => {
       //       const text = btn.textContent.trim();
-// 
+      //
       //       const match =
       //         (timeSpeed === 0 && text.startsWith("🟥")) ||
       //         (timeSpeed === 1 && text.startsWith("🕒")) ||
       //         (timeSpeed === 10 && text.includes("10x")) ||
       //         (timeSpeed === 60 && text.includes("60x")) ||
       //         (timeSpeed === 3600 && text.includes("3600x"));
-// 
+      //
       //       btn.classList.toggle("active", match);
       //     });
       // }
@@ -601,17 +648,17 @@
         }
 
         modal.innerHTML = `
-    <h3>Select Date & Time</h3>
-    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
+        <h3>Select Date & Time</h3>
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
 
-    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-      <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-      <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-      <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-      <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-      <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-    </div>
-  `;
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+        </div>
+      `;
 
         activeFlatpickr = flatpickr("#datetime-picker", {
           enableTime: true,

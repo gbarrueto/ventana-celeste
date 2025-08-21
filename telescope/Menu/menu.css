@@ -25,7 +25,6 @@
     justify-content: center;
 
     .option-button {
-
     }
 
     .active {
@@ -36,6 +35,5 @@
   #interactionSection {
     padding: 2%;
     flex: 1;
-    overflow-y: hidden;
   }
 }
