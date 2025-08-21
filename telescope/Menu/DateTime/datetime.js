@@ -3,6 +3,8 @@ function displayDateTime(e) {
 
   let datetimeSection = document.getElementById('datetimeSection')
 
+  let localTime = new Date();
+
   if (!datetimeSection) {
     let section = `
       <section id="datetimeSection" class="active" style="display: block;">
@@ -17,6 +19,9 @@ function displayDateTime(e) {
           <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
           <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
         </div>
+        <p class="engine-time-mjd">Engine: <span id="engine-time-value">0</span></p>
+        <p class="engine-time-utc">Engine UTC: <span id="engine-time-value-utc">0</span></p>
+        <p class="timezone">TimeZone: <span id="time-zone-value">-4</span></p>
       </section>
     `;
 
@@ -29,7 +34,7 @@ function displayDateTime(e) {
   }
 
   updateSpeedButtons();
-  
+
   setTimeout(() => {
     showTimeSelector();
     createInterval();
@@ -42,22 +47,23 @@ function setSpeed(multiplier) {
   updateSpeedButtons();
 }
 // Send time in MJD to engine
-function updateDate(date, offsetHours = 0) {
-  const zone = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
+// date is ISO String in UTC
+function updateDate(date) {
+  // const zone = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
 
   // Creamos DateTime desde el Date del flatpickr en la zona actual
 
-  console.log("Passed date: ", date, { zone: zone });
+  console.log("Passed date to update: ", date);
 
-  const dateTime = luxon.DateTime.fromISO(date);
-  const utc = dateTime.toUTC();
+  //const dateTime = luxon.DateTime.fromISO(date, { zone: zone }).toUTC();
+  //console.log("Converted to luxon:", dateTime.toISO());
+//
+  //const jd = dateTime.toMillis() / 86400000 + 2440587.5;
+  //const mjd = jd - 2400000.5;
 
-  //console.log("Converted to UTC: ", utc.toISO());
+  const mjd = isoToMJD(date);
 
-  const jd = utc.toMillis() / 86400000 + 2440587.5;
-  const mjd = jd - 2400000.5;
-
-  console.log("Sending MJD to engine:", mjd);
+  //console.log("Sending MJD to engine:", mjd);
 
   Protobject.Core.send({ date: mjd }).to("index.html");
 }
@@ -66,6 +72,40 @@ function createInterval() {
   Protobject.Core.send({ setDatetimeInterval: true }).to("index.html");
 }
 
+function isoToMJD(isoString) {
+  const date = new Date(isoString);
+  const jd = date.getTime() / 86400000 + 2440587.5;
+  return jd - 2400000.5;
+}
+
+function fromMJDToDate(mjd) {
+  const jd = mjd + 2400000.5;
+  return new Date((jd - 2440587.5) * 86400000);
+}
+
+function getISOWithTZ(date) {
+  const offset = currentTZ;
+  const localOffset = -new Date().getTimezoneOffset() / 60;
+
+  if (localOffset === offset) {
+    return date.toISOString();
+  }
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const second = date.getSeconds();
+
+  const timeZone = `UTC${offset >= 0 ? "+" : ""}${offset}`;
+
+  const dt = luxon.DateTime.fromObject(
+    { year, month, day, hour, minute, second },
+    { zone: timeZone }
+  );
+  return dt.toUTC().toISO();
+}
 function fromMJDToLuxon(mjd, offsetHours = 0) {
   const JD = mjd + 2400000.5;
   const unixMs = (JD - 2440587.5) * 86400000;
@@ -75,12 +115,12 @@ function fromMJDToLuxon(mjd, offsetHours = 0) {
   return luxon.DateTime.fromMillis(unixMs, { zone: "UTC" }).setZone(zone);
 }
 
-function toJulianDateIso(iso) {
-  const now = new Date(iso);
-  const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
-  const mjd = jd - 2400000.5; // Modified Julian Date
-  return mjd;
-}
+// function toJulianDateIso(iso) {
+//   const now = new Date(iso);
+//   const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
+//   const mjd = jd - 2400000.5; // Modified Julian Date
+//   return mjd;
+// }
 
 function updateSpeedButtons() {
   document
@@ -99,17 +139,6 @@ function updateSpeedButtons() {
     });
 }
 
-function fromJulianDateToDate(jd) {
-  return new Date((jd - 2440587.5) * 86400000);
-}
-
-function fromMJDToDate(mjd) {
-  const jd = mjd + 2400000.5;
-  return new Date((jd - 2440587.5) * 86400000);
-}
-
-let updateDateTimeout = null;
-
 function showTimeSelector() {
   if (activeFlatpickr) return;
 
@@ -123,22 +152,16 @@ function showTimeSelector() {
     onClose: () => (isUserTouchingCalendar = false),
 
     onValueUpdate: function (selectedDates) {
-      console.log("Called function");
+      console.log("Called onValueUpdate function");
       if (selectedDates.length > 0) {
-        console.log("Called with timeout: ", updateDateTimeout);
-        
-        // Cancelar timeout anterior si existe
-        if (updateDateTimeout) {
-          clearTimeout(updateDateTimeout);
-        }
-        
-        // Crear nuevo timeout con delay
-        updateDateTimeout = setTimeout(() => {
-          const date = selectedDates[0].toISOString();
-          lastManualChange = Date.now();
-          updateDate(date, currentTZ);
-          updateDateTimeout = null;
-        }, 30000); // 000ms de delay para evitar llamadas dobles
+        // fecha seleccionada siempre respecto al huso local
+        const date = selectedDates[0];
+        const dateTZ = getISOWithTZ(date);
+        console.log("Non ISO DATE onUpdate", selectedDates[0]);
+        console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
+        lastManualChange = Date.now();
+        updateDate(dateTZ);
+        updateDateTimeout = null;
       }
     },
   });
@@ -152,9 +175,11 @@ function showTimeSelector() {
 
     if (!isUserTouchingCalendar && !recentlyChanged) {
       const dateTime = fromMJDToLuxon(engineUTC, currentTZ);
-      // console.log("Current dateTime: ", dateTime.toISO());
-      // console.log("CurrentDateTime in JS: ", dateTime.toJSDate());
+      // const time = fromMJDToDate(engineUTC);
       activeFlatpickr.setDate(dateTime.toISO(), false);
+      document.getElementById("engine-time-value").innerText = engineUTC;
+      document.getElementById("engine-time-value-utc").innerText = dateTime.toISO();
+      document.getElementById("time-zone-value").innerText = currentTZ;
     }
   }, 300);
 }

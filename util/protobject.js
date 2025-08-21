@@ -25,11 +25,11 @@ Protobject.Core.onReceived((data) => {
   // Actualizar fecha interna del core
   if (data.date !== undefined) updateDate(data.date);
   // Comentado: No es necesario enviar el tiempo a telescope
-  // if (data.setDatetimeInterval !== undefined) {
-  //   data.setDatetimeInterval == true
-  //     ? setDatetimeInterval()
-  //     : clearDatetimeInterval();
-  // }
+  if (data.setDatetimeInterval !== undefined) {
+    data.setDatetimeInterval == true
+      ? setDatetimeInterval()
+      : clearDatetimeInterval();
+  }
 
   // Pollution
   if (data.bortle !== undefined) applyPollution(data.bortle);
