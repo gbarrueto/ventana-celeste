@@ -16,4 +16,8 @@ Protobject.initialize([
     page: "ArUco.html",
     // debug: "local",
   },
+  {
+    name: "Lamp",
+    page: "Lamp.html",
+  },
 ]);

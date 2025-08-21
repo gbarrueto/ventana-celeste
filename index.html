@@ -152,21 +152,31 @@
         }
       });
 
+      let lastGeocodeTime = 0;
+      let lastCountry = "Desconocido";
+
       async function getCountryFromLatLon(lat, lon) {
+        const now = Date.now();
+        if (now - lastGeocodeTime < 1000) {
+          return lastCountry; // evita request si no pasó 1s
+        }
+        lastGeocodeTime = now;
+
         try {
           const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
           const res = await fetch(url, {
             headers: {
-              "User-Agent": "ArucoTracker/1.0 (tu-email@dominio.com)", // requerido por Nominatim
+              "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
             },
           });
           if (!res.ok) throw new Error("Respuesta no válida");
-
           const data = await res.json();
-          return data.address.country || "Desconocido";
+          lastCountry = data.address.country || "Desconocido";
+          return lastCountry;
         } catch (err) {
           console.error("Error geocodificando:", err);
-          return "Desconocido";
+          return lastCountry;
         }
       }
 
@@ -184,11 +194,10 @@
 
       // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
- 
       function setEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) return;
-        
+
         const newOverlay = document.createElement("div");
         newOverlay.id = "eyepiece-overlay";
         newOverlay.style.position = "absolute";
@@ -205,7 +214,7 @@
         newOverlay.style.backgroundPosition = "center";
         document.body.appendChild(newOverlay);
       }
-    
+
       function removeEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -469,6 +478,9 @@
       }) {
         console.log("Received data:", cityName, lat, lon, elev, bortle_index);
 
+        Protobject.Core.send(bortle_index).to("Lamp.html");
+        console.log("sending data to Lamp.html");
+
         const data = {
           cityName,
           lat: lat,
@@ -494,7 +506,6 @@
         //console.log("Bortle index for", cityName, ":", bortle_index);
 
       }
-
     </script>
   </body>
 </html>

@@ -10,185 +10,122 @@
     href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
   />
 
+  <link rel="stylesheet" href="telescope/telescope.css">
   <link rel="stylesheet" href="telescope/Slider/slider.css">
   <link rel="stylesheet" href="telescope/Zoom/zoom.css">
   <link rel="stylesheet" href="telescope/Menu/menu.css">
   <link rel="stylesheet" href="telescope/Menu/Location/location.css">
   <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #02040a;
-      color: #e3eaff;
-      font-family: sans-serif;
-    }
-
-    body {
-      display: grid;
-    }
-
-    #touchArea {
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-      /* position: relative; */
-      position: absolute;
-    }
-
-    .view-mode-container {
-      position: absolute;
-      top: 30%;
-    }
-
-    #fovDisplay {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      /* background: rgba(0, 0, 0, 0.7); */
-      color: #e3eaff;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 1.5em;
-      pointer-events: none;
-    }
-
-    .button {
-      padding: 0.3em 0.8em;
-      background-color: transparent;
-      border: 1px solid #e3eaff;
-      color: #e3eaff;
-      border-radius: 1em;
-    }
-
-  </style>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <!-- <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" /> -->
+  <link rel="stylesheet" href="Menu/Mapa/src/L.Control.Range.css" />
 </head>
+
 <body>
   <script src="https://app.protobject.com/framework/p.js"></script>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="data/locations/cities.js"></script>
-  
-  <!-- Touchable Screen -->
-  <div id="touchArea">
-    <div id="fovDisplay">FOV: 3.228859</div>
-  </div>
 
-  <!-- View Mode -->
-  <div class="view-mode-container">
-    <p>Tipo de Vista</p>
-    <button onclick="toggleEyepieceOverlay(true)">Telescopio</button>
-    <button onclick="toggleEyepieceOverlay(false)">Guia</button>
-  </div>
+  <!-- Start screen -->
+  <div id="startContainer" class="main-container">
 
-  <!-- Focuser Slider -->
-  <div class="slide-container">
-    <div class="blur-text-container">
-      <p class="blur-title">Enfocador</p>
-    </div>
-    <button id="moreBlur" class="blur-button" onclick="updateBlur(1)">+</button>
-
-    <input 
-    id="blurSlider"
-    class="slider"
-    type="range" 
-    min="0" max="10" value="0" step="0.001"
-    orient="vertical">
-    
-    <button id="lessBlur" class="blur-button" onclick="updateBlur(-1)">-</button>
-  </div>
-
-  <!-- Zoom Buttons -->
-  <div class="zoom-container">
-    <button id="zoomExpandable" class="button" onclick="toggleZoomOptions()">Zoom</button>
-
-    <section id="zoomOptions">
-      <!-- <button class="button zoom-button" onclick="toggleEyepieceOverlay()">E</button> -->
-      <button class="button zoom-button" onclick="applyZoom(4)">x1</button>
-      <button class="button zoom-button" onclick="applyZoom(32)">x16</button>
-      <button class="button zoom-button" onclick="applyZoom(256)">x64</button>
-      <button class="button zoom-button" onclick="applyZoom(2028)">x512</button>
+    <!-- Header -->
+    <section class="header">
+      <button 
+        class="image-button menu-image"
+        onclick="openMenu()">
+      </button>
+      <div class="header-container">
+        <button id="modeButton" class="image-button simple-mode-image advanced-mode-image" onclick="toggleMode()"></button>
+      </div>
     </section>
+
+    <!-- Mode Content -->
+    <section id="modeContent" class="container"></section>
   </div>
+
 
   <!-- Menu -->
-  <div id="menuContainer">
+  <div id="menuContainer" class="main-container">
     <section class="header">
-      <button
-        onclick="closeMenu()"
-      >X</button>
-    </section>
-
-    <!-- Options -->
-    <section id="optionsSection">
-      <button class="button option-button" onclick="displayLocation(event)">Ubicacion</button>
-      <button class="button option-button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
-      <button class="button option-button" onclick="displayPollution(event)">Contaminacion Luminica</button>
+      <button 
+        class="image-button close-image"
+        onclick="closeMenu()">
+      </button>
+      <div class="header-container">
+        <button class="button active" onclick="displayMainMenu(event)">Inicio</button>
+        <button class="button" onclick="displayLocation(event)">Ubicacion</button>
+        <button class="button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      </div>
     </section>
 
     <!-- Option Interaction -->
-    <section id="interactionSection"></section>
+    <section id="interactionSection">
+      <section id="mainMenuSection" class="grid-container active">
+        <div id="stellariumOptionsContainer" class="grid-container">
+          <button class="image-button constellations-image"></button>
+          <button class="image-button atmosphere-image"></button>
+          <button class="image-button landscape-image"></button>
+          <button class="image-button azimuthal-image"></button>
+          <button class="image-button equatorial-image"></button>
+          <button class="image-button nebulae-image"></button>
+        </div>
+
+        <div id="pollutionSection" class="container">
+          <p>Contaminacion Luminica</p>
+          <div>
+            <input
+            type="checkbox">
+            <p>Automatica</p>
+          </div>
+          <input 
+            id="pollutionSlider"
+            class="slider h-slider"
+            type="range" 
+            min=1 max=9 value=9>
+          </input>
+        </div>
+      </section>
+    </section>
   </div>
-
-  <button 
-    id="openMenuButton"
-    onclick="openMenu()"
-  >|||</button>
-
   
 
   <!-- Variables - Parameters - Constants -->
+  <script src="telescope/utils/values.js"></script>
+  
   <script>
-    let oldFov;
-    const MIN_FOV = 0.000005;
-    const MAX_FOV = 3.228859;
-    const minLogFov = Math.log(MIN_FOV);
-    const maxLogFov = Math.log(MAX_FOV);
-    let logFov = maxLogFov;
-    let lastY = null;
-    const sensitivity = 0.5;
-
-    let currentBlur = 5;
-    let blurTarget = currentBlur;
-
-    let selectedCity = 'Santiago';
-    let cities = cities_data;
-
     const defaultCityData = cities[selectedCity];
 
     let currentLat = defaultCityData.lat;
     let currentLon = defaultCityData.lon;
     let currentElev = defaultCityData.elev;
     let currentTZ = defaultCityData.tz;
+  </script>
+  
+  <script src="telescope/Modes/Simple/index.js"></script>
+  <script src="telescope/Modes/Advanced/index.js"></script>
 
-    const fovDisplay = document.getElementById("fovDisplay");
-    const touchArea = document.getElementById("touchArea");
+  <script>
+    modeContainer.innerHTML = simpleModeContent + advancedModeContent;
 
-    const blurSlider = document.getElementById('blurSlider');
-    // const blurText = document.getElementById('blurText');
+    const blurSlider = document.getElementById('focusSlider');
+    const zoomSlider = document.getElementById('zoomSlider');
+    
+    const simpleModeElement = document.getElementById('simpleMode');
+    const advancedModeElement = document.getElementById('advancedMode');
 
-    const zoomOptions = document.getElementById('zoomOptions')
-
-    const menu = document.getElementById('menuContainer');
-    const interactionSection = document.getElementById('interactionSection');
-
-    let latInput = undefined;
-    let lonInput = undefined;
-    let elevInput = undefined;
-
-    let pollutionInput = undefined;
-
-    let flatpickrSyncInterval = null;
-    let activeFlatpickr = null;
-    let isUserTouchingCalendar = false;
-    let lastManualChange = 0;
-
-    let engineUTC = null;
-    let timeSpeed = 0;
-
-    let pollution = cities[selectedCity].contaminacion;
+    if (modes.simple === true) {
+      simpleModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+    }
+    else {
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
   </script>
 
   <script src="telescope/utils/updateDisplay.js"></script>
@@ -201,7 +138,20 @@
   <script src="telescope/utils/protobject.js"></script>
   <script src="telescope/utils/luxon.js"></script>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script> -->
+  <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
+  <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
+
+
   <script>
+    function toggleMode() {
+      simpleModeElement.classList.toggle('no-display');
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
+
     function updateBlur(direction = 1) {
       currentBlur += direction * 0.001;
       currentBlur = Math.max(0, Math.min(10, currentBlur));
@@ -209,119 +159,72 @@
       updateDisplayBlur();
     }    
   </script>
+    
+  <script>
+    blurSlider.value = currentBlur;
+    updateDisplayFov();
+  </script>
+
+  <script src="telescope/Slider/slider.js"></script>
+  <script src="telescope/Zoom/zoom.js"></script>
 
   <script>
+    function unwrapAngle(newAngle, prevAngle) {
+      let delta = newAngle - prevAngle;
+      if (delta > Math.PI) delta -= 2 * Math.PI;
+      if (delta < -Math.PI) delta += 2 * Math.PI;
+      return prevAngle + delta;
+    }
 
-    blurSlider.value = currentBlur;
-    // blurText.textContent = currentBlur;
-
-    touchArea.addEventListener("touchstart", (e) => {
-      // if (e.target.closest('.slider')) return; // Ignore slider input
-
-      if (e.touches.length === 1) {
-        lastY = e.touches[0].clientY;
-      }
-    });
-
-    </script>
-
-    <script>
-      blurSlider.value = currentBlur;
-      // blurText.textContent = currentBlur;
-
-      touchArea.addEventListener("touchstart", (e) => {
-        // if (e.target.closest('.slider')) return; // Ignore slider input
-
-        if (e.touches.length === 1) {
-          lastY = e.touches[0].clientY;
+    const Orientation = {
+      oldX: null,
+      oldY: null,
+      start(freq = 200) {
+        this.freq = freq;
+        this.initSensors();
+      },
+      initSensors() {
+        if ("AbsoluteOrientationSensor" in window) {
+          try {
+            const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+            sensor.addEventListener("reading", () =>
+              this.calculateOrientation(sensor.quaternion)
+            );
+            sensor.start();
+          } catch (error) {
+            console.error("Sensor error:", error);
+          }
+        } else {
+          console.error("AbsoluteOrientationSensor non supportato.");
         }
-      });
+      },
+      calculateOrientation(q) {
+        if (!q) return;
+        const [x, y, z, w] = q;
+        const pitch = Math.atan2(
+          2 * (w * x + y * z),
+          1 - 2 * (x * x + y * y)
+        );
+        const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
-      touchArea.addEventListener(
-        "touchmove",
-        (e) => {
-          // if (e.target.closest('.slider')) return; // Ignore slider input
+        const fov = Math.exp(logFov);
+        const sensitivity = Math.min(1, fov / 20);
 
-          e.preventDefault();
-          if (e.touches.length === 1 && lastY !== null) {
-            const currentY = e.touches[0].clientY;
-            const deltaY = currentY - lastY;
-            logFov += deltaY * sensitivity * 0.01;
-            logFov = Math.max(minLogFov, Math.min(maxLogFov, logFov));
-            updateDisplayFov();
-            lastY = currentY;
-          }
-        },
-        { passive: false }
-      );
+        if (this.oldX === null || this.oldY === null) {
+          this.oldX = yaw;
+          this.oldY = pitch;
+        }
 
-      touchArea.addEventListener("touchend", () => {
-        lastY = null;
-      });
+        const adjustedYaw = unwrapAngle(yaw, this.oldX);
 
-      updateDisplayFov();
-    </script>
+        this.oldX += (adjustedYaw - this.oldX) * sensitivity;
+        this.oldY += (pitch - this.oldY) * sensitivity;
 
-    <script src="telescope/Slider/slider.js"></script>
-    <script src="telescope/Zoom/zoom.js"></script>
+        Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
+      },
+    };
 
-    <script>
-      function unwrapAngle(newAngle, prevAngle) {
-        let delta = newAngle - prevAngle;
-        if (delta > Math.PI) delta -= 2 * Math.PI;
-        if (delta < -Math.PI) delta += 2 * Math.PI;
-        return prevAngle + delta;
-      }
-
-      const Orientation = {
-        oldX: null,
-        oldY: null,
-        start(freq = 200) {
-          this.freq = freq;
-          this.initSensors();
-        },
-        initSensors() {
-          if ("AbsoluteOrientationSensor" in window) {
-            try {
-              const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
-              sensor.addEventListener("reading", () =>
-                this.calculateOrientation(sensor.quaternion)
-              );
-              sensor.start();
-            } catch (error) {
-              console.error("Sensor error:", error);
-            }
-          } else {
-            console.error("AbsoluteOrientationSensor non supportato.");
-          }
-        },
-        calculateOrientation(q) {
-          if (!q) return;
-          const [x, y, z, w] = q;
-          const pitch = Math.atan2(
-            2 * (w * x + y * z),
-            1 - 2 * (x * x + y * y)
-          );
-          const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-
-          const fov = Math.exp(logFov);
-          const sensitivity = Math.min(1, fov / 20);
-
-          if (this.oldX === null || this.oldY === null) {
-            this.oldX = yaw;
-            this.oldY = pitch;
-          }
-
-          const adjustedYaw = unwrapAngle(yaw, this.oldX);
-
-          this.oldX += (adjustedYaw - this.oldX) * sensitivity;
-          this.oldY += (pitch - this.oldY) * sensitivity;
-
-          Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
-        },
-      };
-
-      Orientation.start();
-    </script>
-  </body>
+    Orientation.start();
+  </script>
+</body>
 </html>
