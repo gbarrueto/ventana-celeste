@@ -516,13 +516,13 @@
 
         // Fondo visual del overlay
 
-        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
-          rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
-          rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
-          rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
-          rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
-          rgba(0,0,0,0.0) 100%)`;
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom,
+              rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%,
+              rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%,
+              rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
+              rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%,
+              rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%,
+              rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
         if (engine.core) {
@@ -560,6 +560,9 @@
         bortle_index = 0,
       }) {
         // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+
+        Protobject.Core.send(bortle_index).to("Lamp.html");
+        console.log("sending data to Lamp.html");
 
         const data = {
           cityName,
@@ -645,17 +648,17 @@
         }
 
         modal.innerHTML = `
-    <h3>Select Date & Time</h3>
-    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
+        <h3>Select Date & Time</h3>
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
 
-    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-      <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-      <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-      <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-      <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-      <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-    </div>
-  `;
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+        </div>
+      `;
 
         activeFlatpickr = flatpickr("#datetime-picker", {
           enableTime: true,

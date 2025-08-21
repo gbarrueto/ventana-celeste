@@ -36,23 +36,21 @@
       });
 
       // Escuchar datos entrantes
-      Protobject.Core.onData((data) => {
-        // Asegurarse de que el valor sea un número del 1 al 9
-        const value = parseInt(data);
+      Protobject.Core.onReceived((data) => {
+        console.log("Datos recibidos:", data);
+
+        // Extraer valor del objeto
+        const value = parseInt(data.bortle);
 
         if (isNaN(value) || value < 1 || value > 9) return;
 
-        // Mapear valor (1–9) a intensidad (10%–100%)
-        const intensity = value / 9; // entre 0.11 y 1
-
-        // Calcular color blanco con esa intensidad
+        const intensity = value / 9;
         const brightness = Math.round(intensity * 255);
 
         lamp.setColor({ r: brightness, g: brightness, b: brightness });
 
-        // Ajustar también el resplandor (box-shadow) para mayor efecto visual
-        const glowOpacity = 0.2 + intensity * 0.8; // 0.2 a 1
-        const glowSize = 20 + intensity * 60; // tamaño del resplandor
+        const glowOpacity = 0.2 + intensity * 0.8;
+        const glowSize = 20 + intensity * 60;
 
         lamp.setStyle({
           boxShadow: `0 0 ${glowSize}px rgba(255, 255, 255, ${glowOpacity})`,
