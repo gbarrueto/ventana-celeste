@@ -15,8 +15,33 @@ let control;
 function displayLocation(e) {
   optionSelection(e); // mantiene la selección de botón
 
-  // Limpiar sección de interacción
-  // interactionSection.innerHTML = "";
+  // Menú desplegable simple de ciudades
+  let citySelect = document.getElementById("city-select");
+  if (!citySelect) {
+    const select = document.createElement("select");
+    select.id = "city-select";
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select a city";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
+    for (const cityName in cities) {
+      const opt = document.createElement("option");
+      opt.value = cityName;
+      opt.textContent = cityName;
+      select.appendChild(opt);
+    }
+    select.addEventListener("change", function() {
+      const cityName = this.value;
+      if (cityName) {
+        applyLocation({
+          cityName
+        });
+      }
+    });
+    interactionSection.insertBefore(select, interactionSection.firstChild);
+  }
 
   // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
@@ -70,7 +95,7 @@ function displayLocation(e) {
     L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
 
     // Geocoder
-    const geocoder = L.Control.geocoder({
+    const geocoder = L.control.geocoder({
       defaultMarkGeocode: false,
     })
       .on("markgeocode", function (e) {
@@ -111,15 +136,15 @@ function displayLocation(e) {
   }
 }
 
-async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
-  if (e) {
-    const activeButton = document.querySelector(
-      '.control-button.active'
-    );
-  
-    if (activeButton) activeButton.classList.remove('active');
-    e.currentTarget.classList.add('active');
-  }
+async function applyLocation({ cityName = 'Custom', lon, lat, elev, tz }) {
+  //if (e) {
+  //  const activeButton = document.querySelector(
+  //    '.control-button.active'
+  //  );
+  //
+  //  if (activeButton) activeButton.classList.remove('active');
+  //  e.currentTarget.classList.add('active');
+  //}
 
   selectedCity = cityName;
 
@@ -138,6 +163,17 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
 
   updateTimeZone(tz || -4);
   updatePollution();
+
+    const data = {
+    cityName: cityName,
+    lon,
+    lat,
+    elev,
+    bortle_index: pollution
+  }
+
+  Protobject.Core.send(data).to("index.html");
+
 }
 
 // --- Funciones auxiliares ---
