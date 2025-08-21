@@ -1,7 +1,6 @@
 
 function updateDisplayFov() {
   const fov = Math.exp(logFov);
-  fovDisplay.textContent = `FOV: ${fov.toFixed(6)}`;
   
   if (oldFov !== fov) {
     Protobject.Core.send({ f: fov }).to("index.html");
@@ -33,6 +32,14 @@ function updateDisplayBlur() {
   Protobject.Core.send({ blur: blurEffect }).to("index.html");
 }
 
-function toggleEyepieceOverlay() {
-  Protobject.Core.send({ toggleSignal: true }).to("index.html");
+function toggleEyepieceOverlay(eyepieceSignal, event) {
+  const button = document.querySelector(
+    '#viewModeContainer .active'
+  );
+  if (button) {
+    button.classList.toggle('active')
+  }
+  event.target.classList.toggle('active');
+
+  Protobject.Core.send({ eyepieceSignal }).to("index.html");
 }
