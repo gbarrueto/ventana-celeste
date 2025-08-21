@@ -11,14 +11,14 @@ function closeMenu() {
 function optionSelection(e) {
   // Handle button option
   const activeButton = document.querySelector(
-    '.option-button.active'
+    '#menuContainer .header-container .active'
   );
 
-  if (activeButton) {
-    activeButton.classList.remove('active');
+  if (activeButton && activeButton) {
+    activeButton.classList.toggle('active');
   }
   
-  e.currentTarget.classList.add('active');
+  e.currentTarget.classList.toggle('active');
 
   // Handle interaction section
   const activeInteraction = document.querySelectorAll(
@@ -33,4 +33,28 @@ function optionSelection(e) {
     Protobject.Core.send({ setDatetimeInterval: false }).to("index.html");
     engineUTC = null;
   }
+}
+
+function displayMainMenu(e) {
+  optionSelection(e);
+
+  let mainMenuSection = document.getElementById('mainMenuSection');
+
+  if (!mainMenuSection) {
+    let section = `
+      <section id="mainMenuSection" class="active" style="display: grid">
+        <input 
+          type="range"
+          min=1
+          max=9
+          value=${pollution}>
+      </section>
+    `;
+
+    interactionSection.insertAdjacentHTML("beforeend", section);
+    return;
+  }
+
+  mainMenuSection.style.display = 'grid';
+  mainMenuSection.classList.add('active');
 }
