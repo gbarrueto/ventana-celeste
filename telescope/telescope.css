@@ -6,6 +6,7 @@ html, body {
   color: #f3f6ff;
   font-family: sans-serif;
   padding: 2px;
+  position: relative;
 }
 /* 
 body {
@@ -17,6 +18,7 @@ body {
   grid-template-rows: 5% auto;
   height: 100%;
   width: 100%;
+  background: #02040a;
 }
 
 .container {
@@ -48,15 +50,27 @@ body {
   background-position: center;
   background-size: 100% 100%;
   background-color: transparent;
-  /* border: none; */
+  border: none;
 }
 
 .menu-image {
   background-image: url('../images/menu.png');
+  width: 3em;
+  height: 3em;
+}
+
+.close-image {
+  background-image: url('../images/close.png');
+  width: 3em;
+  height: 3em;
 }
 
 #startContainer .header-container {
   justify-content: end;
+}
+
+#menuContainer .header-container {
+  justify-content: space-around;
 }
 
 .no-display {
@@ -90,6 +104,36 @@ body {
 
 .button.active {
   background-color: #0b5394;
+}
+
+#stellariumOptionsContainer {
+  grid-template-columns: 30% 30% 30%;
+  grid-template-rows: 40% 40%;
+}
+
+#mainMenuSection {
+  grid-template-rows: 50% 50%;
+  height: 100%;
+}
+
+
+.constellations-image {
+  background-image: url('../svg/btn-cst-lines.svg');
+}
+.atmosphere-image {
+  background-image: url('../svg/btn-atmosphere.svg');
+}
+.landscape-image {
+  background-image: url('../svg/btn-landscape.svg');
+}
+.azimuthal-image {
+  background-image: url('../svg/btn-azimuthal-grid.svg');
+}
+.equatorial-image {
+  background-image: url('../svg/btn-equatorial-grid.svg');
+}
+.nebulae-image {
+  background-image: url('../svg/btn-nebulae.svg');
 }
 
 

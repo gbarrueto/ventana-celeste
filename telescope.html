@@ -44,24 +44,50 @@
 
 
   <!-- Menu -->
-  <div id="menuContainer">
+  <div id="menuContainer" class="main-container">
     <section class="header">
-      <button
-        onclick="closeMenu()"
-      >X</button>
-    </section>
-
-    <!-- Options -->
-    <section id="optionsSection">
-      <button class="button option-button" onclick="displayLocation(event)">Ubicacion</button>
-      <button class="button option-button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
-      <button class="button option-button" onclick="displayPollution(event)">Contaminacion Luminica</button>
+      <button 
+        class="image-button close-image"
+        onclick="closeMenu()">
+      </button>
+      <div class="header-container">
+        <button class="button active" onclick="displayMainMenu(event)">Inicio</button>
+        <button class="button" onclick="displayLocation(event)">Ubicacion</button>
+        <button class="button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      </div>
     </section>
 
     <!-- Option Interaction -->
-    <section id="interactionSection"></section>
+    <section id="interactionSection">
+      <section id="mainMenuSection" class="grid-container active">
+        <div id="stellariumOptionsContainer" class="grid-container">
+          <button class="image-button constellations-image"></button>
+          <button class="image-button atmosphere-image"></button>
+          <button class="image-button landscape-image"></button>
+          <button class="image-button azimuthal-image"></button>
+          <button class="image-button equatorial-image"></button>
+          <button class="image-button nebulae-image"></button>
+        </div>
+
+        <div id="pollutionSection" class="container">
+          <p>Contaminacion Luminica</p>
+          <div>
+            <input
+            type="checkbox">
+            <p>Automatica</p>
+          </div>
+          <input 
+            id="pollutionSlider"
+            class="slider h-slider"
+            type="range" 
+            min=1 max=9 value=9>
+          </input>
+        </div>
+      </section>
+    </section>
   </div>
   
+
 
   <!-- Variables - Parameters - Constants -->
   <script src="telescope/utils/values.js"></script>
