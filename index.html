@@ -168,7 +168,8 @@
         lastGeocodeTime = now;
 
         try {
-          const url = `https://mi-proxy.com/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
           const res = await fetch(url, {
             headers: {
               "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",

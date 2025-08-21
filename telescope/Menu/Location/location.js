@@ -193,18 +193,3 @@ function round_brightness(b) {
   else if (b < 3) return b.toFixed(2);
   else return b.toFixed(1);
 }
-
-// --- Escuchar coordenadas desde aruco.html ---
-Protobject.Core.receive((data) => {
-  if (data.lat !== undefined && data.lon !== undefined) {
-    currentLat = data.lat;
-    currentLon = data.lon;
-
-    if (map && map.setView) {
-      map.setView([currentLat, currentLon], map.getZoom());
-      if (marker) {
-        marker.setLatLng([currentLat, currentLon]);
-      }
-    }
-  }
-});
