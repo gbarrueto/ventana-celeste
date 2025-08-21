@@ -33,6 +33,33 @@ function displayLocation(e) {
     mapDiv.classList.add('active');
   }
 
+async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
+  if (e) {
+    const activeButton = document.querySelector(
+      '.control-button.active'
+    );
+  
+    if (activeButton) activeButton.classList.remove('active');
+    e.currentTarget.classList.add('active');
+  }
+
+  selectedCity = cityName;
+
+  if (cities[cityName]) {
+    lon = cities[cityName].lon;
+    lat = cities[cityName].lat;
+    elev = cities[cityName].elev;
+    pollution = cities[cityName].contaminacion;
+    tz = cities[cityName].tz;
+  }
+  else {
+    pollution = await getBortleIndex({ lat, lon });
+    // console.log("This location calculaterd pollution:", pollution);
+  }
+  // pollution = cities[cityName] ? cities[cityName].contaminacion : await getBortleIndex({ lat, lon });
+
+  updateTimeZone(tz || -4);
+  updatePollution();
   // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {
     // Base OSM
@@ -197,4 +224,9 @@ function round_brightness(b) {
   if (b < 0.1) return b.toFixed(3);
   else if (b < 3) return b.toFixed(2);
   else return b.toFixed(1);
+}
+
+function updateTimeZone(newTZ) {
+  currentTZ = newTZ;
+  console.log("Time zone updated to:", currentTZ);
 }
