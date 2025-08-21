@@ -12,7 +12,6 @@
   transition: 0.2s ease;
 
   .header {
-
     button {
       width: 2em;
       height: 2em;
@@ -26,9 +25,8 @@
     padding: 0 2%;
     gap: 2%;
     justify-content: center;
-    
-    .option-button {
 
+    .option-button {
     }
 
     .active {
@@ -39,7 +37,6 @@
   #interactionSection {
     padding: 2%;
     flex: 1;
-    overflow-y: hidden;
   }
 }
 

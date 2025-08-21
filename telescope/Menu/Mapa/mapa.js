@@ -1,109 +1,68 @@
-// --- Light Pollution Map 2024 ---
 const mapLink =
   '<a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a>';
 const infoLink =
   '<a href="https://djlorenz.github.io/astronomy/lp/" target="_blank">Light Pollution Atlas Information</a>';
 
-// Variables para mapa y capas
-let map;
-let standard, lightpollution2024;
+// Base OSM
+const standard = L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    attribution: "&copy; " + mapLink + " Contributors | " + infoLink,
+    maxZoom: 19,
+  }
+);
+
+// Capa 2024
+const lightpollution2024 = L.tileLayer(
+  "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
+  {
+    minZoom: 2,
+    maxNativeZoom: 8,
+    maxZoom: 19,
+    tileSize: 1024,
+    zoomOffset: -2,
+    opacity: 0.5,
+  }
+);
+
+// Mapa
+const map = L.map("map", {
+  center: [0, 0],
+  zoom: 2,
+  layers: [standard, lightpollution2024],
+  tap: false,
+});
+
+// Control escala
+L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
+
+// Geocoder
+const geocoder = L.Control.geocoder({
+  defaultMarkGeocode: false,
+})
+  .on("markgeocode", function (e) {
+    const center = e.geocode.center;
+    const lat = center.lat;
+    const lng = center.lng;
+    if (lat >= -80 && lat <= 80 && lng >= -360 && lng <= 360) {
+      L.marker([lat, lng], {
+        title: "Lat, Lon = " + lat + ", " + lng,
+        opacity: 0.7,
+      }).addTo(map);
+      map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
+      getInfoFromLonLat(center, 2024);
+    }
+  })
+  .addTo(map);
+
 let popup;
 let popuplatlng;
-let control;
 
-// Función para mostrar el mapa dentro del menú
-function displayLocation(e) {
-  optionSelection(e); // mantiene la selección de botón
-
-  // Limpiar sección de interacción
-  interactionSection.innerHTML = "";
-
-  // Crear div del mapa si no existe
-  let mapDiv = document.getElementById("map");
-  if (!mapDiv) {
-    mapDiv = document.createElement("div");
-    mapDiv.id = "map";
-    mapDiv.style.width = "100%";
-    mapDiv.style.height = "400px"; // ajusta a tu preferencia
-    interactionSection.appendChild(mapDiv);
-  }
-
-  // Inicializar Leaflet solo una vez
-  if (!mapDiv._leaflet_id) {
-    // Base OSM
-    standard = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
-        attribution: "&copy; " + mapLink + " Contributors | " + infoLink,
-        maxZoom: 19,
-      }
-    );
-
-    // Capa 2024
-    lightpollution2024 = L.tileLayer(
-      "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
-      {
-        minZoom: 2,
-        maxNativeZoom: 8,
-        maxZoom: 19,
-        tileSize: 1024,
-        zoomOffset: -2,
-        opacity: 0.5,
-      }
-    );
-
-    // Mapa
-    map = L.map("map", {
-      center: [currentLat || -33.45, currentLon || -70.66],
-      zoom: 5,
-      layers: [standard, lightpollution2024],
-      tap: false,
-    });
-
-    // Control escala
-    L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
-
-    // Geocoder
-    const geocoder = L.Control.geocoder({
-      defaultMarkGeocode: false,
-    })
-      .on("markgeocode", function (e) {
-        const center = e.geocode.center;
-        const lat = center.lat;
-        const lng = center.lng;
-        if (lat >= -80 && lat <= 80 && lng >= -360 && lng <= 360) {
-          L.marker([lat, lng], {
-            title: "Lat, Lon = " + lat + ", " + lng,
-            opacity: 0.7,
-          }).addTo(map);
-          map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
-          getInfoFromLonLat(center, 2024);
-        }
-      })
-      .addTo(map);
-
-    // Click para info
-    map.on("click", function (e) {
-      getInfoFromLonLat(e.latlng, 2024);
-      popuplatlng = e.latlng;
-    });
-
-    // Slider opacidad
-    control = L.control.range({
-      position: "topright",
-      min: 0,
-      max: 100,
-      value: 50,
-      step: 1,
-      orient: "vertical",
-      icon: false,
-    });
-    control.on("change input", function (e) {
-      lightpollution2024.setOpacity(e.value / 100);
-    });
-    map.addControl(control);
-  }
-}
+// Click para info
+map.on("click", function (e) {
+  getInfoFromLonLat(e.latlng, 2024);
+  popuplatlng = e.latlng;
+});
 
 // --- Funciones auxiliares ---
 function getInfoFromLonLat(elatlng, year) {
@@ -115,6 +74,7 @@ function getInfoFromLonLat(elatlng, year) {
   const tiley = Math.floor(latFromStart / 5.0) + 1;
 
   if (tiley >= 1 && tiley <= 28) {
+    // modificarrrrrr !!!!!
     const url =
       "https://telescope.alessiobellino.com/data/binary_tiles/" +
       "binary_tile_" +
@@ -193,3 +153,18 @@ function round_brightness(b) {
   else if (b < 3) return b.toFixed(2);
   else return b.toFixed(1);
 }
+
+// Slider opacidad
+const control = L.control.range({
+  position: "topright",
+  min: 0,
+  max: 100,
+  value: 50,
+  step: 1,
+  orient: "vertical",
+  icon: false,
+});
+control.on("change input", function (e) {
+  lightpollution2024.setOpacity(e.value / 100);
+});
+map.addControl(control);

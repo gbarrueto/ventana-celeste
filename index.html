@@ -157,21 +157,31 @@
         }
       });
 
+      let lastGeocodeTime = 0;
+      let lastCountry = "Desconocido";
+
       async function getCountryFromLatLon(lat, lon) {
+        const now = Date.now();
+        if (now - lastGeocodeTime < 1000) {
+          return lastCountry; // evita request si no pasó 1s
+        }
+        lastGeocodeTime = now;
+
         try {
           const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+
           const res = await fetch(url, {
             headers: {
-              "User-Agent": "ArucoTracker/1.0 (tu-email@dominio.com)", // requerido por Nominatim
+              "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
             },
           });
           if (!res.ok) throw new Error("Respuesta no válida");
-
           const data = await res.json();
-          return data.address.country || "Desconocido";
+          lastCountry = data.address.country || "Desconocido";
+          return lastCountry;
         } catch (err) {
           console.error("Error geocodificando:", err);
-          return "Desconocido";
+          return lastCountry;
         }
       }
 
@@ -189,11 +199,10 @@
 
       // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
- 
       function setEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) return;
-        
+
         const newOverlay = document.createElement("div");
         newOverlay.id = "eyepiece-overlay";
         newOverlay.style.position = "absolute";
@@ -210,7 +219,7 @@
         newOverlay.style.backgroundPosition = "center";
         document.body.appendChild(newOverlay);
       }
-    
+
       function removeEyepieceOverlay() {
         const overlay = document.getElementById("eyepiece-overlay");
         if (overlay) {
@@ -507,13 +516,13 @@
 
         // Fondo visual del overlay
 
-        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
-          rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
-          rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
-          rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
-          rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
-          rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
-          rgba(0,0,0,0.0) 100%)`;
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom,
+              rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%,
+              rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%,
+              rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
+              rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%,
+              rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%,
+              rgba(0,0,0,0.0) 100%)`;
 
         // Ajustar parámetros del motor
         if (engine.core) {
@@ -551,6 +560,9 @@
         bortle_index = 0,
       }) {
         // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+
+        Protobject.Core.send(bortle_index).to("Lamp.html");
+        console.log("sending data to Lamp.html");
 
         const data = {
           cityName,
@@ -636,17 +648,17 @@
         }
 
         modal.innerHTML = `
-    <h3>Select Date & Time</h3>
-    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
+        <h3>Select Date & Time</h3>
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
 
-    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-      <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-      <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-      <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-      <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-      <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-    </div>
-  `;
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+        </div>
+      `;
 
         activeFlatpickr = flatpickr("#datetime-picker", {
           enableTime: true,
