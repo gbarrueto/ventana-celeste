@@ -23,7 +23,10 @@ Protobject.Core.onReceived((data) => {
     });
 
   // Date && Time
+
+  // Actualizar velocidad del paso del tiempo
   if (data.speed !== undefined) setSpeed(data.speed);
+  // Actualizar fecha interna del core
   if (data.date !== undefined) updateDate(data.date);
   if (data.setDatetimeInterval !== undefined) {
     data.setDatetimeInterval == true

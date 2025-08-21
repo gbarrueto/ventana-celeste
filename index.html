@@ -4,29 +4,24 @@
     <meta charset="UTF-8" />
     <title>Stellarium Web Engine</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-    />
     <link rel="stylesheet" href="stellarium.styles.css" />
   </head>
   <body>
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
-    <div class="topbar">
+    <!-- <div class="topbar">
       <span class="title">Stellarium<sup>Web</sup></span>
       <div id="progress"></div>
-    </div>
+    </div> -->
 
     <div id="stel">
       <canvas id="stel-canvas"></canvas>
       <div id="info-card"></div>
     </div>
 
-    <div class="footer" id="footer-buttons"></div>
+    <!-- <div class="footer" id="footer-buttons"></div> -->
     <div id="modal-container"></div>
 
     <script src="util/protobject.js"></script>
@@ -235,12 +230,14 @@
           engine = stel;
           const core = stel.core;
 
+          defaultLocation = { cityName: "Santiago", lat: -33.4489, lon: -70.6693, elev: 570, bortle_index: 9 };
+
           core.observer.utc = toJulianDateIso(new Date().toISOString());
-          core.observer.latitude = -33.4489 * (Math.PI / 180);
-          core.observer.longitude = -70.6693 * (Math.PI / 180);
-          core.observer.elevation = 570;
-          core.observer.name = "Santiago, Chile";
-          core.bortle_index = 9;
+          core.observer.latitude = defaultLocation.lat * (Math.PI / 180);
+          core.observer.longitude = defaultLocation.lon * (Math.PI / 180);
+          core.observer.elevation = defaultLocation.elev;
+          core.observer.name = defaultLocation.cityName;
+          core.bortle_index = defaultLocation.bortle_index;
 
           const baseUrl =
             "https://telescope.alessiobellino.com/stardata/cache/";
@@ -329,7 +326,7 @@
             if (core.planets.hints_visible) {
               core.planets.hints_visible = false;
               core.dsos.hints_visible = false;
-              core.minor_planets.hints_visible = false; // Vesta de mierda
+              core.minor_planets.hints_visible = false;
               // core.dss.hints_visible = false;
               // core.milkyway.hints_visible = false;
               // core.stars.hints_visible = false;
@@ -339,22 +336,22 @@
             }
           }, 500);
 
-          const footer = document.getElementById("footer-buttons");
-          BUTTONS.forEach(({ label, img, path, attr }) => {
-            const btn = document.createElement("div");
-            btn.className = "stel-button";
-            btn.innerHTML = `<img src="${img}" title="${label}" />`;
-            // Custom pollution overlay
-            btn.onclick = () => {
-              const obj = path.split(".").reduce((o, k) => o && o[k], core);
-              if (obj) {
-                obj[attr] = !obj[attr];
-                btn.classList.toggle("active", obj[attr]);
-              }
-            };
-            //}
-            footer.appendChild(btn);
-          });
+          // const footer = document.getElementById("footer-buttons");
+          // BUTTONS.forEach(({ label, img, path, attr }) => {
+          //   const btn = document.createElement("div");
+          //   btn.className = "stel-button";
+          //   btn.innerHTML = `<img src="${img}" title="${label}" />`;
+          //   // Custom pollution overlay
+          //   btn.onclick = () => {
+          //     const obj = path.split(".").reduce((o, k) => o && o[k], core);
+          //     if (obj) {
+          //       obj[attr] = !obj[attr];
+          //       btn.classList.toggle("active", obj[attr]);
+          //     }
+          //   };
+          //   //}
+          //   footer.appendChild(btn);
+          // });
 
           // On object click listener
 
@@ -387,12 +384,6 @@
               info.style.display = "none";
             }
 
-            // const progress = core.progressbars[0];
-            // if (progress) {
-            //   document.getElementById("progress").innerText = `${
-            //     progress.label
-            //   }: ${((progress.value / progress.total) * 100).toFixed(0)}%`;
-            // }
           });
 
           pollutionOverlay = document.createElement("div");
@@ -407,31 +398,18 @@
           pollutionOverlay.style.display = "block";
           const stelElement = document.getElementById("stel");
           stelElement.appendChild(pollutionOverlay);
-          updatePollutionOverlay({});
+
+          applyLocation(defaultLocation);
+
         },
       });
 
-      let clockInterval = null;
-      let timeSpeed = 0;
-      let suppressFlatpickrUpdate = false;
+      // let clockInterval = null;
+      // let timeSpeed = 0;
+      // let suppressFlatpickrUpdate = false;
 
       function setSpeed(multiplier) {
-        timeSpeed = multiplier;
-
-        if (clockInterval) {
-          clearInterval(clockInterval);
-          clockInterval = null;
-        }
-
-        if (multiplier > 0) {
-          clockInterval = setInterval(() => {
-            if (!engine) return;
-            const simulatedSecondsPerStep = multiplier * 0.03; // 30 ms
-            const jdStep = simulatedSecondsPerStep / 86400;
-            engine.core.observer.utc += jdStep;
-          }, 30);
-        }
-        // updateSpeedButtons(); // ← Aggiorna subito la UI dei bottoni
+        engine.core.time_speed = parseInt(multiplier);
       }
 
       function updateDate(date) {
@@ -451,63 +429,29 @@
       }
 
       function applyPollution(bortle) {
+
+        // Ajustar parámetros del motor
+        bortle = parseInt(bortle);
+
+        if (engine.core) {
+          engine.core.bortle_index = bortle; // de 1 a 9
+          engine.core.milkyway.visible = bortle < 6;
+
+          // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
+          engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
+          engine.core.star_relative_scale = 0.9;
+
+        }
         updatePollutionOverlay({ bortle });
       }
     </script>
     <script>
-      //
-      // function showLocationSelector() {
-      //   const modal = document.getElementById("modal-container");
-      //   const locationBtn = document.querySelector(
-      //     '.control-button[onclick="showLocationSelector()"]'
-      //   );
-      //
-      //   const isVisible = modal.style.display === "block";
-      //
-      //   if (isVisible) {
-      //     modal.style.display = "none";
-      //     locationBtn.classList.remove("active");
-      //     return;
-      //   }
-      //
-      //   let buttonsHtml = "<h3>Select Location</h3>";
-      //   for (const city in cities) {
-      //     const isSelected = city === selectedCity;
-      //     buttonsHtml += `
-      // <button class="control-button" style="
-      //   display: block;
-      //   width: 100%;
-      //   margin-bottom: 0.5rem;
-      //   background-color: ${isSelected ? "#4caf50" : "rgba(255,255,255,0.1)"};
-      //   font-weight: ${isSelected ? "bold" : "normal"};
-      // " onclick="applyLocation('${city}')">
-      //   ${city}
-      // </button>`;
-      //   }
-      //
-      //   modal.innerHTML = buttonsHtml;
-      //   modal.style.display = "block";
-      //   locationBtn.classList.add("active");
-      // }
 
       // Light pollution section (se mantiene)
       let pollutionOverlayTimer = null;
 
       function updatePollutionOverlay({ forceHide = false, bortle }) {
-        // console.log("function call");
-        // const overlay = document.getElementById("pollution-overlay");
-        // if (!overlay) return;
         if (!pollutionOverlay) return;
-
-        // console.log("setting city");
-        //const city = cities[selectedCity];
-        // console.log("city:", city);
-        // const pollution = bortle
-        //   ? bortle
-        //   : city && city.contaminacion !== undefined
-        //   ? city.contaminacion
-        //   : 1;
-        // console.log("pollution:", pollution);
 
         // Mostrar overlay
         pollutionOverlay.style.transition = "opacity 1s";
@@ -516,41 +460,14 @@
 
         // Fondo visual del overlay
 
-        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom,
-              rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%,
-              rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%,
-              rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
-              rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%,
-              rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%,
-              rgba(0,0,0,0.0) 100%)`;
-
-        // Ajustar parámetros del motor
-        if (engine.core) {
-          engine.core.bortle_index = bortle; // de 1 a 9
-          engine.core.milkyway.visible = bortle < 6;
-
-          // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
-          engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
-
-          // Escala relativa de estrellas: reducir progresivamente
-          //engine.core.star_relative_scale = Math.max(0.3, 1.2 - 0.1 * pollution);
-
-          // Escala lineal: reducir más agresivamente en ciudades
-
-          //engine.core.star_linear_scale = Math.max(0.2, 1.0 - 0.08 * pollution);
-        }
+        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
+          rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
+          rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
+          rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
+          rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
+          rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
+          rgba(0,0,0,0.0) 100%)`;
       }
-
-      // function setSelectedCityWithPollution(city) {
-      //   selectedCity = city;
-      //   // Update overlay if active
-      //   // const overlay = document.getElementById("pollution-overlay");
-      //   //console.log("city selected:", selectedCity);
-      //   if (pollutionOverlay && pollutionOverlay.style.display !== "none") {
-      //     //console.log("first if");
-      //     updatePollutionOverlay({});
-      //   }
-      // }
 
       async function applyLocation({
         cityName = "Custom",
@@ -559,7 +476,7 @@
         elev = 0,
         bortle_index = 0,
       }) {
-        // console.log("Received data:", cityName, lat, lon, elev, bortle_index);
+        console.log("Received data:", cityName, lat, lon, elev, bortle_index);
 
         Protobject.Core.send(bortle_index).to("Lamp.html");
         console.log("sending data to Lamp.html");
@@ -573,8 +490,6 @@
         };
 
         if (!engine) return;
-
-        // if (cityName == "Custom") console.log("Applying custom location:", lat, lon, elev);
 
         engine.core.observer.latitude = data.lat * (Math.PI / 180);
         engine.core.observer.longitude = data.lon * (Math.PI / 180);
@@ -590,133 +505,6 @@
 
         //console.log("Bortle index for", cityName, ":", bortle_index);
 
-        const localTime = new Date();
-        engine.core.observer.utc = toJulianDateIso(localTime.toISOString());
-        //engine.core.observer.pitch = 0;
-        //engine.core.observer.yaw = 0;
-
-        //setSelectedCityWithPollution(cityName || "Custom"); // APLICAR POLLUTION PERSONALIZADA
-
-        // updatePollutionOverlay
-
-        // showLocationSelector();
-      }
-
-      // function updateSpeedButtons() {
-      //   document
-      //     .querySelectorAll("#modal-container .control-button")
-      //     .forEach((btn) => {
-      //       const text = btn.textContent.trim();
-      //
-      //       const match =
-      //         (timeSpeed === 0 && text.startsWith("🟥")) ||
-      //         (timeSpeed === 1 && text.startsWith("🕒")) ||
-      //         (timeSpeed === 10 && text.includes("10x")) ||
-      //         (timeSpeed === 60 && text.includes("60x")) ||
-      //         (timeSpeed === 3600 && text.includes("3600x"));
-      //
-      //       btn.classList.toggle("active", match);
-      //     });
-      // }
-
-      function fromJulianDateToDate(jd) {
-        return new Date((jd - 2440587.5) * 86400000);
-      }
-
-      function fromMJDToDate(mjd) {
-        const jd = mjd + 2400000.5;
-        return new Date((jd - 2440587.5) * 86400000);
-      }
-
-      function showTimeSelector() {
-        const modal = document.getElementById("modal-container");
-        const timeBtn = document.querySelector(
-          '.control-button[onclick="showTimeSelector()"]'
-        );
-        const isVisible = modal.style.display === "block";
-
-        if (isVisible) {
-          modal.style.display = "none";
-          timeBtn.classList.remove("active");
-
-          if (flatpickrSyncInterval) {
-            clearInterval(flatpickrSyncInterval);
-            flatpickrSyncInterval = null;
-          }
-
-          return;
-        }
-
-        modal.innerHTML = `
-        <h3>Select Date & Time</h3>
-        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-        </div>
-      `;
-
-        activeFlatpickr = flatpickr("#datetime-picker", {
-          enableTime: true,
-          dateFormat: "Y-m-d\\TH:i:S",
-          time_24hr: true,
-          defaultDate: new Date(),
-          inline: true,
-          onOpen: () => (isUserTouchingCalendar = true),
-          onClose: () => (isUserTouchingCalendar = false),
-
-          onChange: function (selectedDates) {
-            if (selectedDates.length > 0) {
-              const date = selectedDates[0];
-              lastManualChange = Date.now();
-              engine.core.observer.utc = toJulianDateIso(date.toISOString());
-            }
-          },
-
-          onValueUpdate: function (selectedDates) {
-            if (selectedDates.length > 0) {
-              const date = selectedDates[0];
-              lastManualChange = Date.now();
-              engine.core.observer.utc = toJulianDateIso(date.toISOString());
-            }
-          },
-
-          onMonthChange: function (selectedDates) {
-            if (selectedDates.length > 0) {
-              const date = selectedDates[0];
-              lastManualChange = Date.now();
-              engine.core.observer.utc = toJulianDateIso(date.toISOString());
-            }
-          },
-
-          onYearChange: function (selectedDates) {
-            if (selectedDates.length > 0) {
-              const date = selectedDates[0];
-              lastManualChange = Date.now();
-              engine.core.observer.utc = toJulianDateIso(date.toISOString());
-            }
-          },
-        });
-
-        modal.style.display = "block";
-        timeBtn.classList.add("active");
-        updateSpeedButtons();
-
-        flatpickrSyncInterval = setInterval(() => {
-          if (!activeFlatpickr || !engine?.core?.observer?.utc) return;
-
-          const now = Date.now();
-          const recentlyChanged = now - lastManualChange < 2000;
-
-          if (!isUserTouchingCalendar && !recentlyChanged) {
-            const date = fromMJDToDate(engine.core.observer.utc);
-            activeFlatpickr.setDate(date, false);
-          }
-        }, 300);
       }
     </script>
   </body>
