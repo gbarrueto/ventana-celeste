@@ -116,6 +116,14 @@ body {
   height: 100%;
 }
 
+.stel-button {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+.stel-button.active {
+  opacity: 1;
+}
+
 
 .constellations-image {
   background-image: url('../svg/btn-cst-lines.svg');

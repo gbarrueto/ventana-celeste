@@ -69,12 +69,12 @@
 
         <!-- Stellarium Options -->
         <div id="stellariumOptionsContainer" class="grid-container">
-          <button name="constellations" class="image-button constellations-image"></button>
-          <button name="atmosphere" class="image-button atmosphere-image"></button>
-          <button name="landscape" class="image-button landscape-image"></button>
-          <button name="azimuthal" class="image-button azimuthal-image"></button>
-          <button name="equatorial" class="image-button equatorial-image"></button>
-          <button name="nebulae" class="image-button nebulae-image"></button>
+          <button name="constellations" class="image-button constellations-image stel-button active"></button>
+          <button name="atmosphere" class="image-button atmosphere-image stel-button active"></button>
+          <button name="landscape" class="image-button landscape-image stel-button active"></button>
+          <button name="azimuthal" class="image-button azimuthal-image stel-button"></button>
+          <button name="equatorial" class="image-button equatorial-image stel-button"></button>
+          <button name="nebulae" class="image-button nebulae-image stel-button"></button>
         </div>
 
         <!-- Pollution -->
@@ -146,6 +146,7 @@
       btn.onclick = () => {
         const info = BUTTONS[btn.name];
         Protobject.Core.send({ optionInfo: info }).to("index.html");
+        btn.classList.toggle('active');
       }
     })
 
