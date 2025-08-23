@@ -36,4 +36,7 @@ Protobject.Core.onReceived((data) => {
 
   // Pollution
   if (data.bortle !== undefined) applyPollution(data.bortle);
+
+  // Stellarium Options
+  if (data.optionInfo !== undefined) stellariumOption(data.optionInfo);
 });
