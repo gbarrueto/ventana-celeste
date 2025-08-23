@@ -66,15 +66,18 @@
     <!-- Option Interaction -->
     <section id="interactionSection">
       <section id="mainMenuSection" class="grid-container active">
+
+        <!-- Stellarium Options -->
         <div id="stellariumOptionsContainer" class="grid-container">
-          <button class="image-button constellations-image"></button>
-          <button class="image-button atmosphere-image"></button>
-          <button class="image-button landscape-image"></button>
-          <button class="image-button azimuthal-image"></button>
-          <button class="image-button equatorial-image"></button>
-          <button class="image-button nebulae-image"></button>
+          <button name="constellations" class="image-button constellations-image"></button>
+          <button name="atmosphere" class="image-button atmosphere-image"></button>
+          <button name="landscape" class="image-button landscape-image"></button>
+          <button name="azimuthal" class="image-button azimuthal-image"></button>
+          <button name="equatorial" class="image-button equatorial-image"></button>
+          <button name="nebulae" class="image-button nebulae-image"></button>
         </div>
 
+        <!-- Pollution -->
         <div id="pollutionSection" class="container">
           <p>Contaminacion Luminica</p>
           <div>
@@ -135,6 +138,17 @@
 
 
   <script>
+    const stellariumOptionButtons = document.querySelectorAll(
+      '#stellariumOptionsContainer button'
+    )
+
+    stellariumOptionButtons.forEach( btn => {
+      btn.onclick = () => {
+        const info = BUTTONS[btn.name];
+        Protobject.Core.send({ optionInfo: info }).to("index.html");
+      }
+    })
+
     function toggleMode() {
       simpleModeElement.classList.toggle('no-display');
       advancedModeElement.classList.toggle('no-display');

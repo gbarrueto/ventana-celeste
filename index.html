@@ -506,6 +506,13 @@
         //console.log("Bortle index for", cityName, ":", bortle_index);
 
       }
+
+      function stellariumOption({ path, attr }) {
+        const obj = path.split(".").reduce((o, k) => o && o[k], engine.core);
+        if (obj) {
+          obj[attr] = !obj[attr];
+        }
+      }
     </script>
   </body>
 </html>
