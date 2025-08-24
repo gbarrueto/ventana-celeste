@@ -109,6 +109,12 @@ body {
 #stellariumOptionsContainer {
   grid-template-columns: 30% 30% 30%;
   grid-template-rows: 40% 40%;
+  justify-content: space-around;
+}
+
+#stellariumOptionsContainer button {
+  display: flex;
+  flex-direction: column;
 }
 
 #mainMenuSection {
@@ -118,10 +124,18 @@ body {
 
 .stel-button {
   opacity: 0.5;
+  color: #e3eaff;
   transition: opacity 0.2s ease;
 }
 .stel-button.active {
   opacity: 1;
+}
+
+.stel-button .image-button {
+  flex: 1;
+}
+.stel-button p {
+  margin: 0;
 }
 
 
