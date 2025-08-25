@@ -113,72 +113,72 @@
       // Nuevo: recibir posiciones desde ArUco
       // ---------------------------
       // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
-      let pendingArUcoPosition = null;
-      async function applyArUcoPosition(lat, lon) {
-        // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
-        if (!engine || !engine.core) {
-          pendingArUcoPosition = { lat, lon };
-          return;
-        }
-        try {
-          engine.core.observer.latitude = lat * (Math.PI / 180);
-          engine.core.observer.longitude = lon * (Math.PI / 180);
-          // Opcional: mantener elevación previa o poner 0 si desconocida
-          engine.core.observer.elevation = engine.core.observer.elevation || 0;
-          engine.core.observer.name = "ArUco Position";
-          // Actualizar tiempo local para que la vista sea consistente (opcional):
-          engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
-          // Centrar la vista del observador
-          engine.core.observer.pitch = 0;
-          engine.core.observer.yaw = 0;
-          // Notificación visual mínima: actualiza footer/progress si lo deseas
-          const progress = document.getElementById("progress");
-          if (progress) {
-            const country = await getCountryFromLatLon(lat, lon);
-            progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
-              5
-            )})`;
-          }
-        } catch (e) {
-          console.error("Error aplicando posición ArUco:", e);
-        }
-      }
+      // let pendingArUcoPosition = null;
+      // async function applyArUcoPosition(lat, lon) {
+      //   // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
+      //   if (!engine || !engine.core) {
+      //     pendingArUcoPosition = { lat, lon };
+      //     return;
+      //   }
+      //   try {
+      //     engine.core.observer.latitude = lat * (Math.PI / 180);
+      //     engine.core.observer.longitude = lon * (Math.PI / 180);
+      //     // Opcional: mantener elevación previa o poner 0 si desconocida
+      //     engine.core.observer.elevation = engine.core.observer.elevation || 0;
+      //     engine.core.observer.name = "ArUco Position";
+      //     // Actualizar tiempo local para que la vista sea consistente (opcional):
+      //     engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
+      //     // Centrar la vista del observador
+      //     engine.core.observer.pitch = 0;
+      //     engine.core.observer.yaw = 0;
+      //     // Notificación visual mínima: actualiza footer/progress si lo deseas
+      //     const progress = document.getElementById("progress");
+      //     if (progress) {
+      //       const country = await getCountryFromLatLon(lat, lon);
+      //       progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
+      //         5
+      //       )})`;
+      //     }
+      //   } catch (e) {
+      //     console.error("Error aplicando posición ArUco:", e);
+      //   }
+      // }
+      //
+      // // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
+      // window.addEventListener("proto:position", (ev) => {
+      //   const d = ev?.detail || {};
+      //   if (d.lat !== undefined && d.lon !== undefined) {
+      //     applyArUcoPosition(d.lat, d.lon);
+      //   }
+      // });
 
-      // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
-      window.addEventListener("proto:position", (ev) => {
-        const d = ev?.detail || {};
-        if (d.lat !== undefined && d.lon !== undefined) {
-          applyArUcoPosition(d.lat, d.lon);
-        }
-      });
-
-      let lastGeocodeTime = 0;
-      let lastCountry = "Desconocido";
-
-      async function getCountryFromLatLon(lat, lon) {
-        const now = Date.now();
-        if (now - lastGeocodeTime < 1000) {
-          return lastCountry; // evita request si no pasó 1s
-        }
-        lastGeocodeTime = now;
-
-        try {
-          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-
-          const res = await fetch(url, {
-            headers: {
-              "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
-            },
-          });
-          if (!res.ok) throw new Error("Respuesta no válida");
-          const data = await res.json();
-          lastCountry = data.address.country || "Desconocido";
-          return lastCountry;
-        } catch (err) {
-          console.error("Error geocodificando:", err);
-          return lastCountry;
-        }
-      }
+      // let lastGeocodeTime = 0;
+      // let lastCountry = "Desconocido";
+      //
+      // async function getCountryFromLatLon(lat, lon) {
+      //   const now = Date.now();
+      //   if (now - lastGeocodeTime < 1000) {
+      //     return lastCountry; // evita request si no pasó 1s
+      //   }
+      //   lastGeocodeTime = now;
+      //
+      //   try {
+      //     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+      //
+      //     const res = await fetch(url, {
+      //       headers: {
+      //         "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
+      //       },
+      //     });
+      //     if (!res.ok) throw new Error("Respuesta no válida");
+      //     const data = await res.json();
+      //     lastCountry = data.address.country || "Desconocido";
+      //     return lastCountry;
+      //   } catch (err) {
+      //     console.error("Error geocodificando:", err);
+      //     return lastCountry;
+      //   }
+      // }
 
       // ---------------------------
       // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
@@ -230,7 +230,13 @@
           engine = stel;
           const core = stel.core;
 
-          defaultLocation = { cityName: "Santiago", lat: -33.4489, lon: -70.6693, elev: 570, bortle_index: 9 };
+          defaultLocation = {
+            cityName: "Santiago",
+            lat: -33.4489,
+            lon: -70.6693,
+            elev: 570,
+            bortle_index: 9,
+          };
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
           core.observer.latitude = defaultLocation.lat * (Math.PI / 180);
@@ -383,7 +389,6 @@
             } else {
               info.style.display = "none";
             }
-
           });
 
           pollutionOverlay = document.createElement("div");
@@ -400,7 +405,6 @@
           stelElement.appendChild(pollutionOverlay);
 
           applyLocation(defaultLocation);
-
         },
       });
 
@@ -429,7 +433,6 @@
       }
 
       function applyPollution(bortle) {
-
         // Ajustar parámetros del motor
         bortle = parseInt(bortle);
 
@@ -440,13 +443,11 @@
           // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
           engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
           engine.core.star_relative_scale = 0.9;
-
         }
         updatePollutionOverlay({ bortle });
       }
     </script>
     <script>
-
       // Light pollution section (se mantiene)
       let pollutionOverlayTimer = null;
 
@@ -476,11 +477,6 @@
         elev = 0,
         bortle_index = 0,
       }) {
-        console.log("Received data:", cityName, lat, lon, elev, bortle_index);
-
-        Protobject.Core.send(bortle_index).to("Lamp.html");
-        console.log("sending data to Lamp.html");
-
         const data = {
           cityName,
           lat: lat,
@@ -504,7 +500,6 @@
         applyPollution(bortle_index);
 
         //console.log("Bortle index for", cityName, ":", bortle_index);
-
       }
 
       function stellariumOption({ path, attr }) {

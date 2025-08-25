@@ -1,11 +1,10 @@
 Protobject.Core.onReceived((data) => {
-  console.log(data);
   if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
   if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
   if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
 
-  if (data.lat !== undefined && data.lon !== undefined)
-    applyArUcoPosition(data.lat, data.lon); // Aruco
+  // if (data.lat !== undefined && data.lon !== undefined)
+  //   applyArUcoPosition(data.lat, data.lon); // Aruco
 
   if (data.eyepieceSignal !== undefined)
     data.eyepieceSignal === true

@@ -32,11 +32,11 @@ function displayLocation(e) {
       opt.textContent = cityName;
       select.appendChild(opt);
     }
-    select.addEventListener("change", function() {
+    select.addEventListener("change", function () {
       const cityName = this.value;
       if (cityName) {
-        applyLocation({
-          cityName
+        applyLocationForCities({
+          cityName,
         });
       }
     });
@@ -48,18 +48,16 @@ function displayLocation(e) {
   if (!mapDiv) {
     mapDiv = document.createElement("div");
     mapDiv.id = "map";
-    mapDiv.classList.add('active')
+    mapDiv.classList.add("active");
     mapDiv.style.width = "100%";
     mapDiv.style.height = "400px"; // ajusta a tu preferencia
     interactionSection.appendChild(mapDiv);
-  }
-  else {
-    mapDiv.style.display = 'block';
-    mapDiv.classList.add('active');
+  } else {
+    mapDiv.style.display = "block";
+    mapDiv.classList.add("active");
   }
 
-
-// Inicializar Leaflet solo una vez
+  // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {
     // Base OSM
     standard = L.tileLayer(
@@ -95,9 +93,10 @@ function displayLocation(e) {
     L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
 
     // Geocoder
-    const geocoder = L.control.geocoder({
-      defaultMarkGeocode: false,
-    })
+    const geocoder = L.control
+      .geocoder({
+        defaultMarkGeocode: false,
+      })
       .on("markgeocode", function (e) {
         const center = e.geocode.center;
         const lat = center.lat;
@@ -136,7 +135,13 @@ function displayLocation(e) {
   }
 }
 
-async function applyLocation({ cityName = 'Custom', lon, lat, elev, tz }) {
+async function applyLocationForCities({
+  cityName = "Custom",
+  lon,
+  lat,
+  elev,
+  tz,
+}) {
   //if (e) {
   //  const activeButton = document.querySelector(
   //    '.control-button.active'
@@ -154,8 +159,7 @@ async function applyLocation({ cityName = 'Custom', lon, lat, elev, tz }) {
     elev = cities[cityName].elev;
     pollution = cities[cityName].contaminacion;
     tz = cities[cityName].tz;
-  }
-  else {
+  } else {
     pollution = await getBortleIndex({ lat, lon });
     // console.log("This location calculaterd pollution:", pollution);
   }
@@ -164,16 +168,38 @@ async function applyLocation({ cityName = 'Custom', lon, lat, elev, tz }) {
   updateTimeZone(tz || -4);
   updatePollution();
 
-    const data = {
+  const data = {
     cityName: cityName,
     lon,
     lat,
     elev,
-    bortle_index: pollution
-  }
+    bortle_index: pollution,
+  };
 
   Protobject.Core.send(data).to("index.html");
+  Protobject.Core.send(pollution).to("Lamp.html");
+}
 
+async function applyLocationForAruco({ lat, lon }) {
+  const pollution = await getBortleIndex({ lat, lon });
+  console.log("Aruco location calculated pollution:", pollution);
+
+  const elev = 0;
+  const tz = getUtcOffset(lat, lon);
+
+  updateTimeZone(tz);
+  updatePollution();
+
+  const data = {
+    cityName: "Custom",
+    lon,
+    lat,
+    elev,
+    bortle_index: 0,
+  };
+
+  Protobject.Core.send(data).to("index.html");
+  //Protobject.Core.send(pollution).to("Lamp.html");
 }
 
 // --- Funciones auxiliares ---
@@ -249,6 +275,21 @@ function getInfoFromLonLat(elatlng, year) {
       )
       .openOn(map);
   }
+}
+
+function getUtcOffset(lat, lon) {
+  const tz = tzlookup(lat, lon); // 1) de lat/lon a "America/Santiago"
+  const now = new Date();
+
+  // 2) obtener el offset actual
+  const options = { timeZone: tz, timeZoneName: "shortOffset" };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(now);
+
+  const offsetPart = parts.find((p) => p.type === "timeZoneName");
+  // offsetPart.value -> "GMT-4"
+  const match = offsetPart.value.match(/GMT([+-]\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
 function mod(n, m) {
