@@ -8,16 +8,18 @@ function displayDateTime(e) {
   if (!datetimeSection) {
     let section = `
       <section id="datetimeSection" class="active" style="display: block;">
-        <h3>Select Date & Time</h3>
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
 
-        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+        <div>
+          <div class="grid-container" style="grid-template-column: auto auto;">
+            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          </div>
+          <div class="grid-container" style="grid-template-column: auto auto auto;">
+            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+          </div>
         </div>
         <p class="engine-time-mjd">Engine: <span id="engine-time-value">0</span></p>
         <p class="engine-time-utc">Engine UTC: <span id="engine-time-value-utc">0</span></p>
@@ -148,6 +150,7 @@ function showTimeSelector() {
     time_24hr: true,
     defaultDate: new Date(),
     inline: true,
+    appendTo: document.getElementById("datetime-picker"),
     onOpen: () => (isUserTouchingCalendar = true),
     onClose: () => (isUserTouchingCalendar = false),
 
