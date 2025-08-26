@@ -182,7 +182,7 @@ async function applyLocationForCities({
 
 async function applyLocationForAruco({ lat, lon }) {
   const pollution = await getBortleIndex({ lat, lon });
-  console.log("Aruco location calculated pollution:", pollution);
+  console.log("Pollution level:", pollution);
 
   const elev = 0;
   const tz = getUtcOffset(lat, lon);
@@ -195,87 +195,87 @@ async function applyLocationForAruco({ lat, lon }) {
     lon,
     lat,
     elev,
-    bortle_index: 0,
+    bortle_index: pollution,
   };
 
   Protobject.Core.send(data).to("index.html");
-  //Protobject.Core.send(pollution).to("Lamp.html");
+  Protobject.Core.send(pollution).to("Lamp.html");
 }
 
 // --- Funciones auxiliares ---
-function getInfoFromLonLat(elatlng, year) {
-  if (year !== 2024) return;
-
-  const lonFromDateLine = mod(elatlng.lng + 180.0, 360.0);
-  const latFromStart = elatlng.lat + 65.0;
-  const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
-  const tiley = Math.floor(latFromStart / 5.0) + 1;
-
-  if (tiley >= 1 && tiley <= 28) {
-    const url =
-      "https://telescope.alessiobellino.com/data/binary_tiles/" +
-      "binary_tile_" +
-      tilex +
-      "_" +
-      tiley +
-      ".dat.gz";
-
-    const ix = Math.round(
-      120 * (lonFromDateLine - 5.0 * (tilex - 1) + 1 / 240)
-    );
-    const iy = Math.round(120 * (latFromStart - 5.0 * (tiley - 1) + 1 / 240));
-
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = "arraybuffer";
-    xhr.onload = function () {
-      const data_array = new Int8Array(pako.ungzip(xhr.response));
-      const first_number = 128 * Number(data_array[0]) + Number(data_array[1]);
-
-      let change = 0.0;
-      for (let i = 1; i < iy; i++) {
-        change += Number(data_array[600 * i + 1]);
-      }
-      for (let i = 1; i < ix; i++) {
-        change += Number(data_array[600 * (iy - 1) + 1 + i]);
-      }
-
-      const compressed = first_number + change;
-      const brightnessRatio = compressed2full(compressed);
-      const mpsas =
-        22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
-
-      popup = L.popup()
-        .setLatLng(elatlng)
-        .setContent(
-          "<b>Year:</b> " +
-            year +
-            "<br><b>Lat, Lon:</b><br>" +
-            elatlng.lat.toFixed(4) +
-            ", " +
-            (lonFromDateLine - 180).toFixed(4) +
-            "<br><b>Brightness:</b><br> " +
-            mpsas.toFixed(2) +
-            " mag/arcsec<sup>2</sup><br>" +
-            round_brightness(brightnessRatio) +
-            " ratio (= artificial / natural)"
-        )
-        .openOn(map);
-    };
-    xhr.open("GET", url, true);
-    xhr.send();
-  } else {
-    L.popup()
-      .setLatLng(elatlng)
-      .setContent(
-        "<b>Lat, Lon:</b><br>" +
-          elatlng.lat.toFixed(4) +
-          ", " +
-          (lonFromDateLine - 180).toFixed(4) +
-          "<br>Clicked location is out of bounds.<br>Atlas covers 65S to 75N latitude."
-      )
-      .openOn(map);
-  }
-}
+// function getInfoFromLonLat(elatlng, year) {
+// if (year !== 2024) return;
+//
+// const lonFromDateLine = mod(elatlng.lng + 180.0, 360.0);
+// const latFromStart = elatlng.lat + 65.0;
+// const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
+// const tiley = Math.floor(latFromStart / 5.0) + 1;
+//
+// if (tiley >= 1 && tiley <= 28) {
+// const url =
+// "https://telescope.alessiobellino.com/data/binary_tiles/" +
+// "binary_tile_" +
+// tilex +
+// "_" +
+// tiley +
+// ".dat.gz";
+//
+// const ix = Math.round(
+// 120 * (lonFromDateLine - 5.0 * (tilex - 1) + 1 / 240)
+// );
+// const iy = Math.round(120 * (latFromStart - 5.0 * (tiley - 1) + 1 / 240));
+//
+// const xhr = new XMLHttpRequest();
+// xhr.responseType = "arraybuffer";
+// xhr.onload = function () {
+// const data_array = new Int8Array(pako.ungzip(xhr.response));
+// const first_number = 128 * Number(data_array[0]) + Number(data_array[1]);
+//
+// let change = 0.0;
+// for (let i = 1; i < iy; i++) {
+// change += Number(data_array[600 * i + 1]);
+// }
+// for (let i = 1; i < ix; i++) {
+// change += Number(data_array[600 * (iy - 1) + 1 + i]);
+// }
+//
+// const compressed = first_number + change;
+// const brightnessRatio = compressed2full(compressed);
+// const mpsas =
+// 22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
+//
+// popup = L.popup()
+// .setLatLng(elatlng)
+// .setContent(
+// "<b>Year:</b> " +
+// year +
+// "<br><b>Lat, Lon:</b><br>" +
+// elatlng.lat.toFixed(4) +
+// ", " +
+// (lonFromDateLine - 180).toFixed(4) +
+// "<br><b>Brightness:</b><br> " +
+// mpsas.toFixed(2) +
+// " mag/arcsec<sup>2</sup><br>" +
+// round_brightness(brightnessRatio) +
+// " ratio (= artificial / natural)"
+// )
+// .openOn(map);
+// };
+// xhr.open("GET", url, true);
+// xhr.send();
+// } else {
+// L.popup()
+// .setLatLng(elatlng)
+// .setContent(
+// "<b>Lat, Lon:</b><br>" +
+// elatlng.lat.toFixed(4) +
+// ", " +
+// (lonFromDateLine - 180).toFixed(4) +
+// "<br>Clicked location is out of bounds.<br>Atlas covers 65S to 75N latitude."
+// )
+// .openOn(map);
+// }
+// }
 
 function getUtcOffset(lat, lon) {
   const tz = tzlookup(lat, lon); // 1) de lat/lon a "America/Santiago"
@@ -310,3 +310,117 @@ function updateTimeZone(newTZ) {
   currentTZ = newTZ;
   console.log("Time zone updated to:", currentTZ);
 }
+//
+// async function getBortleIndex(latlng) {
+// try {
+// const bortle = await getInfoBortle(latlng, 2024);
+// console.log("Bortle Index en", latlng, "=", bortle);
+// return bortle;
+// } catch (err) {
+// console.error("Error obteniendo Bortle:", err);
+// return null;
+// }
+// }
+//
+// --- Funciones auxiliares ---
+// function getInfoBortle(elatlng, year) {
+// return new Promise((resolve, reject) => {
+// if (year !== 2024) {
+// reject(new Error("Solo soporta datos del 2024"));
+// return;
+// }
+//
+// const lonFromDateLine = mod(elatlng.lng + 180.0, 360.0);
+// const latFromStart = elatlng.lat + 65.0;
+// const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
+// const tiley = Math.floor(latFromStart / 5.0) + 1;
+//
+// if (tiley >= 1 && tiley <= 28) {
+// const url =
+// "https://telescope.alessiobellino.com/data/binary_tiles/" +
+// "binary_tile_" +
+// tilex +
+// "_" +
+// tiley +
+// ".dat.gz";
+//
+// const ix = Math.round(
+// 120 * (lonFromDateLine - 5.0 * (tilex - 1) + 1 / 240)
+// );
+// const iy = Math.round(120 * (latFromStart - 5.0 * (tiley - 1) + 1 / 240));
+//
+// const xhr = new XMLHttpRequest();
+// xhr.responseType = "arraybuffer";
+// xhr.onload = function () {
+// try {
+// if (xhr.status !== 200) {
+// reject(new Error("No se pudo cargar tile: " + url));
+// return;
+// }
+//
+// const data_array = new Int8Array(pako.ungzip(xhr.response));
+// const first_number =
+// 128 * Number(data_array[0]) + Number(data_array[1]);
+//
+// let change = 0.0;
+// for (let i = 1; i < iy; i++) {
+// change += Number(data_array[600 * i + 1]);
+// }
+// for (let i = 1; i < ix; i++) {
+// change += Number(data_array[600 * (iy - 1) + 1 + i]);
+// }
+//
+// const compressed = first_number + change;
+// const brightnessRatio = compressed2full(compressed);
+// const mpsas =
+// 22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
+//
+// Calcular Bortle
+// const bortleIndex = magToBortle(mpsas);
+//
+// Mostrar popup en el mapa
+// popup = L.popup()
+// .setLatLng(elatlng)
+// .setContent(
+// "<b>Year:</b> " +
+// year +
+// "<br><b>Lat, Lon:</b><br>" +
+// elatlng.lat.toFixed(4) +
+// ", " +
+// (lonFromDateLine - 180).toFixed(4) +
+// "<br><b>Brightness:</b><br> " +
+// mpsas.toFixed(2) +
+// " mag/arcsec<sup>2</sup><br>" +
+// round_brightness(brightnessRatio) +
+// " ratio (= artificial / natural)<br>" +
+// "<b>Bortle Index:</b> " +
+// bortleIndex
+// )
+// .openOn(map);
+//
+// resolve(bortleIndex); // <-- retornamos el valor como int
+// } catch (e) {
+// reject(e);
+// }
+// };
+// xhr.onerror = () => reject(new Error("Error cargando tile: " + url));
+// xhr.open("GET", url, true);
+// xhr.send();
+// } else {
+//fuera de bounds
+// L.popup()
+// .setLatLng(elatlng)
+// .setContent(
+// "<b>Lat, Lon:</b><br>" +
+// elatlng.lat.toFixed(4) +
+// ", " +
+// (lonFromDateLine - 180).toFixed(4) +
+// "<br>Clicked location is out of bounds.<br>Atlas covers 65S to 75N latitude."
+// )
+// .openOn(map);
+//
+// resolve(0); // Bortle 0 si está fuera
+// }
+// });
+// }
+//
