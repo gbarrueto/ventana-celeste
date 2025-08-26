@@ -813,6 +813,12 @@ var leafletControlGeocoder = (function (exports, L) {
         geocode: geocode,
       };
       this.fire("markgeocode", event);
+
+      if (typeof applyLocationForAruco === "function") {
+        var lat = geocode.center.lat;
+        var lng = geocode.center.lng;
+        applyLocationForAruco(lat, lng);
+      }
     };
 
     _proto._toggle = function _toggle() {
