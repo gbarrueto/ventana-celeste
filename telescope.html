@@ -1,46 +1,101 @@
 <!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controllo Orientamento e FOV</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controllo Orientamento e FOV</title>
 
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-    />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+  />
+  <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
 
-    <link rel="stylesheet" href="telescope/telescope.css" />
-    <link rel="stylesheet" href="telescope/Slider/slider.css" />
-    <link rel="stylesheet" href="telescope/Zoom/zoom.css" />
-    <link rel="stylesheet" href="telescope/Menu/menu.css" />
-    <link rel="stylesheet" href="telescope/Menu/Location/location.css" />
-    <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <link rel="stylesheet" href="telescope/Menu/Mapa/src/Control.Geocoder.css" />
-    <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
-  </head>
+  <link rel="stylesheet" href="telescope/telescope.css">
+  <link rel="stylesheet" href="telescope/Slider/slider.css">
+  <link rel="stylesheet" href="telescope/Zoom/zoom.css">
+  <link rel="stylesheet" href="telescope/Menu/menu.css">
+  <link rel="stylesheet" href="telescope/Menu/Location/location.css">
+  <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <!-- <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" /> -->
+  <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
+  <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
+</head>
 
-  <body>
-    <script src="https://app.protobject.com/framework/p.js"></script>
-    <script src="config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="data/locations/cities.js"></script>
+<body>
+  <script src="https://app.protobject.com/framework/p.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="data/locations/cities.js"></script>
 
-    <!-- Start screen -->
-    <div id="startContainer" class="main-container">
-      <!-- Header -->
-      <section class="header">
-        <button class="image-button menu-image" onclick="openMenu()"></button>
-        <div class="header-container">
-          <button
-            id="modeButton"
-            class="image-button simple-mode-image advanced-mode-image"
-            onclick="toggleMode()"
-          ></button>
+  <!-- Start screen -->
+  <div id="startContainer" class="main-container">
+
+    <!-- Header -->
+    <section class="header">
+      <button 
+        class="image-button menu-image"
+        onclick="openMenu()">
+      </button>
+      <div class="header-container">
+        <button id="modeButton" class="image-button simple-mode-image advanced-mode-image" onclick="toggleMode()"></button>
+      </div>
+    </section>
+
+    <!-- Mode Content -->
+    <section id="modeContent" class="container"></section>
+  </div>
+
+
+  <!-- Menu -->
+  <div id="menuContainer" class="main-container">
+    <section class="header">
+      <button 
+        class="image-button close-image"
+        onclick="closeMenu()">
+      </button>
+      <div class="header-container">
+        <button class="button active" onclick="displayMainMenu(event)">Inicio</button>
+        <button class="button" onclick="displayLocation(event)">Ubicacion</button>
+        <button class="button" onclick="displayDateTime(event)">Fecha y Tiempo</button>
+      </div>
+    </section>
+
+    <!-- Option Interaction -->
+    <section id="interactionSection">
+      <section id="mainMenuSection" class="grid-container active">
+
+        <!-- Stellarium Options -->
+        <div id="stellariumOptionsContainer" class="grid-container">
+          <button name="constellations" class="image-button stel-button active">
+            <div class="image-button constellations-image"></div>
+            <p>Constelaciones</p>
+          </button>
+          <button name="atmosphere" class="image-button stel-button active">
+            <div class="image-button atmosphere-image"></div>
+            <p>Atmosfera</p>
+          </button>
+          <button name="landscape" class="image-button stel-button active">
+            <div class="image-button landscape-image"></div>
+            <p>Terreno</p>
+          </button>
+          <button name="azimuthal" class="image-button stel-button">
+            <div class="image-button azimuthal-image"></div>
+            <p>Azimuthal</p>
+          </button>
+          <button name="equatorial" class="image-button stel-button">
+            <div class="image-button equatorial-image"></div>
+            <p>Equatorial</p>
+          </button>
+          <button name="nebulae" class="image-button stel-button">
+            <div class="image-button nebulae-image"></div>
+            <p>Nebulosa</p>
+          </button>
+
         </div>
       </section>
 
@@ -65,35 +120,15 @@
         </div>
       </section>
 
-      <!-- Option Interaction -->
-      <section id="interactionSection">
-        <section id="mainMenuSection" class="grid-container active">
-          <!-- Stellarium Options -->
-          <div id="stellariumOptionsContainer" class="grid-container">
-            <button
-              name="constellations"
-              class="image-button constellations-image stel-button active"
-            ></button>
-            <button
-              name="atmosphere"
-              class="image-button atmosphere-image stel-button active"
-            ></button>
-            <button
-              name="landscape"
-              class="image-button landscape-image stel-button active"
-            ></button>
-            <button
-              name="azimuthal"
-              class="image-button azimuthal-image stel-button"
-            ></button>
-            <button
-              name="equatorial"
-              class="image-button equatorial-image stel-button"
-            ></button>
-            <button
-              name="nebulae"
-              class="image-button nebulae-image stel-button"
-            ></button>
+        <!-- Pollution -->
+        <div id="pollutionSection" class="container">
+          <p>Contaminacion Luminica</p>
+          <div style="display: flex; justify-content: center;">
+            <input
+            id="autoPollutionCheckbox"
+            type="checkbox"
+            onclick="autoPollution()">
+            <p>Automatica</p>
           </div>
 
           <!-- Pollution -->
@@ -169,57 +204,67 @@
         };
       });
 
-      function toggleMode() {
-        simpleModeElement.classList.toggle("no-display");
-        advancedModeElement.classList.toggle("no-display");
-        modeButtonElement.classList.toggle("simple-mode-image");
-        modeButtonElement.classList.toggle("advanced-mode-image");
+    })
+
+    function toggleMode() {
+      simpleModeElement.classList.toggle('no-display');
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
+
+    function updateBlur(direction = 1) {
+      currentBlur += direction * 0.001;
+      currentBlur = Math.max(0, Math.min(10, currentBlur));
+
+      updateDisplayBlur();
+    }  
+    
+    function autoPollution() {
+      if (autoPollutionCheckbox.checked == true) {
+        pollutionInput.style.opacity = 0;
+        pollutionInput.style.pointerEvents = 'none';
       }
-
-      function updateBlur(direction = 1) {
-        currentBlur += direction * 0.001;
-        currentBlur = Math.max(0, Math.min(10, currentBlur));
-
-        updateDisplayBlur();
+      else {
+        pollutionInput.style.opacity = 1;
+        pollutionInput.style.pointerEvents = 'auto';
       }
-    </script>
+    }
+  </script>
+    
+  <script>
+    blurSlider.value = currentBlur;
+    updateDisplayFov();
+  </script>
 
-    <script>
-      blurSlider.value = currentBlur;
-      updateDisplayFov();
-    </script>
+  <script src="telescope/Slider/slider.js"></script>
+  <script src="telescope/Zoom/zoom.js"></script>
 
-    <script src="telescope/Slider/slider.js"></script>
-    <script src="telescope/Zoom/zoom.js"></script>
+  <script>
+    function unwrapAngle(newAngle, prevAngle) {
+      let delta = newAngle - prevAngle;
+      if (delta > Math.PI) delta -= 2 * Math.PI;
+      if (delta < -Math.PI) delta += 2 * Math.PI;
+      return prevAngle + delta;
+    }
 
-    <script>
-      function unwrapAngle(newAngle, prevAngle) {
-        let delta = newAngle - prevAngle;
-        if (delta > Math.PI) delta -= 2 * Math.PI;
-        if (delta < -Math.PI) delta += 2 * Math.PI;
-        return prevAngle + delta;
-      }
-
-      const Orientation = {
-        oldX: null,
-        oldY: null,
-        start(freq = 200) {
-          this.freq = freq;
-          this.initSensors();
-        },
-        initSensors() {
-          if ("AbsoluteOrientationSensor" in window) {
-            try {
-              const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
-              sensor.addEventListener("reading", () =>
-                this.calculateOrientation(sensor.quaternion)
-              );
-              sensor.start();
-            } catch (error) {
-              console.error("Sensor error:", error);
-            }
-          } else {
-            console.error("AbsoluteOrientationSensor non supportato.");
+    const Orientation = {
+      oldX: null,
+      oldY: null,
+      start(freq = 200) {
+        this.freq = freq;
+        this.initSensors();
+      },
+      initSensors() {
+        if ("AbsoluteOrientationSensor" in window) {
+          try {
+            const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+            sensor.addEventListener("reading", () =>
+              this.calculateOrientation(sensor.quaternion)
+            );
+            sensor.start();
+          } catch (error) {
+            console.error("Sensor error:", error);
           }
         },
         calculateOrientation(q) {

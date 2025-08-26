@@ -52,6 +52,7 @@ let latInput = undefined;
 let lonInput = undefined;
 let elevInput = undefined;
 
+let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
   pollution = pollutionInput.value;

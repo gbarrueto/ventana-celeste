@@ -1,4 +1,6 @@
 #datetimeSection {
+  display: flex;
+  flex-direction: column;
 
   .control-button {
     background: rgba(255, 255, 255, 0.1);
@@ -9,10 +11,6 @@
     cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.2s ease;
-  }
-  
-  .control-button:hover {
-    background: rgba(255, 255, 255, 0.2);
   }
   
   .control-button.active {

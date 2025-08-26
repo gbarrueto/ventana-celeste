@@ -35,5 +35,7 @@
   #interactionSection {
     padding: 2%;
     flex: 1;
+    margin-top: 1em;
+    align-content: center;
   }
 }
