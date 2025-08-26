@@ -99,9 +99,11 @@
         <!-- Pollution -->
         <div id="pollutionSection" class="container">
           <p>Contaminacion Luminica</p>
-          <div>
+          <div style="display: flex; justify-content: center;">
             <input
-            type="checkbox">
+            id="autoPollutionCheckbox"
+            type="checkbox"
+            onclick="autoPollution()">
             <p>Automatica</p>
           </div>
           <input 
@@ -181,7 +183,18 @@
       currentBlur = Math.max(0, Math.min(10, currentBlur));
 
       updateDisplayBlur();
-    }    
+    }  
+    
+    function autoPollution() {
+      if (autoPollutionCheckbox.checked == true) {
+        pollutionInput.style.opacity = 0;
+        pollutionInput.style.pointerEvents = 'none';
+      }
+      else {
+        pollutionInput.style.opacity = 1;
+        pollutionInput.style.pointerEvents = 'auto';
+      }
+    }
   </script>
     
   <script>
