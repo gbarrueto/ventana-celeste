@@ -21,8 +21,7 @@
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
-  <!-- <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" /> -->
-  <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
+ <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" />
   <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
 </head>
 
@@ -95,30 +94,7 @@
             <div class="image-button nebulae-image"></div>
             <p>Nebulosa</p>
           </button>
-
         </div>
-      </section>
-
-      <!-- Mode Content -->
-      <section id="modeContent" class="container"></section>
-    </div>
-
-    <!-- Menu -->
-    <div id="menuContainer" class="main-container">
-      <section class="header">
-        <button class="image-button close-image" onclick="closeMenu()"></button>
-        <div class="header-container">
-          <button class="button active" onclick="displayMainMenu(event)">
-            Inicio
-          </button>
-          <button class="button" onclick="displayLocation(event)">
-            Ubicacion
-          </button>
-          <button class="button" onclick="displayDateTime(event)">
-            Fecha y Tiempo
-          </button>
-        </div>
-      </section>
 
         <!-- Pollution -->
         <div id="pollutionSection" class="container">
@@ -130,80 +106,73 @@
             onclick="autoPollution()">
             <p>Automatica</p>
           </div>
-
-          <!-- Pollution -->
-          <div id="pollutionSection" class="container">
-            <p>Contaminacion Luminica</p>
-            <div>
-              <input type="checkbox" />
-              <p>Automatica</p>
-            </div>
-            <input 
+          <input 
             id="pollutionSlider"
             class="slider h-slider"
             type="range" 
             min=1 max=9 value=9>
-            </input>
-          </div>
-        </section>
+          </input>
+        </div>
       </section>
-    </div>
+    </section>
+  </div>
+  
 
-    <!-- Variables - Parameters - Constants -->
-    <script src="telescope/utils/values.js"></script>
-    <script src="telescope/Modes/Simple/index.js"></script>
-    <script src="telescope/Modes/Advanced/index.js"></script>
+  <!-- Variables - Parameters - Constants -->
+  <script src="telescope/utils/values.js"></script>
+  <script src="telescope/Modes/Simple/index.js"></script>
+  <script src="telescope/Modes/Advanced/index.js"></script>
 
-    <script>
-      modeContainer.innerHTML = simpleModeContent + advancedModeContent;
+  <script>
+    modeContainer.innerHTML = simpleModeContent + advancedModeContent;
 
-      const blurSlider = document.getElementById("focusSlider");
-      const zoomSlider = document.getElementById("zoomSlider");
+    const blurSlider = document.getElementById('focusSlider');
+    const zoomSlider = document.getElementById('zoomSlider');
+    
+    const simpleModeElement = document.getElementById('simpleMode');
+    const advancedModeElement = document.getElementById('advancedMode');
 
-      const simpleModeElement = document.getElementById("simpleMode");
-      const advancedModeElement = document.getElementById("advancedMode");
+    if (modes.simple === true) {
+      simpleModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('simple-mode-image');
+    }
+    else {
+      advancedModeElement.classList.toggle('no-display');
+      modeButtonElement.classList.toggle('advanced-mode-image');
+    }
+  </script>
 
-      if (modes.simple === true) {
-        simpleModeElement.classList.toggle("no-display");
-        modeButtonElement.classList.toggle("simple-mode-image");
-      } else {
-        advancedModeElement.classList.toggle("no-display");
-        modeButtonElement.classList.toggle("advanced-mode-image");
+<script src="http://unpkg.com/browser-geo-tz@latest/dist/geotz.js"></script>
+  <script src="telescope/utils/tz.js"></script>
+
+  <script src="telescope/utils/updateDisplay.js"></script>
+  <script src="telescope/utils/lp/pako_inflate.min.js"></script>
+  <script src="telescope/utils/lp/getLpFromCoords.js"></script>
+  <script src="telescope/Menu/menu.js"></script>
+  <script src="telescope/Menu/DateTime/datetime.js"></script>
+  <script src="telescope/Menu/Location/location.js"></script>
+  <script src="telescope/Menu/Pollution/pollution.js"></script>
+  <script src="telescope/utils/protobject.js"></script>
+  <script src="telescope/utils/luxon.js"></script>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script> 
+  <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
+  <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
+  
+
+
+  <script>
+    const stellariumOptionButtons = document.querySelectorAll(
+      '#stellariumOptionsContainer button'
+    )
+
+    stellariumOptionButtons.forEach( btn => {
+      btn.onclick = () => {
+        const info = BUTTONS[btn.name];
+        Protobject.Core.send({ optionInfo: info }).to("index.html");
+        btn.classList.toggle('active');
       }
-    </script>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script>
-    <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
-    <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
-
-    <script src="telescope/Menu/menu.js"></script>
-    <script src="telescope/Menu/DateTime/datetime.js"></script>
-    <script src="telescope/Menu/Location/location.js"></script>
-    <script src="telescope/Menu/Pollution/pollution.js"></script>
-
-    <script src="https://unpkg.com/browser-geo-tz@latest/dist/geotz.js"></script>
-    <script src="telescope/utils/tz.js"></script>
-    <script src="telescope/utils/updateDisplay.js"></script>
-    <script src="telescope/utils/lp/pako_inflate.min.js"></script>
-    <script src="telescope/utils/lp/getLpFromCoords.js"></script>
-    <script src="telescope/utils/protobject.js"></script>
-    <script src="telescope/utils/luxon.js"></script>
-
-    <script>
-      const stellariumOptionButtons = document.querySelectorAll(
-        "#stellariumOptionsContainer button"
-      );
-
-      stellariumOptionButtons.forEach((btn) => {
-        btn.onclick = () => {
-          const info = BUTTONS[btn.name];
-          Protobject.Core.send({ optionInfo: info }).to("index.html");
-          btn.classList.toggle("active");
-        };
-      });
-
     })
 
     function toggleMode() {
@@ -266,34 +235,37 @@
           } catch (error) {
             console.error("Sensor error:", error);
           }
-        },
-        calculateOrientation(q) {
-          if (!q) return;
-          const [x, y, z, w] = q;
-          const pitch = Math.atan2(
-            2 * (w * x + y * z),
-            1 - 2 * (x * x + y * y)
-          );
-          const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+        } else {
+          console.error("AbsoluteOrientationSensor non supportato.");
+        }
+      },
+      calculateOrientation(q) {
+        if (!q) return;
+        const [x, y, z, w] = q;
+        const pitch = Math.atan2(
+          2 * (w * x + y * z),
+          1 - 2 * (x * x + y * y)
+        );
+        const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
-          const fov = Math.exp(logFov);
-          const sensitivity = Math.min(1, fov / 20);
+        const fov = Math.exp(logFov);
+        const sensitivity = Math.min(1, fov / 20);
 
-          if (this.oldX === null || this.oldY === null) {
-            this.oldX = yaw;
-            this.oldY = pitch;
-          }
+        if (this.oldX === null || this.oldY === null) {
+          this.oldX = yaw;
+          this.oldY = pitch;
+        }
 
-          const adjustedYaw = unwrapAngle(yaw, this.oldX);
+        const adjustedYaw = unwrapAngle(yaw, this.oldX);
 
-          this.oldX += (adjustedYaw - this.oldX) * sensitivity;
-          this.oldY += (pitch - this.oldY) * sensitivity;
+        this.oldX += (adjustedYaw - this.oldX) * sensitivity;
+        this.oldY += (pitch - this.oldY) * sensitivity;
 
-          Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
-        },
-      };
+        Protobject.Core.send({ h: this.oldX, v: this.oldY }).to("index.html");
+      },
+    };
 
-      Orientation.start();
-    </script>
-  </body>
+    Orientation.start();
+  </script>
+</body>
 </html>
