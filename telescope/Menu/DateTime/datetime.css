@@ -13,10 +13,6 @@
     transition: all 0.2s ease;
   }
   
-  .control-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
   .control-button.active {
     background-color: #4caf50;
     font-weight: bold;
