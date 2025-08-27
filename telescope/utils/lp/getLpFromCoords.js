@@ -1,7 +1,7 @@
 let bortleIndex = 0;
 
 async function getBortleIndex(latlng) {
-  console.log("getting Bortle index for:", latlng);
+  // console.log("getting Bortle index for:", latlng);
   return await getInfoFromLonLat(latlng);
 }
 

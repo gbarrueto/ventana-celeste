@@ -55,8 +55,8 @@ let elevInput = undefined;
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
   pollution = pollutionInput.value;
-  Protobject.Core.send({ bortle: pollutionInput.value }).to("index.html");
-  Protobject.Core.send({ bortle: pollutionInput.value }).to("Lamp.html");
+  Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("index.html");
+  Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
 
 let flatpickrSyncInterval = null;

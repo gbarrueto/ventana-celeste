@@ -3,7 +3,7 @@ function updateDisplayFov() {
   const fov = Math.exp(logFov);
   
   if (oldFov !== fov) {
-    Protobject.Core.send({ f: fov }).to("index.html");
+    Protobject.Core.send({ msg: "updateFov", values: { fov: fov } }).to("index.html");
   }
   oldFov = fov;
 
@@ -28,8 +28,8 @@ function updateDisplayBlur() {
 
   blurSlider.value = currentBlur;
   // blurText.textContent = currentBlur;
-  
-  Protobject.Core.send({ blur: blurEffect }).to("index.html");
+
+  Protobject.Core.send({msg:"updateBlur", values: { blur: blurEffect } }).to("index.html");
 }
 
 function toggleEyepieceOverlay(eyepieceSignal, event) {
@@ -41,5 +41,5 @@ function toggleEyepieceOverlay(eyepieceSignal, event) {
   }
   event.target.classList.toggle('active');
 
-  Protobject.Core.send({ eyepieceSignal }).to("index.html");
+  Protobject.Core.send({msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
 }
