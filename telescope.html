@@ -149,7 +149,7 @@
     stellariumOptionButtons.forEach( btn => {
       btn.onclick = () => {
         const info = BUTTONS[btn.name];
-        Protobject.Core.send({msg:"stellariumOption", values: {optionInfo: info} }).to("index.html");
+        Protobject.Core.send({msg:"stellariumOption", values: info }).to("index.html");
         btn.classList.toggle('active');
       }
     })

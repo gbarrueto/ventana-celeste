@@ -28,56 +28,6 @@
   </script>
 
   <script>
-    const BUTTONS = [
-      {
-        label: "Constellations",
-        img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg",
-        path: "constellations",
-        attr: "lines_visible",
-      },
-      {
-        label: "Atmosphere",
-        img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg",
-        path: "atmosphere",
-        attr: "visible",
-      },
-      {
-        label: "Landscape",
-        img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg",
-        path: "landscapes",
-        attr: "visible",
-      },
-      {
-        label: "Azimuthal Grid",
-        img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg",
-        path: "lines.azimuthal",
-        attr: "visible",
-      },
-      {
-        label: "Equatorial Grid",
-        img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg",
-        path: "lines.equatorial",
-        attr: "visible",
-      },
-      {
-        label: "Nebulae",
-        img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
-        path: "dsos",
-        attr: "visible",
-      },
-      {
-        label: "DSS",
-        img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
-        path: "dss",
-        attr: "visible",
-      },
-      // {
-      //   label: "Pollution",
-      //   img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
-      //   path: "pollution",
-      //   attr: "visible",
-      // },
-    ];
 
     const canvas_blur = document.getElementById("stel-canvas");
 
@@ -103,91 +53,6 @@
     function updateStellariumBlur({ blur }) {
       canvas_blur.style.filter = `blur(${blur}px)`;
     }
-
-    // ---------------------------
-    // Nuevo: recibir posiciones desde ArUco
-    // ---------------------------
-    // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
-    // let pendingArUcoPosition = null;
-    // async function applyArUcoPosition(lat, lon) {
-    //   // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
-    //   if (!engine || !engine.core) {
-    //     pendingArUcoPosition = { lat, lon };
-    //     return;
-    //   }
-    //   try {
-    //     engine.core.observer.latitude = lat * (Math.PI / 180);
-    //     engine.core.observer.longitude = lon * (Math.PI / 180);
-    //     // Opcional: mantener elevación previa o poner 0 si desconocida
-    //     engine.core.observer.elevation = engine.core.observer.elevation || 0;
-    //     engine.core.observer.name = "ArUco Position";
-    //     // Actualizar tiempo local para que la vista sea consistente (opcional):
-    //     engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
-    //     // Centrar la vista del observador
-    //     engine.core.observer.pitch = 0;
-    //     engine.core.observer.yaw = 0;
-    //     // Notificación visual mínima: actualiza footer/progress si lo deseas
-    //     const progress = document.getElementById("progress");
-    //     if (progress) {
-    //       const country = await getCountryFromLatLon(lat, lon);
-    //       progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
-    //         5
-    //       )})`;
-    //     }
-    //   } catch (e) {
-    //     console.error("Error aplicando posición ArUco:", e);
-    //   }
-    // }
-    //
-    // // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
-    // window.addEventListener("proto:position", (ev) => {
-    //   const d = ev?.detail || {};
-    //   if (d.lat !== undefined && d.lon !== undefined) {
-    //     applyArUcoPosition(d.lat, d.lon);
-    //   }
-    // });
-
-    // let lastGeocodeTime = 0;
-    // let lastCountry = "Desconocido";
-    //
-    // async function getCountryFromLatLon(lat, lon) {
-    //   const now = Date.now();
-    //   if (now - lastGeocodeTime < 1000) {
-    //     return lastCountry; // evita request si no pasó 1s
-    //   }
-    //   lastGeocodeTime = now;
-    //
-    //   try {
-    //     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-    //
-    //     const res = await fetch(url, {
-    //       headers: {
-    //         "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
-    //       },
-    //     });
-    //     if (!res.ok) throw new Error("Respuesta no válida");
-    //     const data = await res.json();
-    //     lastCountry = data.address.country || "Desconocido";
-    //     return lastCountry;
-    //   } catch (err) {
-    //     console.error("Error geocodificando:", err);
-    //     return lastCountry;
-    //   }
-    // }
-
-    // ---------------------------
-    // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
-    /*
-    Protobject.Core.onReceived((data) => {
-      if (data.f !== undefined) updateStellariumFov(data.f);
-      else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-      else data.h !== undefined || data.v !== undefined;
-      updateStellariumView(data);
-    });
-    */
-    // ---------------------------
-
-    // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
     function toggleEyepieceOverlay({ signal }) {
 
@@ -222,11 +87,6 @@
         };
 
         core.observer.utc = toJulianDateIso(new Date().toISOString());
-        // core.observer.latitude = defaultLocation.lat * (Math.PI / 180);
-        // core.observer.longitude = defaultLocation.lon * (Math.PI / 180);
-        // core.observer.elevation = defaultLocation.elev;
-        // core.observer.name = defaultLocation.cityName;
-        // core.bortle_index = defaultLocation.bortle_index;
 
         const baseUrl =
           "https://telescope.alessiobellino.com/stardata/cache/";
@@ -254,10 +114,10 @@
           key: "gaia",
         });
 
-        // core.skycultures.addDataSource({
-        //   url: baseUrl + "skycultures/v3/western",
-        //   key: "western",
-        // });
+        core.skycultures.addDataSource({
+          url: baseUrl + "skycultures/v3/western",
+          key: "western",
+        });
 
         core.dsos.addDataSource({
           url:
@@ -365,7 +225,7 @@
       },
     });
 
-    function setSpeed({ multiplier }) {
+    function setSpeed({ speed: multiplier }) {
       engine.core.time_speed = parseInt(multiplier);
     }
 

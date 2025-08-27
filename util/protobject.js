@@ -22,7 +22,7 @@ Protobject.Core.onReceived((data) => {
     const targetFunction = functionMap[msg];
     
     if (typeof targetFunction === 'function') {
-      console.log(`Ejecutando función: ${msg} con valores:`, values);
+      // console.log(`Ejecutando función: ${msg} con valores:`, values);
       targetFunction(values);
     }
   } else {
