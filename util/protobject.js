@@ -7,9 +7,9 @@ Protobject.Core.onReceived((data) => {
   //   applyArUcoPosition(data.lat, data.lon); // Aruco
 
   if (data.eyepieceSignal !== undefined)
-    data.eyepieceSignal === true
-      ? setEyepieceOverlay()
-      : removeEyepieceOverlay(); // Vista ocular
+    data.eyepieceSignal === false
+      ? enableFinderOverlay()
+      : disableFinderOverlay(); // Vista ocular
 
   // Aplicar ubicacion
   if (data.cityName && data.lat !== undefined && data.lon !== undefined)
