@@ -60,6 +60,8 @@ pollutionInput.addEventListener("input", () => {
   Protobject.Core.send({ bortle: pollutionInput.value }).to("Lamp.html");
 });
 
+let advancedModeWarningText = undefined;
+
 let flatpickrSyncInterval = null;
 let activeFlatpickr = null;
 let isUserTouchingCalendar = false;

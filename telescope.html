@@ -139,6 +139,7 @@
     else {
       advancedModeElement.classList.toggle('no-display');
       modeButtonElement.classList.toggle('advanced-mode-image');
+      enableFinderMode();
     }
   </script>
 
@@ -180,6 +181,42 @@
       advancedModeElement.classList.toggle('no-display');
       modeButtonElement.classList.toggle('simple-mode-image');
       modeButtonElement.classList.toggle('advanced-mode-image');
+      for (let mode in modes) {
+        modes[mode] = !modes[mode];
+      }
+    }
+
+    function enableFinderMode() {
+      if (advancedModeWarningText === undefined) {
+        advancedModeWarningText = document.querySelector(
+          '#advancedMode .alert-text'
+        )
+      }
+      const buttons = document.querySelectorAll(
+        '#lensContainer button'
+      )
+
+      advancedModeWarningText.style.opacity = 1;
+      buttons.forEach(btn => {
+        btn.disabled = true;
+      })
+    }
+    
+    function disableFinderMode() {
+      if (advancedModeWarningText === undefined) {
+        advancedModeWarningText = document.querySelector(
+          '#advancedMode .alert-text'
+        )
+      }
+      advancedModeWarningText.style.opacity = 0;
+
+      const buttons = document.querySelectorAll(
+        '#lensContainer button'
+      )
+
+      buttons.forEach(btn => {
+        btn.disabled = false;
+      })
     }
 
     function updateBlur(direction = 1) {
