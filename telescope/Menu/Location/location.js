@@ -16,7 +16,7 @@ function displayLocation(e) {
     mapDiv.id = "map";
     mapDiv.classList.add("active");
     mapDiv.style.width = "100%";
-    mapDiv.style.height = "800px"; // ajusta a tu preferencia
+    mapDiv.style.height = "600px"; // ajusta a tu preferencia
     interactionSection.appendChild(mapDiv);
   } else {
     mapDiv.style.display = "block";
