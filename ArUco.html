@@ -173,7 +173,7 @@
               (id) => referenceMarkers[id] !== undefined
             );
             if (commonIds.length < 8) {
-              showMessage("Faltan marcadores para calibrar.", "warn");
+              //showMessage("Faltan marcadores para calibrar.", "warn");
               return;
             }
             const srcPts = [],
@@ -234,7 +234,6 @@
               "info"
             );
 
-            Protobject.Core.send({ lat: medLat, lon: medLon }).to("index.html");
             Protobject.Core.send({ lat: medLat, lon: medLon }).to(
               "telescope.html"
             );

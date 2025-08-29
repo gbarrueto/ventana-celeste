@@ -3,7 +3,8 @@ Protobject.Core.onReceived((data) => {
   if (data.lat !== undefined && data.lon !== undefined) {
     currentLat = data.lat;
     currentLon = data.lon;
-    currentElev = data.elev || 0;
+
+    applyLocationForAruco({ lat: currentLat, lon: currentLon });
 
     if (typeof map !== "undefined" && map.setView) {
       map.setView([currentLat, currentLon], map.getZoom());

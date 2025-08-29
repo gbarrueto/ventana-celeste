@@ -1,9 +1,3 @@
-// --- Light Pollution Map 2024 ---
-const mapLink =
-  '<a href="http://openstreetmap.org" target="_blank">OpenStreetMap</a>';
-const infoLink =
-  '<a href="https://djlorenz.github.io/astronomy/lp/" target="_blank">Light Pollution Atlas Information</a>';
-
 // Variables para mapa y capas
 let map;
 let standard, lightpollution2024;
@@ -15,34 +9,25 @@ let control;
 function displayLocation(e) {
   optionSelection(e); // mantiene la selección de botón
 
-  // Limpiar sección de interacción
-  // interactionSection.innerHTML = "";
-
   // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
   if (!mapDiv) {
     mapDiv = document.createElement("div");
     mapDiv.id = "map";
-    mapDiv.classList.add('active')
+    mapDiv.classList.add("active");
     mapDiv.style.width = "100%";
-    mapDiv.style.height = "400px"; // ajusta a tu preferencia
+    mapDiv.style.height = "800px"; // ajusta a tu preferencia
     interactionSection.appendChild(mapDiv);
-  }
-  else {
-    mapDiv.style.display = 'block';
-    mapDiv.classList.add('active');
+  } else {
+    mapDiv.style.display = "block";
+    mapDiv.classList.add("active");
   }
 
-
-// Inicializar Leaflet solo una vez
+  // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {
     // Base OSM
     standard = L.tileLayer(
-      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      {
-        attribution: "&copy; " + mapLink + " Contributors | " + infoLink,
-        maxZoom: 19,
-      }
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     );
 
     // Capa 2024
@@ -61,7 +46,7 @@ function displayLocation(e) {
     // Mapa
     map = L.map("map", {
       center: [currentLat || -33.45, currentLon || -70.66],
-      zoom: 5,
+      zoom: 6,
       layers: [standard, lightpollution2024],
       tap: false,
     });
@@ -70,27 +55,25 @@ function displayLocation(e) {
     L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
 
     // Geocoder
-    const geocoder = L.Control.geocoder({
-      defaultMarkGeocode: false,
-    })
+    const geocoder = L.Control.geocoder({ defaultMarkGeocode: false })
       .on("markgeocode", function (e) {
         const center = e.geocode.center;
         const lat = center.lat;
         const lng = center.lng;
         if (lat >= -80 && lat <= 80 && lng >= -360 && lng <= 360) {
           L.marker([lat, lng], {
-            title: "Lat, Lon = " + lat + ", " + lng,
+            title: `Lat, Lon = ${lat}, ${lng}`,
             opacity: 0.7,
           }).addTo(map);
           map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
-          getInfoFromLonLat(center, 2024);
+          getInfoForMap(center, 2024);
         }
       })
       .addTo(map);
 
-    // Click para info
+    // Click → info
     map.on("click", function (e) {
-      getInfoFromLonLat(e.latlng, 2024);
+      getInfoForMap(e.latlng, 2024);
       popuplatlng = e.latlng;
     });
 
@@ -104,22 +87,28 @@ function displayLocation(e) {
       orient: "vertical",
       icon: false,
     });
-    control.on("change input", function (e) {
+    control.on("change input", (e) => {
       lightpollution2024.setOpacity(e.value / 100);
     });
     map.addControl(control);
   }
 }
 
-async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
-  if (e) {
-    const activeButton = document.querySelector(
-      '.control-button.active'
-    );
-  
-    if (activeButton) activeButton.classList.remove('active');
-    e.currentTarget.classList.add('active');
-  }
+async function applyLocationForCities({
+  cityName = "Custom",
+  lon,
+  lat,
+  elev,
+  tz,
+}) {
+  //if (e) {
+  //  const activeButton = document.querySelector(
+  //    '.control-button.active'
+  //  );
+  //
+  //  if (activeButton) activeButton.classList.remove('active');
+  //  e.currentTarget.classList.add('active');
+  //}
 
   selectedCity = cityName;
 
@@ -129,8 +118,7 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
     elev = cities[cityName].elev;
     pollution = cities[cityName].contaminacion;
     tz = cities[cityName].tz;
-  }
-  else {
+  } else {
     pollution = await getBortleIndex({ lat, lon });
     // console.log("This location calculaterd pollution:", pollution);
   }
@@ -138,14 +126,46 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev, tz }) {
 
   updateTimeZone(tz || -4);
   updatePollution();
+
+  const data = {
+    cityName: cityName,
+    lon,
+    lat,
+    elev,
+    bortle_index: pollution,
+  };
+
+  Protobject.Core.send(data).to("index.html");
+  Protobject.Core.send(pollution).to("Lamp.html");
+}
+
+async function applyLocationForAruco({ lat, lon }) {
+  const pollution = await getBortleIndex({ lat, lon });
+  console.log("Pollution level:", pollution);
+
+  const elev = 0;
+  const tz = getUtcOffset(lat, lon);
+
+  updateTimeZone(tz);
+  updatePollution();
+
+  const data = {
+    cityName: "Custom",
+    lon,
+    lat,
+    elev,
+    bortle_index: pollution,
+  };
+
+  Protobject.Core.send(data).to("index.html");
+  Protobject.Core.send(pollution).to("Lamp.html");
 }
 
 // --- Funciones auxiliares ---
-function getInfoFromLonLat(elatlng, year) {
-  if (year !== 2024) return;
+function getInfoForMap(elatlng) {
+  const lonFromDateLine = mod(parseFloat(elatlng.lng) + 180.0, 360.0);
+  const latFromStart = parseFloat(elatlng.lat) + 65.0;
 
-  const lonFromDateLine = mod(elatlng.lng + 180.0, 360.0);
-  const latFromStart = elatlng.lat + 65.0;
   const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
   const tiley = Math.floor(latFromStart / 5.0) + 1;
 
@@ -181,23 +201,35 @@ function getInfoFromLonLat(elatlng, year) {
       const brightnessRatio = compressed2full(compressed);
       const mpsas =
         22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
+      const bortleIndex = magToBortle(mpsas);
 
+      // Popup con botón "Ir a lugar"
       popup = L.popup()
         .setLatLng(elatlng)
         .setContent(
-          "<b>Year:</b> " +
-            year +
-            "<br><b>Lat, Lon:</b><br>" +
-            elatlng.lat.toFixed(4) +
-            ", " +
-            (lonFromDateLine - 180).toFixed(4) +
-            "<br><b>Brightness:</b><br> " +
-            mpsas.toFixed(2) +
-            " mag/arcsec<sup>2</sup><br>" +
-            round_brightness(brightnessRatio) +
-            " ratio (= artificial / natural)"
+          `
+          <div>
+            <b>Coordenadas:</b><br>
+            ${elatlng.lat.toFixed(4)}, ${(lonFromDateLine - 180).toFixed(4)}
+            <br><b>Contaminación lumínica:</b> ${bortleIndex}
+            <br><button id="goToPlaceBtn">Ir a lugar</button>
+          </div>
+        `
         )
         .openOn(map);
+
+      // Esperar a que el DOM del popup se monte y enlazar evento al botón
+      setTimeout(() => {
+        const btn = document.getElementById("goToPlaceBtn");
+        if (btn) {
+          btn.addEventListener("click", () => {
+            applyLocationForAruco({
+              lat: elatlng.lat,
+              lon: elatlng.lng,
+            });
+          });
+        }
+      }, 100);
     };
     xhr.open("GET", url, true);
     xhr.send();
@@ -205,7 +237,7 @@ function getInfoFromLonLat(elatlng, year) {
     L.popup()
       .setLatLng(elatlng)
       .setContent(
-        "<b>Lat, Lon:</b><br>" +
+        "<br>Lat, Lon:</br>" +
           elatlng.lat.toFixed(4) +
           ", " +
           (lonFromDateLine - 180).toFixed(4) +
@@ -213,6 +245,21 @@ function getInfoFromLonLat(elatlng, year) {
       )
       .openOn(map);
   }
+}
+
+function getUtcOffset(lat, lon) {
+  const tz = tzlookup(lat, lon); // 1) de lat/lon a "America/Santiago"
+  const now = new Date();
+
+  // 2) obtener el offset actual
+  const options = { timeZone: tz, timeZoneName: "shortOffset" };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(now);
+
+  const offsetPart = parts.find((p) => p.type === "timeZoneName");
+  // offsetPart.value -> "GMT-4"
+  const match = offsetPart.value.match(/GMT([+-]\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
 }
 
 function mod(n, m) {
@@ -232,4 +279,20 @@ function round_brightness(b) {
 function updateTimeZone(newTZ) {
   currentTZ = newTZ;
   console.log("Time zone updated to:", currentTZ);
+}
+
+function compressed2full(x) {
+  return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
+}
+
+function magToBortle(magArcsec2) {
+  if (magArcsec2 > 21.99) return 1; // Cielo prístino
+  if (magArcsec2 > 21.89) return 2; // Cielo excelente
+  if (magArcsec2 > 21.69) return 3; // Cielo rural
+  if (magArcsec2 > 20.49) return 4; // Suburbano oscuro
+  if (magArcsec2 > 19.5) return 5; // Suburbano intermedio
+  if (magArcsec2 > 18.94) return 6; // Suburbano brillante
+  if (magArcsec2 > 18.38) return 7; // Periurbano
+  if (magArcsec2 > 16.53) return 8; // Ciudad
+  return 9; // Centro de Ciudad
 }

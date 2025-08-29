@@ -37,14 +37,7 @@
 
       // Escuchar datos entrantes
       Protobject.Core.onReceived((data) => {
-        console.log("Datos recibidos:", data);
-
-        // Extraer valor del objeto
-        const value = parseInt(data.bortle);
-
-        if (isNaN(value) || value < 1 || value > 9) return;
-
-        const intensity = value / 9;
+        const intensity = data / 9;
         const brightness = Math.round(intensity * 255);
 
         lamp.setColor({ r: brightness, g: brightness, b: brightness });

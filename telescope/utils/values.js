@@ -52,12 +52,15 @@ let latInput = undefined;
 let lonInput = undefined;
 let elevInput = undefined;
 
+let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
   pollution = pollutionInput.value;
   Protobject.Core.send({ bortle: pollutionInput.value }).to("index.html");
   Protobject.Core.send({ bortle: pollutionInput.value }).to("Lamp.html");
 });
+
+let advancedModeWarningText = undefined;
 
 let flatpickrSyncInterval = null;
 let activeFlatpickr = null;
@@ -73,3 +76,48 @@ let modes = {
   simple: true,
   advanced: false
 }
+
+const BUTTONS = {
+  constellations: {
+    label: "Constellations",
+    img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg",
+    path: "constellations",
+    attr: "lines_visible",
+  },
+  atmosphere: {
+    label: "Atmosphere",
+    img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg",
+    path: "atmosphere",
+    attr: "visible",
+  },
+  landscape: {
+    label: "Landscape",
+    img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg",
+    path: "landscapes",
+    attr: "visible",
+  },
+  azimuthal: {
+    label: "Azimuthal Grid",
+    img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg",
+    path: "lines.azimuthal",
+    attr: "visible",
+  },
+  equatorial: {
+    label: "Equatorial Grid",
+    img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg",
+    path: "lines.equatorial",
+    attr: "visible",
+  },
+  nebulae: {
+    label: "Nebulae",
+    img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+    path: "dsos",
+    attr: "visible",
+  },
+  dss: {
+    label: "DSS",
+    img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+    path: "dss",
+    attr: "visible",
+  },
+};

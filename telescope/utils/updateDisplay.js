@@ -41,5 +41,10 @@ function toggleEyepieceOverlay(eyepieceSignal, event) {
   }
   event.target.classList.toggle('active');
 
+  if (eyepieceSignal === false) {
+    enableFinderMode()
+  }
+  else disableFinderMode();
+
   Protobject.Core.send({ eyepieceSignal }).to("index.html");
 }

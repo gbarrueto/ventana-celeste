@@ -7,11 +7,12 @@ const advancedModeContent = `
 
     <section class="container">
       <p>Oculares</p>
+      <p class="alert-text" style="opacity: 1;"><i>Desactivado en modo guia</i></p>
       <div id="lensContainer" class="grid-container">
-        <button class="button active" onclick="applyZoom(4, event)">x1</button>
-        <button class="button" onclick="applyZoom(32, event)">x16</button>
-        <button class="button" onclick="applyZoom(256, event)">x64</button>
-        <button class="button" onclick="applyZoom(2028, event)">x512</button>
+        <button disabled=true class="button active" onclick="applyZoom(4, event)">x1</button>
+        <button disabled=true class="button" onclick="applyZoom(32, event)">x16</button>
+        <button disabled=true class="button" onclick="applyZoom(256, event)">x64</button>
+        <button disabled=true class="button" onclick="applyZoom(2028, event)">x512</button>
       </div>
     </section>
 
