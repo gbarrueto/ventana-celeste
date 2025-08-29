@@ -235,8 +235,8 @@
           core.observer.name = defaultLocation.cityName;
           core.bortle_index = defaultLocation.bortle_index;
 
-          const baseUrl =
-            "https://telescope.alessiobellino.com/stardata/cache/";
+          const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
+          const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/stardata/cache/";
 
           core.stars.addDataSource({
             url:
@@ -257,7 +257,7 @@
             key: "extended",
           });
           core.stars.addDataSource({
-            url: baseUrl + "surveys/gaia/v1",
+            url: baseUrlBig + "surveys/gaia/v1",
             key: "gaia",
           });
 
@@ -282,7 +282,7 @@
             key: "guereins",
           });
           core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
-          core.dss.addDataSource({ url: baseUrl + "surveys/dss/v1" });
+          core.dss.addDataSource({ url: baseUrlBig + "surveys/dss/v1" });
           core.minor_planets.addDataSource({
             url: baseUrl + "mpc/v1/mpcorb.dat",
             key: "mpc_asteroids",
