@@ -197,16 +197,15 @@
 
       // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
-
       function enableFinderOverlay() {
-        const overlay = document.getElementById('finder-overlay');
+        const overlay = document.getElementById("finder-overlay");
         if (overlay) {
           overlay.style.opacity = 1;
         }
       }
 
       function disableFinderOverlay() {
-        const overlay = document.getElementById('finder-overlay');
+        const overlay = document.getElementById("finder-overlay");
         if (overlay) {
           overlay.style.opacity = 0;
         }
@@ -431,7 +430,11 @@
           engine.core.milkyway.visible = bortle < 6;
 
           // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
-          engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
+          if (bortle === 1) {
+            engine.core.display_limit_mag = 14;
+          } else {
+            engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
+          }
           engine.core.star_relative_scale = 0.9;
         }
         updatePollutionOverlay({ bortle });
