@@ -52,12 +52,15 @@ let latInput = undefined;
 let lonInput = undefined;
 let elevInput = undefined;
 
+let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
   pollution = pollutionInput.value;
   Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("index.html");
   Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
+
+let advancedModeWarningText = undefined;
 
 let flatpickrSyncInterval = null;
 let activeFlatpickr = null;

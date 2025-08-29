@@ -18,7 +18,13 @@
     <div id="info-card"></div>
   </div>
 
-  <div id="modal-container"></div>
+    <!-- <div class="footer" id="footer-buttons"></div> -->
+    <div id="modal-container"></div>
+
+    <div id="finder-overlay"></div>
+    <div id="eyepiece-overlay"></div>
+
+    <script src="util/protobject.js"></script>
 
   <!-- PARAMETER - CONSTANTS - VARIABLES -->
   <script>
@@ -54,29 +60,28 @@
       canvas_blur.style.filter = `blur(${blur}px)`;
     }
 
-    function toggleEyepieceOverlay({ signal }) {
 
-      const overlay = document.getElementById("eyepiece-overlay");
-      if (overlay && !signal) {
-        overlay.remove();
-        return;
+      function enableFinderOverlay() {
+        const overlay = document.getElementById("finder-overlay");
+        if (overlay) {
+          overlay.style.opacity = 1;
+        }
       }
 
-      if (!overlay && signal) {
-
-        const newOverlay = document.createElement("div");
-        newOverlay.id = "eyepiece-overlay";
-        document.body.appendChild(newOverlay);
+      function disableFinderOverlay() {
+        const overlay = document.getElementById("finder-overlay");
+        if (overlay) {
+          overlay.style.opacity = 0;
+        }
       }
-    }
-    
-    StelWebEngine({
-      wasmFile:
-        "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
-      canvas: document.getElementById("stel-canvas"),
-      onReady(stel) {
-        engine = stel;
-        const core = stel.core;
+
+      StelWebEngine({
+        wasmFile:
+          "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
+        canvas: document.getElementById("stel-canvas"),
+        onReady(stel) {
+          engine = stel;
+          const core = stel.core;
 
         const defaultLocation = {
           cityName: "Santiago",
@@ -88,31 +93,31 @@
 
         core.observer.utc = toJulianDateIso(new Date().toISOString());
 
-        const baseUrl =
-          "https://telescope.alessiobellino.com/stardata/cache/";
+          const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
+          const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
 
-        core.stars.addDataSource({
-          url:
-            baseUrl +
-            "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars",
-          key: "minimal",
-        });
-        core.stars.addDataSource({
-          url:
-            baseUrl +
-            "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars",
-          key: "base",
-        });
-        core.stars.addDataSource({
-          url:
-            baseUrl +
-            "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars",
-          key: "extended",
-        });
-        core.stars.addDataSource({
-          url: baseUrl + "surveys/gaia/v1",
-          key: "gaia",
-        });
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars",
+            key: "minimal",
+          });
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars",
+            key: "base",
+          });
+          core.stars.addDataSource({
+            url:
+              baseUrl +
+              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars",
+            key: "extended",
+          });
+          core.stars.addDataSource({
+            url: baseUrlBig + "surveys/gaia/v1",
+            key: "gaia",
+          });
 
         core.skycultures.addDataSource({
           url: baseUrl + "skycultures/v3/western",
@@ -130,24 +135,24 @@
             "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
         });
 
-        core.landscapes.addDataSource({
-          url: baseUrl + "landscapes/v1/guereins",
-          key: "guereins",
-        });
-        core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
-        core.dss.addDataSource({ url: baseUrl + "surveys/dss/v1" });
-        core.minor_planets.addDataSource({
-          url: baseUrl + "mpc/v1/mpcorb.dat",
-          key: "mpc_asteroids",
-        });
-        core.comets.addDataSource({
-          url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
-          key: "mpc_comets",
-        });
-        // core.satellites.addDataSource({
-        //   url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-        //   key: "jsonl/sat",
-        // });
+          core.landscapes.addDataSource({
+            url: baseUrl + "landscapes/v1/guereins",
+            key: "guereins",
+          });
+          core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
+          core.dss.addDataSource({ url: baseUrlBig + "surveys/dss/v1" });
+          core.minor_planets.addDataSource({
+            url: baseUrl + "mpc/v1/mpcorb.dat",
+            key: "mpc_asteroids",
+          });
+          core.comets.addDataSource({
+            url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
+            key: "mpc_comets",
+          });
+          // core.satellites.addDataSource({
+          //   url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+          //   key: "jsonl/sat",
+          // });
 
         [
           "moon",
@@ -254,16 +259,20 @@
         engine.core.bortle_index = bortle; // de 1 a 9
         engine.core.milkyway.visible = bortle < 6;
 
-        // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
-        engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
-        engine.core.star_relative_scale = 0.9;
+          // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
+          if (bortle === 1) {
+            engine.core.display_limit_mag = 14;
+          } else {
+            engine.core.display_limit_mag = 7.5 - 0.8 * (bortle - 1);
+          }
+          engine.core.star_relative_scale = 0.9;
+        }
+        updatePollutionOverlay({ bortle });
       }
-      updatePollutionOverlay({ bortle });
-    }
-  </script>
-  <script>
-    // Light pollution section (se mantiene)
-    let pollutionOverlayTimer = null;
+    </script>
+    <script>
+      // Light pollution section (se mantiene)
+      let pollutionOverlayTimer = null;
 
     function updatePollutionOverlay({ bortle }) {
       if (!pollutionOverlay) return;

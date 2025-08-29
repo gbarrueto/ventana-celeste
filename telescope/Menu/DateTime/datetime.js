@@ -7,21 +7,21 @@ function displayDateTime(e) {
 
   if (!datetimeSection) {
     let section = `
-      <section id="datetimeSection" class="active" style="display: block;">
-        <h3>Select Date & Time</h3>
+      <section id="datetimeSection" class="active">
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
 
-        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%;"></div>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
-          <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-          <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-          <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-          <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-          <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+        <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
+          <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
+          <div class="grid-container" style="grid-template-columns: auto auto;">
+            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          </div>
+          <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
+            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+          </div>
         </div>
-        <p class="engine-time-mjd">Engine: <span id="engine-time-value">0</span></p>
-        <p class="engine-time-utc">Engine UTC: <span id="engine-time-value-utc">0</span></p>
-        <p class="timezone">TimeZone: <span id="time-zone-value">-4</span></p>
       </section>
     `;
 
@@ -29,7 +29,7 @@ function displayDateTime(e) {
   }
 
   else {
-    datetimeSection.style.display = 'block';
+    datetimeSection.style.display = 'flex';
     datetimeSection.classList.add('active');
   }
 
@@ -39,6 +39,11 @@ function displayDateTime(e) {
     showTimeSelector();
     createInterval();
   }, 100);
+}
+
+function applyCurrentDate() {
+  const dateTZ = getISOWithTZ(new Date());
+  updateDate(dateTZ);
 }
 
 function setSpeed(multiplier) {
@@ -130,6 +135,7 @@ function showTimeSelector() {
     time_24hr: true,
     defaultDate: new Date(),
     inline: true,
+    appendTo: document.getElementById("datetime-picker"),
     onOpen: () => (isUserTouchingCalendar = true),
     onClose: () => (isUserTouchingCalendar = false),
 
@@ -159,9 +165,6 @@ function showTimeSelector() {
       const dateTime = fromMJDToLuxon(engineUTC, currentTZ);
       // const time = fromMJDToDate(engineUTC);
       activeFlatpickr.setDate(dateTime.toISO(), false);
-      document.getElementById("engine-time-value").innerText = engineUTC;
-      document.getElementById("engine-time-value-utc").innerText = dateTime.toISO();
-      document.getElementById("time-zone-value").innerText = currentTZ;
     }
   }, 300);
 }

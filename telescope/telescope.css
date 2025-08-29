@@ -1,5 +1,5 @@
 html, body {
-  height: 100vh;
+  height: 100%;
   margin: 0;
   overflow: hidden;
   background: #02040a;
@@ -106,9 +106,21 @@ body {
   background-color: #0b5394;
 }
 
+.button:disabled {
+  color: gray;
+  border-color: gray;
+}
+
 #stellariumOptionsContainer {
   grid-template-columns: 30% 30% 30%;
   grid-template-rows: 40% 40%;
+  justify-content: space-around;
+}
+
+#stellariumOptionsContainer button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #mainMenuSection {
@@ -118,10 +130,20 @@ body {
 
 .stel-button {
   opacity: 0.5;
+  color: #e3eaff;
   transition: opacity 0.2s ease;
 }
 .stel-button.active {
   opacity: 1;
+}
+
+.stel-button .image-button {
+  /* flex: 1; */
+  width: 100%;
+  height: 100%;
+}
+.stel-button p {
+  margin: 0;
 }
 
 
@@ -212,11 +234,19 @@ body {
   -webkit-appearance: none;
   appearance: none;
   background-color: #bca898;
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 20px;
+  width: 20px;
   border-radius: 10rem;
   border: 1px solid #cdd7f5;
-  margin-right: calc(-1rem / 2);
+  /* margin-right: -8.5px; */
+  /* margin-top: -8.5px; */
+  /* margin-right: calc(-1rem / 2); */
+}
+.v-slider::-webkit-slider-thumb {
+  margin-right: -8.5px;
+}
+.h-slider::-webkit-slider-thumb {
+  margin-top: -8.5px;
 }
 
 /* Firefox */

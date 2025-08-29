@@ -9,6 +9,7 @@
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
   />
+  <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
 
   <link rel="stylesheet" href="telescope/telescope.css">
   <link rel="stylesheet" href="telescope/Slider/slider.css">
@@ -20,7 +21,7 @@
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
-  <!-- <link rel="stylesheet" href="Menu/Mapa/src/Control.Geocoder.css" /> -->
+ <link rel="stylesheet" href="telescope/Menu/Mapa/src/Control.Geocoder.css" />
   <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
 </head>
 
@@ -69,20 +70,40 @@
 
         <!-- Stellarium Options -->
         <div id="stellariumOptionsContainer" class="grid-container">
-          <button name="constellations" class="image-button constellations-image stel-button active"></button>
-          <button name="atmosphere" class="image-button atmosphere-image stel-button active"></button>
-          <button name="landscape" class="image-button landscape-image stel-button active"></button>
-          <button name="azimuthal" class="image-button azimuthal-image stel-button"></button>
-          <button name="equatorial" class="image-button equatorial-image stel-button"></button>
-          <button name="nebulae" class="image-button nebulae-image stel-button"></button>
+          <button name="constellations" class="image-button stel-button active">
+            <div class="image-button constellations-image"></div>
+            <p>Constelaciones</p>
+          </button>
+          <button name="atmosphere" class="image-button stel-button active">
+            <div class="image-button atmosphere-image"></div>
+            <p>Atmosfera</p>
+          </button>
+          <button name="landscape" class="image-button stel-button active">
+            <div class="image-button landscape-image"></div>
+            <p>Terreno</p>
+          </button>
+          <button name="azimuthal" class="image-button stel-button">
+            <div class="image-button azimuthal-image"></div>
+            <p>Azimuthal</p>
+          </button>
+          <button name="equatorial" class="image-button stel-button">
+            <div class="image-button equatorial-image"></div>
+            <p>Equatorial</p>
+          </button>
+          <button name="nebulae" class="image-button stel-button">
+            <div class="image-button nebulae-image"></div>
+            <p>Nebulosa</p>
+          </button>
         </div>
 
         <!-- Pollution -->
         <div id="pollutionSection" class="container">
           <p>Contaminacion Luminica</p>
-          <div>
+          <div style="display: flex; justify-content: center;">
             <input
-            type="checkbox">
+            id="autoPollutionCheckbox"
+            type="checkbox"
+            onclick="autoPollution()">
             <p>Automatica</p>
           </div>
           <input 
@@ -118,6 +139,7 @@
     else {
       advancedModeElement.classList.toggle('no-display');
       modeButtonElement.classList.toggle('advanced-mode-image');
+      enableFinderMode();
     }
   </script>
 
@@ -135,7 +157,7 @@
   <script src="telescope/utils/luxon.js"></script>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script> -->
+  <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script> 
   <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
   <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
   
@@ -159,6 +181,42 @@
       advancedModeElement.classList.toggle('no-display');
       modeButtonElement.classList.toggle('simple-mode-image');
       modeButtonElement.classList.toggle('advanced-mode-image');
+      for (let mode in modes) {
+        modes[mode] = !modes[mode];
+      }
+    }
+
+    function enableFinderMode() {
+      if (advancedModeWarningText === undefined) {
+        advancedModeWarningText = document.querySelector(
+          '#advancedMode .alert-text'
+        )
+      }
+      const buttons = document.querySelectorAll(
+        '#lensContainer button'
+      )
+
+      advancedModeWarningText.style.opacity = 1;
+      buttons.forEach(btn => {
+        btn.disabled = true;
+      })
+    }
+    
+    function disableFinderMode() {
+      if (advancedModeWarningText === undefined) {
+        advancedModeWarningText = document.querySelector(
+          '#advancedMode .alert-text'
+        )
+      }
+      advancedModeWarningText.style.opacity = 0;
+
+      const buttons = document.querySelectorAll(
+        '#lensContainer button'
+      )
+
+      buttons.forEach(btn => {
+        btn.disabled = false;
+      })
     }
 
     function updateBlur(direction = 1) {
@@ -166,7 +224,18 @@
       currentBlur = Math.max(0, Math.min(10, currentBlur));
 
       updateDisplayBlur();
-    }    
+    }  
+    
+    function autoPollution() {
+      if (autoPollutionCheckbox.checked == true) {
+        pollutionInput.style.opacity = 0;
+        pollutionInput.style.pointerEvents = 'none';
+      }
+      else {
+        pollutionInput.style.opacity = 1;
+        pollutionInput.style.pointerEvents = 'auto';
+      }
+    }
   </script>
     
   <script>
