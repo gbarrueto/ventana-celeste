@@ -1,25 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Stellarium Web Engine</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="stellarium.styles.css" />
-  </head>
-  <body>
-    <script src="https://app.protobject.com/framework/p.js"></script>
-    <script src="config.js"></script>
-    <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
-    <!-- <div class="topbar">
-      <span class="title">Stellarium<sup>Web</sup></span>
-      <div id="progress"></div>
-    </div> -->
+<head>
+  <meta charset="UTF-8" />
+  <title>Stellarium Web Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="stellarium.styles.css" />
+</head>
 
-    <div id="stel">
-      <canvas id="stel-canvas"></canvas>
-      <div id="info-card"></div>
-    </div>
+<body>
+  <script src="https://app.protobject.com/framework/p.js"></script>
+  <script src="config.js"></script>
+  <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
+
+  <div id="stel">
+    <canvas id="stel-canvas"></canvas>
+    <div id="info-card"></div>
+  </div>
 
     <!-- <div class="footer" id="footer-buttons"></div> -->
     <div id="modal-container"></div>
@@ -29,173 +26,40 @@
 
     <script src="util/protobject.js"></script>
 
-    <!-- PARAMETER - CONSTANTS - VARIABLES -->
-    <script>
-      let datetimeInterval = null;
+  <!-- PARAMETER - CONSTANTS - VARIABLES -->
+  <script>
+    let datetimeInterval = null;
 
-      let pollutionOverlay = null;
-    </script>
+    let pollutionOverlay = null;
+  </script>
 
-    <script>
-      const BUTTONS = [
-        {
-          label: "Constellations",
-          img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg",
-          path: "constellations",
-          attr: "lines_visible",
-        },
-        {
-          label: "Atmosphere",
-          img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg",
-          path: "atmosphere",
-          attr: "visible",
-        },
-        {
-          label: "Landscape",
-          img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg",
-          path: "landscapes",
-          attr: "visible",
-        },
-        {
-          label: "Azimuthal Grid",
-          img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg",
-          path: "lines.azimuthal",
-          attr: "visible",
-        },
-        {
-          label: "Equatorial Grid",
-          img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg",
-          path: "lines.equatorial",
-          attr: "visible",
-        },
-        {
-          label: "Nebulae",
-          img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
-          path: "dsos",
-          attr: "visible",
-        },
-        {
-          label: "DSS",
-          img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
-          path: "dss",
-          attr: "visible",
-        },
-        // {
-        //   label: "Pollution",
-        //   img: "https://telescope.alessiobellino.com/svg/btn-pollution.svg",
-        //   path: "pollution",
-        //   attr: "visible",
-        // },
-      ];
+  <script>
 
-      const canvas_blur = document.getElementById("stel-canvas");
+    const canvas_blur = document.getElementById("stel-canvas");
 
-      function toJulianDateIso(iso) {
-        const now = new Date(iso);
-        const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
-        const mjd = jd - 2400000.5; // Modified Julian Date
-        return mjd;
-      }
+    function toJulianDateIso(iso) {
+      const now = new Date(iso);
+      const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
+      const mjd = jd - 2400000.5; // Modified Julian Date
+      return mjd;
+    }
 
-      function updateStellariumView(data) {
-        if (!engine?.core?.observer) return;
-        engine.core.observer.yaw = -data.h;
-        engine.core.observer.pitch = data.v;
-      }
+    function updateStellariumView({ h, v }) {
+      if (!engine?.core?.observer) return;
+      engine.core.observer.yaw = -h;
+      engine.core.observer.pitch = v;
+    }
 
-      function updateStellariumFov(fov) {
-        if (!engine?.core) return;
-        engine.core.fov = fov;
-      }
+    function updateStellariumFov({ fov }) {
 
-      function updateStellariumBlur(blur) {
-        canvas_blur.style.filter = `blur(${blur}px)`;
-      }
+      if (!engine?.core) return;
+      engine.core.fov = fov;
+    }
 
-      // ---------------------------
-      // Nuevo: recibir posiciones desde ArUco
-      // ---------------------------
-      // Si llega una posición antes de que el motor esté listo, la guardamos y aplicamos luego.
-      // let pendingArUcoPosition = null;
-      // async function applyArUcoPosition(lat, lon) {
-      //   // lat/lon en grados (WGS84). Convierte y asigna a Stellarium cuando esté disponible.
-      //   if (!engine || !engine.core) {
-      //     pendingArUcoPosition = { lat, lon };
-      //     return;
-      //   }
-      //   try {
-      //     engine.core.observer.latitude = lat * (Math.PI / 180);
-      //     engine.core.observer.longitude = lon * (Math.PI / 180);
-      //     // Opcional: mantener elevación previa o poner 0 si desconocida
-      //     engine.core.observer.elevation = engine.core.observer.elevation || 0;
-      //     engine.core.observer.name = "ArUco Position";
-      //     // Actualizar tiempo local para que la vista sea consistente (opcional):
-      //     engine.core.observer.utc = toJulianDateIso(new Date().toISOString());
-      //     // Centrar la vista del observador
-      //     engine.core.observer.pitch = 0;
-      //     engine.core.observer.yaw = 0;
-      //     // Notificación visual mínima: actualiza footer/progress si lo deseas
-      //     const progress = document.getElementById("progress");
-      //     if (progress) {
-      //       const country = await getCountryFromLatLon(lat, lon);
-      //       progress.innerText = `${country} (${lat.toFixed(5)}, ${lon.toFixed(
-      //         5
-      //       )})`;
-      //     }
-      //   } catch (e) {
-      //     console.error("Error aplicando posición ArUco:", e);
-      //   }
-      // }
-      //
-      // // Escuchar evento enviado por ArUco.html vía window.dispatchEvent('proto:position', {detail:{...}})
-      // window.addEventListener("proto:position", (ev) => {
-      //   const d = ev?.detail || {};
-      //   if (d.lat !== undefined && d.lon !== undefined) {
-      //     applyArUcoPosition(d.lat, d.lon);
-      //   }
-      // });
+    function updateStellariumBlur({ blur }) {
+      canvas_blur.style.filter = `blur(${blur}px)`;
+    }
 
-      // let lastGeocodeTime = 0;
-      // let lastCountry = "Desconocido";
-      //
-      // async function getCountryFromLatLon(lat, lon) {
-      //   const now = Date.now();
-      //   if (now - lastGeocodeTime < 1000) {
-      //     return lastCountry; // evita request si no pasó 1s
-      //   }
-      //   lastGeocodeTime = now;
-      //
-      //   try {
-      //     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-      //
-      //     const res = await fetch(url, {
-      //       headers: {
-      //         "User-Agent": "ArucoTracker/1.0 franciscomaureirap@gmail.com",
-      //       },
-      //     });
-      //     if (!res.ok) throw new Error("Respuesta no válida");
-      //     const data = await res.json();
-      //     lastCountry = data.address.country || "Desconocido";
-      //     return lastCountry;
-      //   } catch (err) {
-      //     console.error("Error geocodificando:", err);
-      //     return lastCountry;
-      //   }
-      // }
-
-      // ---------------------------
-      // COMENTADO: handler previo redundante (lo mantenemos comentado para referencia)
-      /*
-      Protobject.Core.onReceived((data) => {
-        if (data.f !== undefined) updateStellariumFov(data.f);
-        else if (data.blur !== undefined) updateStellariumBlur(data.blur);
-        else data.h !== undefined || data.v !== undefined;
-        updateStellariumView(data);
-      });
-      */
-      // ---------------------------
-
-      // Handler principal: ahora también procesa mensajes { type: 'position', lat, lon }
 
       function enableFinderOverlay() {
         const overlay = document.getElementById("finder-overlay");
@@ -219,20 +83,15 @@
           engine = stel;
           const core = stel.core;
 
-          defaultLocation = {
-            cityName: "Santiago",
-            lat: -33.4489,
-            lon: -70.6693,
-            elev: 570,
-            bortle_index: 9,
-          };
+        const defaultLocation = {
+          cityName: "Santiago",
+          lat: -33.4489,
+          lon: -70.6693,
+          elev: 570,
+          bortle_index: 9,
+        };
 
-          core.observer.utc = toJulianDateIso(new Date().toISOString());
-          core.observer.latitude = defaultLocation.lat * (Math.PI / 180);
-          core.observer.longitude = defaultLocation.lon * (Math.PI / 180);
-          core.observer.elevation = defaultLocation.elev;
-          core.observer.name = defaultLocation.cityName;
-          core.bortle_index = defaultLocation.bortle_index;
+        core.observer.utc = toJulianDateIso(new Date().toISOString());
 
           const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
           const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
@@ -260,21 +119,21 @@
             key: "gaia",
           });
 
-          // core.skycultures.addDataSource({
-          //   url: baseUrl + "skycultures/v3/western",
-          //   key: "western",
-          // });
+        core.skycultures.addDataSource({
+          url: baseUrl + "skycultures/v3/western",
+          key: "western",
+        });
 
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso",
-          });
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
-          });
+        core.dsos.addDataSource({
+          url:
+            baseUrl +
+            "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso",
+        });
+        core.dsos.addDataSource({
+          url:
+            baseUrl +
+            "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
+        });
 
           core.landscapes.addDataSource({
             url: baseUrl + "landscapes/v1/guereins",
@@ -295,139 +154,110 @@
           //   key: "jsonl/sat",
           // });
 
-          [
-            "moon",
-            "sun",
-            "jupiter",
-            "mercury",
-            "venus",
-            "mars",
-            "saturn",
-            "uranus",
-            "neptune",
-            "io",
-            "europa",
-            "ganymede",
-            "callisto",
-            "moon-normal",
-          ].forEach((p) => {
-            core.planets.addDataSource({
-              url: baseUrl + `surveys/sso/${p}/v1`,
-              key: p,
-            });
+        [
+          "moon",
+          "sun",
+          "jupiter",
+          "mercury",
+          "venus",
+          "mars",
+          "saturn",
+          "uranus",
+          "neptune",
+          "io",
+          "europa",
+          "ganymede",
+          "callisto",
+          "moon-normal",
+        ].forEach((p) => {
+          core.planets.addDataSource({
+            url: baseUrl + `surveys/sso/${p}/v1`,
+            key: p,
           });
+        });
 
-          setTimeout(() => {
-            if (core.planets.hints_visible) {
-              core.planets.hints_visible = false;
-              core.dsos.hints_visible = false;
-              core.minor_planets.hints_visible = false;
-              // core.dss.hints_visible = false;
-              // core.milkyway.hints_visible = false;
-              // core.stars.hints_visible = false;
-              // core.comets.hints_visible = false;
+        setTimeout(() => {
+          if (core.planets.hints_visible) {
+            core.planets.hints_visible = false;
+            core.dsos.hints_visible = false;
+            core.minor_planets.hints_visible = false;
+            // core.dss.hints_visible = false;
+            // core.milkyway.hints_visible = false;
+            // core.stars.hints_visible = false;
+            // core.comets.hints_visible = false;
 
-              core.cardinals.visible = false;
-            }
-          }, 500);
+            core.cardinals.visible = false;
+          }
+        }, 500);
 
-          // const footer = document.getElementById("footer-buttons");
-          // BUTTONS.forEach(({ label, img, path, attr }) => {
-          //   const btn = document.createElement("div");
-          //   btn.className = "stel-button";
-          //   btn.innerHTML = `<img src="${img}" title="${label}" />`;
-          //   // Custom pollution overlay
-          //   btn.onclick = () => {
-          //     const obj = path.split(".").reduce((o, k) => o && o[k], core);
-          //     if (obj) {
-          //       obj[attr] = !obj[attr];
-          //       btn.classList.toggle("active", obj[attr]);
-          //     }
-          //   };
-          //   //}
-          //   footer.appendChild(btn);
-          // });
+        // On object click listener
 
-          // On object click listener
+        stel.change((obj, attr) => {
+          if (attr === "hovered") return;
 
-          stel.change((obj, attr) => {
-            if (attr === "hovered") return;
-
-            const info = document.getElementById("info-card");
-            if (stel.core.selection) {
-              const s = stel.core.selection;
-              const name = s.designations()[0].replace(/^NAME /, "");
-              const radec = stel.convertFrame(
-                core.observer,
-                "ICRF",
-                "CIRS",
-                s.getInfo("radec")
-              );
-              const coords = stel.c2s(radec);
-              const ra = stel.anp(coords[0]);
-              const dec = stel.anpm(coords[1]);
-              const mag = s.getInfo("vmag");
-              info.innerHTML = `
+          const info = document.getElementById("info-card");
+          if (stel.core.selection) {
+            const s = stel.core.selection;
+            const name = s.designations()[0].replace(/^NAME /, "");
+            const radec = stel.convertFrame(
+              core.observer,
+              "ICRF",
+              "CIRS",
+              s.getInfo("radec")
+            );
+            const coords = stel.c2s(radec);
+            const ra = stel.anp(coords[0]);
+            const dec = stel.anpm(coords[1]);
+            const mag = s.getInfo("vmag");
+            info.innerHTML = `
                   <h3>${name}</h3>
-                  <p><strong>Magnitude:</strong> ${
-                    mag !== undefined ? mag.toFixed(2) : "Unknown"
-                  }</p>
+                  <p><strong>Magnitude:</strong> ${mag !== undefined ? mag.toFixed(2) : "Unknown"
+              }</p>
                   <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
                   <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
-              info.style.display = "block";
-            } else {
-              info.style.display = "none";
-            }
-          });
+            info.style.display = "block";
+          } else {
+            info.style.display = "none";
+          }
+        });
 
-          pollutionOverlay = document.createElement("div");
-          pollutionOverlay.id = "pollution-overlay";
-          pollutionOverlay.style.position = "absolute";
-          pollutionOverlay.style.top = 0;
-          pollutionOverlay.style.left = 0;
-          pollutionOverlay.style.width = "100%";
-          pollutionOverlay.style.height = "100%";
-          pollutionOverlay.style.pointerEvents = "none";
-          pollutionOverlay.style.zIndex = 5;
-          pollutionOverlay.style.display = "block";
-          const stelElement = document.getElementById("stel");
-          stelElement.appendChild(pollutionOverlay);
+        pollutionOverlay = document.createElement("div");
+        pollutionOverlay.id = "pollution-overlay";
+        const stelElement = document.getElementById("stel");
+        stelElement.appendChild(pollutionOverlay);
 
-          applyLocation(defaultLocation);
-        },
-      });
+        applyLocation(defaultLocation);
+      },
+    });
 
-      // let clockInterval = null;
-      // let timeSpeed = 0;
-      // let suppressFlatpickrUpdate = false;
+    function setSpeed({ speed: multiplier }) {
+      engine.core.time_speed = parseInt(multiplier);
+    }
 
-      function setSpeed(multiplier) {
-        engine.core.time_speed = parseInt(multiplier);
-      }
+    function updateDate({ date }) {
+      engine.core.observer.utc = date;
+    }
 
-      function updateDate(date) {
-        engine.core.observer.utc = date;
-      }
+    function setDatetimeInterval() {
+      datetimeInterval = setInterval(() => {
+        Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to(
+          "telescope.html"
+        );
+      }, 300);
+    }
 
-      function setDatetimeInterval() {
-        datetimeInterval = setInterval(() => {
-          Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to(
-            "telescope.html"
-          );
-        }, 300);
-      }
+    function clearDatetimeInterval() {
+      clearInterval(datetimeInterval);
+    }
 
-      function clearDatetimeInterval() {
-        clearInterval(datetimeInterval);
-      }
+    function applyPollution({ bortle }) {
+      // Ajustar parámetros del motor
+      // console.log("Applying pollution with value:", bortle);
+      bortle = parseInt(bortle);
 
-      function applyPollution(bortle) {
-        // Ajustar parámetros del motor
-        bortle = parseInt(bortle);
-
-        if (engine.core) {
-          engine.core.bortle_index = bortle; // de 1 a 9
-          engine.core.milkyway.visible = bortle < 6;
+      if (engine.core) {
+        engine.core.bortle_index = bortle; // de 1 a 9
+        engine.core.milkyway.visible = bortle < 6;
 
           // Magnitud límite: de 7.5 (cielo oscuro) a 1.0 (ciudad)
           if (bortle === 1) {
@@ -444,63 +274,57 @@
       // Light pollution section (se mantiene)
       let pollutionOverlayTimer = null;
 
-      function updatePollutionOverlay({ forceHide = false, bortle }) {
-        if (!pollutionOverlay) return;
+    function updatePollutionOverlay({ bortle }) {
+      if (!pollutionOverlay) return;
 
-        // Mostrar overlay
-        pollutionOverlay.style.transition = "opacity 1s";
-        pollutionOverlay.style.opacity = 0.1 * bortle;
-        pollutionOverlay.style.display = "block";
+      // Mostrar overlay
+      pollutionOverlay.style.transition = "opacity 1s";
+      pollutionOverlay.style.opacity = 0.1 * bortle;
+      pollutionOverlay.style.display = "block";
 
-        // Fondo visual del overlay
+      // Fondo visual del overlay
 
-        pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
+      pollutionOverlay.style.background = `radial-gradient(ellipse 100% 50% at bottom, 
           rgba(255,200,100,${0.02 + 0.06 * (bortle - 1)}) 0%, 
           rgba(255,150,50,${0.015 + 0.045 * (bortle - 1)}) 20%, 
           rgba(200,100,50,${0.01 + 0.015 * (bortle - 1)}) 50%,
           rgba(100,50,25,${0.0 + 0.0035 * (bortle - 1)}) 65%, 
           rgba(100,50,25,${0.0 + 0.001 * (bortle - 1)}) 80%, 
           rgba(0,0,0,0.0) 100%)`;
+    }
+
+    async function applyLocation({
+      cityName = "Custom",
+      lat = 0,
+      lon = 0,
+      elev = 0,
+      bortle_index = 0,
+    }) {
+      if (!engine) return;
+
+      engine.core.observer.latitude = lat * (Math.PI / 180);
+      engine.core.observer.longitude = lon * (Math.PI / 180);
+      engine.core.observer.elevation = elev;
+
+      // Set LP to new location
+
+      applyPollution({ bortle: bortle_index });
+
+      //console.log("Bortle index for", cityName, ":", bortle_index);
+    }
+
+    function stellariumOption({ path, attr }) {
+      const obj = path.split(".").reduce((o, k) => o && o[k], engine.core);
+      if (obj) {
+        obj[attr] = !obj[attr];
       }
+    }
 
-      async function applyLocation({
-        cityName = "Custom",
-        lat = 0,
-        lon = 0,
-        elev = 0,
-        bortle_index = 0,
-      }) {
-        const data = {
-          cityName,
-          lat: lat,
-          lon: lon,
-          elev: elev,
-          contaminacion: bortle_index,
-        };
 
-        if (!engine) return;
+  </script>
 
-        engine.core.observer.latitude = data.lat * (Math.PI / 180);
-        engine.core.observer.longitude = data.lon * (Math.PI / 180);
-        engine.core.observer.elevation = data.elev || 0;
-        engine.core.observer.name = cityName;
+  <script src="util/protobject.js"></script>
 
-        // Set LP to new location
+</body>
 
-        const latLon = { lat: data.lat, lng: data.lon };
-        // const bortle_index = data.contaminacion || await getBortleIndex(latLon);
-
-        applyPollution(bortle_index);
-
-        //console.log("Bortle index for", cityName, ":", bortle_index);
-      }
-
-      function stellariumOption({ path, attr }) {
-        const obj = path.split(".").reduce((o, k) => o && o[k], engine.core);
-        if (obj) {
-          obj[attr] = !obj[attr];
-        }
-      }
-    </script>
-  </body>
 </html>

@@ -47,34 +47,23 @@ function applyCurrentDate() {
 }
 
 function setSpeed(multiplier) {
-  Protobject.Core.send({ speed: multiplier }).to("index.html");
+  Protobject.Core.send({msg:"setSpeed", values: { speed: multiplier }}).to("index.html");
   timeSpeed = multiplier;
   updateSpeedButtons();
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
 function updateDate(date) {
-  // const zone = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
-
-  // Creamos DateTime desde el Date del flatpickr en la zona actual
-
-  console.log("Passed date to update: ", date);
-
-  //const dateTime = luxon.DateTime.fromISO(date, { zone: zone }).toUTC();
-  //console.log("Converted to luxon:", dateTime.toISO());
-//
-  //const jd = dateTime.toMillis() / 86400000 + 2440587.5;
-  //const mjd = jd - 2400000.5;
 
   const mjd = isoToMJD(date);
 
   //console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ date: mjd }).to("index.html");
+  Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
 }
 
 function createInterval() {
-  Protobject.Core.send({ setDatetimeInterval: true }).to("index.html");
+  Protobject.Core.send({ msg: "setDatetimeInterval", values: { active: true } }).to("index.html");
 }
 
 function isoToMJD(isoString) {
@@ -120,13 +109,6 @@ function fromMJDToLuxon(mjd, offsetHours = 0) {
   return luxon.DateTime.fromMillis(unixMs, { zone: "UTC" }).setZone(zone);
 }
 
-// function toJulianDateIso(iso) {
-//   const now = new Date(iso);
-//   const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
-//   const mjd = jd - 2400000.5; // Modified Julian Date
-//   return mjd;
-// }
-
 function updateSpeedButtons() {
   document
     .querySelectorAll("#datetimeSection .control-button")
@@ -158,13 +140,13 @@ function showTimeSelector() {
     onClose: () => (isUserTouchingCalendar = false),
 
     onValueUpdate: function (selectedDates) {
-      console.log("Called onValueUpdate function");
+      // console.log("Called onValueUpdate function");
       if (selectedDates.length > 0) {
         // fecha seleccionada siempre respecto al huso local
         const date = selectedDates[0];
         const dateTZ = getISOWithTZ(date);
-        console.log("Non ISO DATE onUpdate", selectedDates[0]);
-        console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
+        //console.log("Non ISO DATE onUpdate", selectedDates[0]);
+        //console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
         lastManualChange = Date.now();
         updateDate(dateTZ);
         updateDateTimeout = null;

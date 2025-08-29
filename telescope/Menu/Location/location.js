@@ -135,8 +135,8 @@ async function applyLocationForCities({
     bortle_index: pollution,
   };
 
-  Protobject.Core.send(data).to("index.html");
-  Protobject.Core.send(pollution).to("Lamp.html");
+  Protobject.Core.send({msg:"applyLocation", values: data}).to("index.html");
+  Protobject.Core.send({msg:"updatePollution", values: {bortle: pollution}}).to("Lamp.html");
 }
 
 async function applyLocationForAruco({ lat, lon }) {
@@ -157,7 +157,7 @@ async function applyLocationForAruco({ lat, lon }) {
     bortle_index: pollution,
   };
 
-  Protobject.Core.send(data).to("index.html");
+  Protobject.Core.send({msg:"applyLocation", values: data}).to("index.html");
   Protobject.Core.send(pollution).to("Lamp.html");
 }
 
@@ -278,7 +278,7 @@ function round_brightness(b) {
 
 function updateTimeZone(newTZ) {
   currentTZ = newTZ;
-  console.log("Time zone updated to:", currentTZ);
+  // console.log("Time zone updated to:", currentTZ);
 }
 
 function compressed2full(x) {
@@ -295,4 +295,8 @@ function magToBortle(magArcsec2) {
   if (magArcsec2 > 18.38) return 7; // Periurbano
   if (magArcsec2 > 16.53) return 8; // Ciudad
   return 9; // Centro de Ciudad
+}
+
+function compressed2full(x) {
+  return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
 }

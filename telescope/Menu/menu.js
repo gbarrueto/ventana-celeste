@@ -30,7 +30,7 @@ function optionSelection(e) {
 
   // Clear Datetime Interval
   if (engineUTC !== null) {
-    Protobject.Core.send({ setDatetimeInterval: false }).to("index.html");
+    Protobject.Core.send({msg: "setDatetimeInterval", values: { active: false }}).to("index.html");
     engineUTC = null;
   }
 }
