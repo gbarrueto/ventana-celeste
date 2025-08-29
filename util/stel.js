@@ -8,6 +8,8 @@ function updateStellariumFov({ fov }) {
 
     if (!engine?.core) return;
     engine.core.fov = fov;
+
+    engine.core.display_limit_mag = limitingMag(engine.core.bortle_index, fov);
 }
 
 function stellariumOption({ path, attr }) {
