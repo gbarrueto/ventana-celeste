@@ -4,6 +4,7 @@ function updateDisplayFov() {
   
   if (oldFov !== fov) {
     Protobject.Core.send({ msg: "updateFov", values: { fov: fov } }).to("index.html");
+    console.log("Sent fov:", fov);
   }
   oldFov = fov;
 
@@ -14,7 +15,9 @@ function updateDisplayFov() {
   blurTarget = 5 + (Math.random() - 0.5) * blurVariation;
   blurTarget = Math.max(0, Math.min(10, blurTarget));
 
-  updateDisplayBlur();
+  // Desenfoque desactivado momentaneamente
+
+  //updateDisplayBlur();
 }
 
 
