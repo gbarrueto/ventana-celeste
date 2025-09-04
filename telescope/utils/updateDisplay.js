@@ -1,10 +1,10 @@
 
 function updateDisplayFov() {
-  const fov = Math.exp(logFov);
-  
+  const fov = logFov;
+
   if (oldFov !== fov) {
     Protobject.Core.send({ msg: "updateFov", values: { fov: fov } }).to("index.html");
-    console.log("Sent fov:", fov);
+    // console.log("Sent fov:", fov);
   }
   oldFov = fov;
 
