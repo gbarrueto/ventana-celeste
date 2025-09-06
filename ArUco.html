@@ -39,7 +39,7 @@
     <script>
       // Inicializa el mapa
       const map = L.map("map", {
-        center: [0, 0], // centro inicial del mapa (cambiar si quieres)
+        center: [20, 0], // centro inicial del mapa (cambiar si quieres)
         zoom: 2,
         dragging: false,
         zoomControl: false,
@@ -47,7 +47,6 @@
         doubleClickZoom: false,
         boxZoom: false,
         keyboard: false,
-        tap: false,
         touchZoom: false,
         attributionControl: false,
       });
@@ -58,8 +57,8 @@
         {
           noWrap: true,
           bounds: [
-            [-85, -180],
-            [85, 180],
+            [-90, -180],
+            [90, 180],
           ],
         }
       ).addTo(map);
@@ -72,7 +71,7 @@
         Protobject.Core.send({
           msg: "applyLocation",
           values: { lat, lon },
-        }).to("telescope.html");
+        }).to("index.html");
       });
     </script>
   </body>

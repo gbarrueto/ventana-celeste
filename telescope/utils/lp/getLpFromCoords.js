@@ -24,7 +24,7 @@ function getInfoFromLonLat(elatlng) {
 
     if (tiley >= 1 && tiley <= 28) {
       var url =
-        "telescope/data/lp_2024/" +
+        "https://telescope.alessiobellino.com/data/binary_tiles/" +
         "binary_tile_" +
         tilex +
         "_" +
