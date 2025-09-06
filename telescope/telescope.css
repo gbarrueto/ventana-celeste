@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   overflow: hidden;
@@ -54,13 +55,13 @@ body {
 }
 
 .menu-image {
-  background-image: url('../images/menu.png');
+  background-image: url("../images/menu.png");
   width: 3em;
   height: 3em;
 }
 
 .close-image {
-  background-image: url('../images/close.png');
+  background-image: url("../images/close.png");
   width: 3em;
   height: 3em;
 }
@@ -146,36 +147,33 @@ body {
   margin: 0;
 }
 
-
 .constellations-image {
-  background-image: url('../svg/btn-cst-lines.svg');
+  background-image: url("../svg/btn-cst-lines.svg");
 }
 .atmosphere-image {
-  background-image: url('../svg/btn-atmosphere.svg');
+  background-image: url("../svg/btn-atmosphere.svg");
 }
 .landscape-image {
-  background-image: url('../svg/btn-landscape.svg');
+  background-image: url("../svg/btn-landscape.svg");
 }
 .azimuthal-image {
-  background-image: url('../svg/btn-azimuthal-grid.svg');
+  background-image: url("../svg/btn-azimuthal-grid.svg");
 }
 .equatorial-image {
-  background-image: url('../svg/btn-equatorial-grid.svg');
+  background-image: url("../svg/btn-equatorial-grid.svg");
 }
 .nebulae-image {
-  background-image: url('../svg/btn-nebulae.svg');
+  background-image: url("../svg/btn-nebulae.svg");
 }
-
 
 /* MODES IMAGES */
 
 .simple-mode-image {
-  background-image: url('../svg/simple-mode.svg');
+  background-image: url("../svg/simple-mode.svg");
 }
 .advanced-mode-image {
-  background-image: url('../svg/advanced-mode.svg');
+  background-image: url("../svg/advanced-mode.svg");
 }
-
 
 /* SLIDER */
 
@@ -183,7 +181,7 @@ body {
   -webkit-appearance: none;
   appearance: none;
   /* height: 80%; */
-  background: transparent; 
+  background: transparent;
 }
 
 .v-slider {
@@ -204,12 +202,12 @@ body {
 .v-slider::-webkit-slider-runnable-track {
   height: 100%;
   width: 25%;
-  max-width: .5rem;
+  max-width: 0.5rem;
 }
 .h-slider::-webkit-slider-runnable-track {
   height: 25%;
   width: 100%;
-  max-height: .5rem;
+  max-height: 0.5rem;
 }
 
 /* Firefox */
@@ -220,12 +218,12 @@ body {
 .v-slider::-moz-range-track {
   height: 100%;
   width: 25%;
-  max-width: .5rem;
+  max-width: 0.5rem;
 }
 .h-slider::-moz-range-track {
   height: 25%;
   width: 100%;
-  max-height: .5rem;
+  max-height: 0.5rem;
 }
 
 /*** Thumb style ***/

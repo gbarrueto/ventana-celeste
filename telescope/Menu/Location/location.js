@@ -2,9 +2,17 @@
 let map;
 let standard, lightpollution2024;
 let control;
+// Variables para mapa 3d
+let globe;
+let globeInitialized = false;
+let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1, color: "red" }];
 
-// Función para mostrar el mapa
 function displayLocation(e) {
+  displayMap(e);
+  displayGlobe(e);
+}
+// Función para mostrar el mapa
+function displayMap(e) {
   optionSelection(e); // mantiene la selección de botón
 
   // Crear div del mapa si no existe
@@ -68,6 +76,38 @@ function displayLocation(e) {
   }
 }
 
+function displayGlobe(e) {
+  optionSelection(e); // Mantiene selección del botón
+
+  // Crear div del globo si no existe
+  let globeDiv = document.getElementById("globeViz");
+  if (!globeDiv) {
+    globeDiv = document.createElement("div");
+    globeDiv.id = "globeViz";
+    globeDiv.classList.add("active");
+    globeDiv.style.width = "100%";
+    globeDiv.style.height = "600px";
+    interactionSection.appendChild(globeDiv);
+  } else {
+    globeDiv.style.display = "block";
+    globeDiv.classList.add("active");
+  }
+
+  // Inicializar globo solo una vez
+  if (!globeInitialized) {
+    globe = Globe()(globeDiv)
+      .globeImageUrl(
+        "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+      )
+      .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
+      .pointAltitude("size")
+      .pointColor("color")
+      .pointsData(globePoint);
+
+    globeInitialized = true;
+  }
+}
+
 // Enviar coordenadas a telescope
 async function sendCoordinates({ lat, lon }) {
   const pollution = await getBortleIndex({ lat, lon });
@@ -86,6 +126,12 @@ async function sendCoordinates({ lat, lon }) {
     elev,
     bortle_index: pollution,
   };
+
+  // Actualizar el punto en el globo
+  if (globe) {
+    globePoint = [{ lat, lng: lon, size: 1, color: "orange" }];
+    globe.pointsData(globePoint);
+  }
 
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
