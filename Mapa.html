@@ -2,13 +2,13 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Mapa Estático</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mapa Estático Rectangular</title>
 
-    <!-- Leaflet CSS -->
+    <!-- MapLibre GL CSS -->
     <link
+      href="https://unpkg.com/maplibre-gl@^5.7.1/dist/maplibre-gl.css"
       rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
 
     <style>
@@ -17,11 +17,12 @@
         margin: 0;
         padding: 0;
         height: 100%;
+        width: 100%;
       }
 
       #map {
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
         touch-action: none;
       }
     </style>
@@ -33,45 +34,35 @@
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@^5.7.1/dist/maplibre-gl.js"></script>
+    <!-- MapLibre GL JS -->
 
     <script>
-      // Inicializa el mapa
-      const map = L.map("map", {
-        center: [20, 0], // centro inicial del mapa (cambiar si quieres)
-        zoom: 2,
-        dragging: false,
-        zoomControl: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        boxZoom: false,
-        keyboard: false,
-        touchZoom: false,
-        attributionControl: false,
+      // Inicializa el mapa con MapLibre y proyección rectangular
+      const map = new maplibregl.Map({
+        container: "map",
+        style:
+          "https://api.maptiler.com/maps/dataviz/style.json?key=XKnr8aclyURxGiARsA8J", // Estilo simple
+        //https://api.maptiler.com/maps/aquarelle/style.json?key=XKnr8aclyURxGiARsA8J
+        center: [0, 0], // Centro del mapa
+        zoom: 1.5, // Zoom adecuado para pantalla completa
+        projection: "equirectangular", // <- Esto hace que el mapa sea rectangular
+        interactive: false, // Desactiva interacciones (estático)
       });
 
-      // Capa base OSM
-      const standard = L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          noWrap: true,
-          bounds: [
-            [-85, -180],
-            [85, 180],
-          ],
-        }
-      ).addTo(map);
+      // Habilita solo el evento de click manualmente
+      map.once("load", () => {
+        map.getCanvas().style.cursor = "pointer";
 
-      // Evento click/touch para enviar coordenadas
-      map.on("click", function (e) {
-        const lat = e.latlng.lat;
-        const lon = e.latlng.lng;
+        map.on("click", function (e) {
+          const lat = e.lngLat.lat;
+          const lon = e.lngLat.lng;
 
-        Protobject.Core.send({
-          msg: "sendCoordinates",
-          values: { lat, lon },
-        }).to("telescope.html");
+          Protobject.Core.send({
+            msg: "sendCoordinates",
+            values: { lat, lon },
+          }).to("telescope.html");
+        });
       });
     </script>
   </body>
