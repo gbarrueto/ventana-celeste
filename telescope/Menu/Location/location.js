@@ -2,15 +2,7 @@
 let map;
 let standard, lightpollution2024;
 let control;
-// Variables para mapa 3d
-let globe;
-let globeInitialized = false;
-let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1, color: "red" }];
 
-function displayLocation(e) {
-  displayMap(e);
-  displayGlobe(e);
-}
 // Función para mostrar el mapa
 function displayMap(e) {
   optionSelection(e); // mantiene la selección de botón
@@ -71,40 +63,6 @@ function displayMap(e) {
     map.on("click", function (e) {
       sendCoordinates({ lat: e.latlng.lat, lon: e.latlng.lng });
     });
-
-    // Slider de opacidad
-  }
-}
-
-function displayGlobe(e) {
-  optionSelection(e); // Mantiene selección del botón
-
-  // Crear div del globo si no existe
-  let globeDiv = document.getElementById("globeViz");
-  if (!globeDiv) {
-    globeDiv = document.createElement("div");
-    globeDiv.id = "globeViz";
-    globeDiv.classList.add("active");
-    globeDiv.style.width = "100%";
-    globeDiv.style.height = "600px";
-    interactionSection.appendChild(globeDiv);
-  } else {
-    globeDiv.style.display = "block";
-    globeDiv.classList.add("active");
-  }
-
-  // Inicializar globo solo una vez
-  if (!globeInitialized) {
-    globe = Globe()(globeDiv)
-      .globeImageUrl(
-        "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-      )
-      .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
-      .pointAltitude("size")
-      .pointColor("color")
-      .pointsData(globePoint);
-
-    globeInitialized = true;
   }
 }
 
@@ -129,8 +87,15 @@ async function sendCoordinates({ lat, lon }) {
 
   // Actualizar el punto en el globo
   if (globe) {
-    globePoint = [{ lat, lng: lon, size: 1, color: "orange" }];
+    globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
     globe.pointsData(globePoint);
+
+    // Mover la cámara al nuevo punto
+    globe.pointOfView({ lat, lng: lon, altitude: 1.5 }, 1500); // 1.5 puede ajustarse según zoom
+  }
+
+  if (map) {
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 8)); // Zoom mínimo 8 para mejor enfoque
   }
 
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");

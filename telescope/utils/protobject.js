@@ -1,16 +1,20 @@
+const functionMap = {
+  sendCoordinates: sendCoordinates,
+};
+
 Protobject.Core.onReceived((data) => {
-  if (data.engineUTC !== undefined) engineUTC = data.engineUTC;
-  if (data.lat !== undefined && data.lon !== undefined) {
-    currentLat = data.lat;
-    currentLon = data.lon;
+  const { msg, values } = data;
 
-    applyLocationForAruco({ lat: currentLat, lon: currentLon });
+  // console.log("Data received");
 
-    if (typeof map !== "undefined" && map.setView) {
-      map.setView([currentLat, currentLon], map.getZoom());
-      if (typeof marker !== "undefined") {
-        marker.setLatLng([currentLat, currentLon]);
-      }
+  if (msg && functionMap[msg]) {
+    const targetFunction = functionMap[msg];
+
+    if (typeof targetFunction === "function") {
+      // console.log(`Ejecutando función: ${msg} con valores:`, values);
+      targetFunction(values);
     }
+  } else {
+    console.warn(`Función no encontrada para el mensaje: ${msg}`);
   }
 });
