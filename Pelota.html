@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Globo Móvil Interactivo</title>
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: black;
+        overflow: hidden;
+      }
+
+      #globeViz {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="globeViz"></div>
+
+    <!-- Protobject Framework -->
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
+
+    <script src="https://unpkg.com/three"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="telescope/utils/tz.js"></script>
+    <script src="telescope/utils/luxon.js"></script>
+    <script src="telescope/utils/values.js"></script>
+
+    <script>
+      let globe;
+
+      // Inicializa el globo
+      function initGlobe() {
+        const globeDiv = document.getElementById("globeViz");
+
+        globe = Globe()(globeDiv)
+          .globeImageUrl(
+            "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+          )
+          .backgroundImageUrl(
+            "//unpkg.com/three-globe/example/img/night-sky.png"
+          )
+          .pointAltitude("size")
+          .pointColor("color")
+          .pointsData([
+            { lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" },
+          ]);
+      }
+
+      initGlobe();
+
+      function unwrapAngle(newAngle, prevAngle) {
+        let delta = newAngle - prevAngle;
+        if (delta > Math.PI) delta -= 2 * Math.PI;
+        if (delta < -Math.PI) delta += 2 * Math.PI;
+        return prevAngle + delta;
+      }
+
+      const Orientation = {
+        oldX: null,
+        oldY: null,
+        start(freq = 200) {
+          this.freq = freq;
+          this.initSensors();
+        },
+        initSensors() {
+          if ("AbsoluteOrientationSensor" in window) {
+            try {
+              const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+              sensor.addEventListener("reading", () =>
+                this.calculateOrientation(sensor.quaternion)
+              );
+              sensor.start();
+            } catch (error) {
+              console.error("Sensor error:", error);
+            }
+          } else {
+            console.error("AbsoluteOrientationSensor non supportato.");
+          }
+        },
+        calculateOrientation(q) {
+          if (!q) return;
+          const [x, y, z, w] = q;
+          const pitch = Math.atan2(
+            2 * (w * x + y * z),
+            1 - 2 * (x * x + y * y)
+          );
+          const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+
+          const fov = Math.exp(logFov);
+          const sensitivity = Math.min(1, fov / 20);
+
+          if (this.oldX === null || this.oldY === null) {
+            this.oldX = yaw;
+            this.oldY = pitch;
+          }
+
+          const adjustedYaw = unwrapAngle(yaw, this.oldX);
+
+          this.oldX += (adjustedYaw - this.oldX) * sensitivity;
+          this.oldY += (pitch - this.oldY) * sensitivity;
+
+          glovePoint = [
+            {
+              lat: (this.oldY * 180) / Math.PI,
+              lng: (this.oldX * 180) / Math.PI,
+              size: 1,
+              color: "red",
+            },
+          ];
+          globe.pointsData(glovePoint);
+
+          globe.pointOfView(
+            {
+              lat: (this.oldY * 180) / Math.PI,
+              lng: (this.oldX * 180) / Math.PI,
+              altitude: 1.5,
+            },
+            100
+          );
+
+          //Protobject.Core.send({
+          //  msg: "updateView",
+          //  values: { h: this.oldX, v: this.oldY },
+          //}).to("index.html");
+        },
+      };
+
+      Orientation.start();
+    </script>
+  </body>
+</html>

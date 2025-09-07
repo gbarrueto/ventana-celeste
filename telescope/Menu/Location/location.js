@@ -91,11 +91,11 @@ async function sendCoordinates({ lat, lon }) {
     globe.pointsData(globePoint);
 
     // Mover la cámara al nuevo punto
-    globe.pointOfView({ lat, lng: lon, altitude: 1.5 }, 1500); // 1.5 puede ajustarse según zoom
+    globe.pointOfView({ lat, lng: lon, altitude: 1.5 }, 3000); // 1.5 puede ajustarse según zoom
   }
 
   if (map) {
-    map.flyTo([lat, lon], Math.max(map.getZoom(), 8)); // Zoom mínimo 8 para mejor enfoque
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
   }
 
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");

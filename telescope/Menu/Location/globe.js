@@ -32,7 +32,7 @@ function displayGlobe(e) {
 
     // Mover la cámara al punto inicial
     const { lat, lng } = globePoint[0];
-    globe.pointOfView({ lat, lng, altitude: 1.5 }, 0);
+    globe.pointOfView({ lat, lng, altitude: 1.5 }, 3000); // 1.5 puede ajustarse según zoom
 
     globeInitialized = true;
   }
