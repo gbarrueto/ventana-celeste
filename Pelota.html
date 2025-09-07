@@ -145,6 +145,9 @@
     </div>
 
     <!-- Librerías de visualización (mantén o cambia versión si lo deseas) -->
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
+
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/globe.gl"></script>
 
@@ -439,6 +442,8 @@
         }
       }
 
+      let lastSent = 0; // para limitar frecuencia de envío (si se usa)
+
       function handleQuatReading(rawQuat, source) {
         // normalizamos lectura
         currentQuat = quatNormalize(rawQuat);
@@ -477,6 +482,7 @@
         // normalizar longitud a (-180,180]
         lng = ((((lng + 180) % 360) + 360) % 360) - 180;
 
+        lng = -lng; // invertir para que positivo vaya a Este
         // actualizar UI y globo
         posReadout.textContent = `Lat: ${lat.toFixed(4)} , Lng: ${lng.toFixed(
           4
@@ -484,8 +490,16 @@
         globe.pointsData([{ lat, lng, size: 4, color: "red" }]);
         globe.pointOfView({ lat, lng, altitude: 3 }, 50); // transición rápida
 
-        // enviar por Protobject si lo necesitas (ejemplo comentado)
-        // Protobject.Core.send({ msg:'updateView', values: { lat, lng, roll, pitch, yaw } }).to('index.html');
+        const now = Date.now();
+        if (now - lastSent >= 2000) {
+          // 2000 ms = 2 segundos
+          Protobject.Core.send({
+            msg: "sendCoordinates",
+            values: { lat: lat, lon: lng },
+          }).to("telescope.html");
+
+          lastSent = now;
+        }
       }
 
       // Inicia sensores (intento absoluto → fallback)
