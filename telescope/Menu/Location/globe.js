@@ -12,7 +12,9 @@ function displayGlobe(e) {
     globeDiv.id = "globeViz";
     globeDiv.classList.add("active");
     globeDiv.style.width = "100%";
-    globeDiv.style.height = "600px";
+    globeDiv.style.height = "98%";
+    globeDiv.style.position = "relative";
+    globeDiv.style.overflow = "hidden";
     interactionSection.appendChild(globeDiv);
   } else {
     globeDiv.style.display = "block";
@@ -32,7 +34,7 @@ function displayGlobe(e) {
 
     // Mover la cámara al punto inicial
     const { lat, lng } = globePoint[0];
-    globe.pointOfView({ lat, lng, altitude: 1.5 }, 3000); // 1.5 puede ajustarse según zoom
+    globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
 
     globeInitialized = true;
   }

@@ -11,26 +11,29 @@ function closeMenu() {
 function optionSelection(e) {
   // Handle button option
   const activeButton = document.querySelector(
-    '#menuContainer .header-container .active'
+    "#menuContainer .header-container .active"
   );
 
   if (activeButton && activeButton) {
-    activeButton.classList.toggle('active');
+    activeButton.classList.toggle("active");
   }
-  
-  e.currentTarget.classList.toggle('active');
+
+  e.currentTarget.classList.toggle("active");
 
   // Handle interaction section
-  const activeInteraction = document.querySelectorAll(
-    '#interactionSection > .active'
-  ).forEach(el => {
-    el.classList.remove('active');
-    el.style.display = 'none';
-  })
+  const activeInteraction = document
+    .querySelectorAll("#interactionSection > .active")
+    .forEach((el) => {
+      el.classList.remove("active");
+      el.style.display = "none";
+    });
 
   // Clear Datetime Interval
   if (engineUTC !== null) {
-    Protobject.Core.send({msg: "setDatetimeInterval", values: { active: false }}).to("index.html");
+    Protobject.Core.send({
+      msg: "setDatetimeInterval",
+      values: { active: false },
+    }).to("index.html");
     engineUTC = null;
   }
 }
@@ -38,7 +41,7 @@ function optionSelection(e) {
 function displayMainMenu(e) {
   optionSelection(e);
 
-  let mainMenuSection = document.getElementById('mainMenuSection');
+  let mainMenuSection = document.getElementById("mainMenuSection");
 
   if (!mainMenuSection) {
     let section = `
@@ -55,6 +58,6 @@ function displayMainMenu(e) {
     return;
   }
 
-  mainMenuSection.style.display = 'grid';
-  mainMenuSection.classList.add('active');
+  mainMenuSection.style.display = "grid";
+  mainMenuSection.classList.add("active");
 }

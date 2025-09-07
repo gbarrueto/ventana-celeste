@@ -14,7 +14,7 @@ function displayMap(e) {
     mapDiv.id = "map";
     mapDiv.classList.add("active");
     mapDiv.style.width = "100%";
-    mapDiv.style.height = "600px";
+    mapDiv.style.height = "98%";
     interactionSection.appendChild(mapDiv);
   } else {
     mapDiv.style.display = "block";
@@ -91,7 +91,7 @@ async function sendCoordinates({ lat, lon }) {
     globe.pointsData(globePoint);
 
     // Mover la cámara al nuevo punto
-    globe.pointOfView({ lat, lng: lon, altitude: 1.5 }, 3000); // 1.5 puede ajustarse según zoom
+    globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
   }
 
   if (map) {
