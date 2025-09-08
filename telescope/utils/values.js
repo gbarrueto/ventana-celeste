@@ -43,6 +43,7 @@ const zoomOptions = document.getElementById('zoomOptions')
 
 const menu = document.getElementById('menuContainer');
 const interactionSection = document.getElementById('interactionSection');
+const menuInteractionSection = document.getElementById('menuInteractionSection');
 
 const modeContainer = document.getElementById('modeContent');
 

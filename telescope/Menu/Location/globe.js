@@ -18,6 +18,7 @@ function displayGlobe(e) {
     interactionSection.appendChild(globeDiv);
   } else {
     globeDiv.style.display = "block";
+    globeDiv.style.transform = 'translateY(0)';
     globeDiv.classList.add("active");
   }
 

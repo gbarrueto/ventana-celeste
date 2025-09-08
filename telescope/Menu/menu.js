@@ -14,11 +14,13 @@ function optionSelection(e) {
     "#menuContainer .header-container .active"
   );
 
-  if (activeButton && activeButton) {
+  if (activeButton && activeButton != e.currentTarget) {
     activeButton.classList.toggle("active");
+    activeButton.style.transform = "translateY(0)"
   }
-
+  
   e.currentTarget.classList.toggle("active");
+  e.currentTarget.style.transform = "translateY(10%)"
 
   // Handle interaction section
   const activeInteraction = document
@@ -26,7 +28,19 @@ function optionSelection(e) {
     .forEach((el) => {
       el.classList.remove("active");
       el.style.display = "none";
+      el.style.transform = "translateY(-100%)"
     });
+
+  if (activeButton == e.currentTarget) {
+    interactionSection.style.opacity = 0;
+    interactionSection.style.pointerEvents = 'none';
+    e.currentTarget.style.transform = "translateY(0)"
+  }
+  else {
+    interactionSection.style.opacity = 1;
+    interactionSection.style.pointerEvents = 'auto';
+
+  }
 
   // Clear Datetime Interval
   if (engineUTC !== null) {
@@ -54,7 +68,7 @@ function displayMainMenu(e) {
       </section>
     `;
 
-    interactionSection.insertAdjacentHTML("beforeend", section);
+    menuInteractionSection.insertAdjacentHTML("beforeend", section);
     return;
   }
 

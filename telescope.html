@@ -61,9 +61,6 @@
       <section class="header">
         <button class="image-button close-image" onclick="closeMenu()"></button>
         <div class="header-container">
-          <button class="button active" onclick="displayMainMenu(event)">
-            Inicio
-          </button>
           <button class="button" onclick="displayMap(event)">Mapa</button>
           <button class="button" onclick="displayGlobe(event)">Globo</button>
           <button class="button" onclick="displayDateTime(event)">
@@ -73,7 +70,7 @@
       </section>
 
       <!-- Option Interaction -->
-      <section id="interactionSection">
+      <section id="menuInteractionSection">
         <section id="mainMenuSection" class="grid-container active">
           <!-- Stellarium Options -->
           <div id="stellariumOptionsContainer" class="grid-container">
@@ -124,6 +121,7 @@
             />
           </div>
         </section>
+        <section id="interactionSection"></section>
       </section>
     </div>
 
