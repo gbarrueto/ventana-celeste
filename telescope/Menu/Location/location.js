@@ -18,6 +18,7 @@ function displayMap(e) {
     interactionSection.appendChild(mapDiv);
   } else {
     mapDiv.style.display = "block";
+    mapDiv.style.transform = 'translateY(0)';
     mapDiv.classList.add("active");
   }
 
