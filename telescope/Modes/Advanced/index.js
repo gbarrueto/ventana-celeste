@@ -30,12 +30,15 @@ const advancedModeContent = `
 
     <section class="container">
       <p>Enfocador</p>
-      <input 
-        id="focusSlider"
-        class="slider h-slider"
-        type="range" 
-        min="${MIN_FOCUS}" max="${MAX_FOCUS}" value="${current_focus}" step="${FOCUS_STEP}">
-      </input>
+
+      <div class="slider-container">
+        <input 
+          id="focusSlider"
+          class="slider h-slider"
+          type="range" 
+          min="${MIN_FOCUS}" max="${MAX_FOCUS}" value="${current_focus}" step="${FOCUS_STEP}">
+        </input>
+      </div>
     </section>
   </div>
 `
