@@ -109,10 +109,12 @@ body {
   border: 1px solid #e3eaff;
   color: #e3eaff;
   border-radius: 1em;
+  transition: .2s;
 }
 
 .button.active {
   background-color: #0b5394;
+  transform: scale(0.9);
 }
 
 .button:disabled {

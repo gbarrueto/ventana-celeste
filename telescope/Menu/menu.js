@@ -20,7 +20,7 @@ function optionSelection(e) {
   }
   
   e.currentTarget.classList.toggle("active");
-  e.currentTarget.style.transform = "translateY(10%)"
+  e.currentTarget.style.transform = `translateY(10%) scale(0.9)`
 
   // Handle interaction section
   const activeInteraction = document
