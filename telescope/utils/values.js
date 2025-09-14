@@ -45,6 +45,62 @@ const menu = document.getElementById('menuContainer');
 const interactionSection = document.getElementById('interactionSection');
 const menuInteractionSection = document.getElementById('menuInteractionSection');
 
+/********************************************************************
+********************************************************************
+ Cargar secciones interactivas del menu                   */
+
+let section = `
+  <section id="datetimeSection">
+    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
+
+    <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
+      <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
+      <div class="grid-container" style="grid-template-columns: auto auto;">
+        <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+        <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+      </div>
+      <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
+        <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+        <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+        <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+      </div>
+    </div>
+  </section>
+`;
+interactionSection.insertAdjacentHTML("beforeend", section);
+
+let globeDiv = document.createElement("div");
+globeDiv.id = "globeViz";
+globeDiv.style.width = "100%";
+globeDiv.style.height = "98%";
+globeDiv.style.position = "relative";
+globeDiv.style.overflow = "hidden";
+interactionSection.appendChild(globeDiv);
+
+// Inicializar globo
+let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
+let globe = Globe()(globeDiv)
+  .globeImageUrl(
+    "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+  )
+  .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
+  .pointAltitude("size")
+  .pointColor("color")
+  .pointsData(globePoint);
+
+// Mover la cámara al punto inicial
+const { lat, lng } = globePoint[0];
+globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
+
+let mapDiv = document.createElement("div");
+mapDiv.id = "map";
+mapDiv.style.width = "100%";
+mapDiv.style.height = "98%";
+interactionSection.appendChild(mapDiv);
+
+/*******************************************************************
+********************************************************************/
+
 const modeContainer = document.getElementById('modeContent');
 
 const modeButtonElement = document.getElementById('modeButton');

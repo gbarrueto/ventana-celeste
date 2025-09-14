@@ -2,30 +2,15 @@
   position: absolute;
   top: 0;
   left: 0;
-  /* display: flex; */
-  /* flex-direction: column; */
   opacity: 0;
   z-index: -1;
   transition: 0.2s ease;
-
-  /* .header {
-
-    button {
-      width: 2em;
-      height: 2em;
-      padding: 0;
-      margin: 1em;
-    }
-  } */
 
   #optionsSection {
     display: flex;
     padding: 0 2%;
     gap: 2%;
     justify-content: center;
-
-    .option-button {
-    }
 
     .active {
       background-color: aqua;
@@ -54,9 +39,29 @@
     overflow: hidden;
     opacity: 0;
     pointer-events: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    transition: 0.3s;
   }
 
   #interactionSection > * {
-    transition: translate 0.2 ease-in-out;
+    transition: 0.2s ease-in-out;
+    grid-row-start: 1;
+    grid-column-start: 1;
+    transform: translateY(-100%);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #interactionSection > .active {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  #interactionSection > .exit {
+    transform: translateY(-100%);
   }
 }

@@ -1,38 +1,13 @@
 function displayDateTime(e) {
-  optionSelection(e);
+  if (optionSelection(e)) return;
 
   let datetimeSection = document.getElementById('datetimeSection')
 
   let localTime = new Date();
 
-  if (!datetimeSection) {
-    let section = `
-      <section id="datetimeSection" class="active">
-        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
-
-        <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
-          <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
-          <div class="grid-container" style="grid-template-columns: auto auto;">
-            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-          </div>
-          <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
-            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-          </div>
-        </div>
-      </section>
-    `;
-
-    interactionSection.insertAdjacentHTML("beforeend", section);
-  }
-
-  else {
-    datetimeSection.style.display = 'flex';
-    datetimeSection.style.transform = 'translateY(0)';
-    datetimeSection.classList.add('active');
-  }
+    // datetimeSection.style.display = 'flex';
+    // datetimeSection.style.transform = 'translateY(0)';
+  datetimeSection.classList.add('active');
 
   updateSpeedButtons();
 
