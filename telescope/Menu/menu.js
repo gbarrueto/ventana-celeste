@@ -1,11 +1,9 @@
 function openMenu() {
-  menu.style.opacity = 1;
-  menu.style.zIndex = 1;
+  menu.classList.add('active');
 }
 
 function closeMenu() {
-  menu.style.opacity = 0;
-  menu.style.zIndex = -1;
+  menu.classList.remove('active');
 }
 
 function optionSelection(e) {
@@ -20,28 +18,20 @@ function optionSelection(e) {
   }
   
   e.currentTarget.classList.toggle("active");
-  e.currentTarget.style.transform = "translateY(10%)"
+  e.currentTarget.style.transform = `translateY(10%) scale(0.9)`
 
   // Handle interaction section
-  const activeInteraction = document
-    .querySelectorAll("#interactionSection > .active")
-    .forEach((el) => {
-      el.classList.remove("active");
-      el.style.display = "none";
-      el.style.transform = "translateY(-100%)"
-    });
+  const activeInteraction = document.querySelector("#interactionSection > .active");
+  if (activeInteraction) {
+    activeInteraction.classList.remove("active");
+    activeInteraction.classList.add("exit");
 
-  if (activeButton == e.currentTarget) {
-    interactionSection.style.opacity = 0;
-    interactionSection.style.pointerEvents = 'none';
-    e.currentTarget.style.transform = "translateY(0)"
+    // clean up after transition ends
+    activeInteraction.addEventListener("transitionend", () => {
+      activeInteraction.classList.remove("exit");
+    }, { once: true });
   }
-  else {
-    interactionSection.style.opacity = 1;
-    interactionSection.style.pointerEvents = 'auto';
-
-  }
-
+  
   // Clear Datetime Interval
   if (engineUTC !== null) {
     Protobject.Core.send({
@@ -50,6 +40,19 @@ function optionSelection(e) {
     }).to("index.html");
     engineUTC = null;
   }
+
+  if (activeButton == e.currentTarget) {
+    interactionSection.style.opacity = 0;
+    interactionSection.style.pointerEvents = 'none';
+    e.currentTarget.style.transform = "translateY(0)";
+    return 1; // End section processing
+  }
+  else {
+    interactionSection.style.opacity = 1;
+    interactionSection.style.pointerEvents = 'auto';
+    return 0; // Return something false
+  }
+
 }
 
 function displayMainMenu(e) {

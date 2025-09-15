@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="telescope/Menu/menu.css" />
     <link rel="stylesheet" href="telescope/Menu/Location/location.css" />
     <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css" />
+    <link rel="stylesheet" href="telescope/calendar.css" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -111,14 +112,16 @@
               />
               <p>Automatica</p>
             </div>
-            <input
-              id="pollutionSlider"
-              class="slider h-slider"
-              type="range"
-              min="1"
-              max="9"
-              value="9"
-            />
+            <div class="slider-container">
+              <input
+                id="pollutionSlider"
+                class="slider h-slider"
+                type="range"
+                min="1"
+                max="9"
+                value="9"
+              />
+            </div>
           </div>
         </section>
         <section id="interactionSection"></section>
@@ -140,10 +143,10 @@
       const advancedModeElement = document.getElementById("advancedMode");
 
       if (modes.simple === true) {
-        simpleModeElement.classList.toggle("no-display");
+        simpleModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("simple-mode-image");
       } else {
-        advancedModeElement.classList.toggle("no-display");
+        advancedModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("advanced-mode-image");
         enableFinderMode();
       }
@@ -187,8 +190,8 @@
       });
 
       function toggleMode() {
-        simpleModeElement.classList.toggle("no-display");
-        advancedModeElement.classList.toggle("no-display");
+        simpleModeElement.classList.toggle("active");
+        advancedModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("simple-mode-image");
         modeButtonElement.classList.toggle("advanced-mode-image");
         for (let mode in modes) {
@@ -263,6 +266,7 @@
         width: 200px;
         height: 200px;
         border-radius: 50%;
+        pointer-events: none;
       }
 
       #info-card,

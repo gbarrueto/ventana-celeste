@@ -5,22 +5,12 @@ let control;
 
 // Función para mostrar el mapa
 function displayMap(e) {
-  optionSelection(e); // mantiene la selección de botón
+  if (optionSelection(e)) return; // mantiene la selección de botón
 
   // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
-  if (!mapDiv) {
-    mapDiv = document.createElement("div");
-    mapDiv.id = "map";
-    mapDiv.classList.add("active");
-    mapDiv.style.width = "100%";
-    mapDiv.style.height = "98%";
-    interactionSection.appendChild(mapDiv);
-  } else {
-    mapDiv.style.display = "block";
-    mapDiv.style.transform = 'translateY(0)';
-    mapDiv.classList.add("active");
-  }
+    // mapDiv.style.display = "block";
+  mapDiv.classList.add("active");
 
   // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {

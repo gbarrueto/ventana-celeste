@@ -1,6 +1,7 @@
 #datetimeSection {
   display: flex;
   flex-direction: column;
+  justify-content: center;
 
   .control-button {
     background: rgba(255, 255, 255, 0.1);
