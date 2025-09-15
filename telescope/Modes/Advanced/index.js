@@ -2,12 +2,6 @@ const advancedModeContent = `
   <div id="advancedMode" class="grid-container">
     <section id="viewModeContainer" class="container">
 
-    <!--
-      <button class="button" onclick="toggleEyepieceOverlay(true, event)">Telescopio</button>
-      <button class="button active" onclick="toggleEyepieceOverlay(false, event)">Guia</button> -->
-      
-      
-      <!-- agregado como guida-->
       <div id="stel">
         <canvas id="stel-canvas"></canvas>
         <div id="info-card"></div> <!-- no creo que sirva pero lo dejo ya que no estoy seguro -->
