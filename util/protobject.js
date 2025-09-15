@@ -1,15 +1,16 @@
 const functionMap = {
-  toggleEyepiece: toggleEyepieceOverlay,
-  updateFov: updateStellariumFov,
-  updateBlur: updateStellariumBlur,
-  updateView: updateStellariumView,
-  applyLocation: applyLocation,
-  setSpeed: setSpeed,
-  updateDate: updateDate,
-  setDatetimeInterval: () => setDatetimeInterval(),
-  clearDatetimeInterval: () => clearDatetimeInterval(),
-  updatePollution: applyPollution,
-  stellariumOption: stellariumOption,
+  "toggleEyepiece": toggleEyepieceOverlay,
+  "updateFov": updateStellariumFov,
+  "updateBlur": updateStellariumBlur,
+  "updateView": updateStellariumView,
+  "applyLocation": applyLocation,
+  "setSpeed": setSpeed,
+  "updateDate": updateDate,
+  "setDatetimeInterval": () => setDatetimeInterval(),
+  "clearDatetimeInterval": () => clearDatetimeInterval(),
+  "updatePollution": applyPollution,
+  "stellariumOption": stellariumOption,
+  "arduinoCommand": arduinoCommand,
 };
 
 Protobject.Core.onReceived((data) => {

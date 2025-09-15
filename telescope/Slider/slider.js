@@ -1,6 +1,6 @@
-// Función para mapear el valor del slider (0-100) a FOV (MIN_FOV a MAX_FOV)
+// Función para mapear el valor del slider (0-150) a FOV (MIN_FOV a MAX_FOV)
 function sliderToFov(sliderValue) {
-    // Normalizar el valor del slider de 0-100 a 0-1
+    // Normalizar el valor del slider de 0-150 a 0-1
     const normalized = sliderValue / 150;
     
     // Usar una curva exponencial para el mapeo

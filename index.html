@@ -28,7 +28,7 @@
 
 
     <script src="util/time.js"></script>
-
+    <script src="seeing/seeing_sim.js"></script>
     <!-- Init stellarium web engine -->
     <script>
       StelWebEngine({
@@ -181,6 +181,7 @@
           });
 
           applyLocation(defaultLocation);
+          initializeSeeingOverlay();
         },
       });
     </script>
@@ -188,6 +189,14 @@
     <script src="util/stel.js"></script>
     <script src="util/overlay.js"></script>
     <script src="util/location.js"></script>
+
+    <script>
+      function arduinoCommand(data) {
+        console.log(data);
+      }
+    </script>
+
     <script src="util/protobject.js"></script>
+
   </body>
 </html>

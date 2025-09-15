@@ -29,10 +29,11 @@ function updateDisplayBlur() {
 
   const blurEffect = Math.min(diff * sensitivity, 1) * 10;
 
-  blurSlider.value = currentBlur;
+  //blurSlider.value = currentBlur;
   // blurText.textContent = currentBlur;
 
   Protobject.Core.send({msg:"updateBlur", values: { blur: blurEffect } }).to("index.html");
+  
 }
 
 function toggleEyepieceOverlay(eyepieceSignal, event) {
