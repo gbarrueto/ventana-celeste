@@ -12,12 +12,16 @@ Protobject.initialize([
     debug: "master",
   },
   {
-    name: "ArUco",
-    page: "ArUco.html",
+    name: "Mapa",
+    page: "Mapa.html",
     // debug: "local",
   },
+  // {
+  // name: "Lamp",
+  // page: "Lamp.html",
+  // },
   {
-    name: "Lamp",
-    page: "Lamp.html",
+    name: "Pelota",
+    page: "Pelota.html",
   },
 ]);

@@ -1,7 +1,7 @@
 function displayLocation(e) {
   optionSelection(e);
 
-  let locationSection = document.getElementById('locationSection')
+  let locationSection = document.getElementById("locationSection");
 
   if (!locationSection) {
     let buttonsHtml = "";
@@ -15,7 +15,7 @@ function displayLocation(e) {
         currentElev = data.elev;
       }
       buttonsHtml += `
-      <button class="control-button ${isSelected ? 'active' : ''}"
+      <button class="control-button ${isSelected ? "active" : ""}"
         onclick="applyLocation({ e: event, cityName: '${city}' }); updateLocationInputValues('${city}')">
         ${city}
       </button>`;
@@ -64,22 +64,18 @@ function displayLocation(e) {
     `;
 
     interactionSection.insertAdjacentHTML("beforeend", section);
-  }
-
-  else {
-    locationSection.style.display = 'grid';
-    locationSection.classList.add('active');
+  } else {
+    locationSection.style.display = "grid";
+    locationSection.classList.add("active");
   }
 }
 
-async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
+async function applyLocation({ e, cityName = "Custom", lon, lat, elev }) {
   if (e) {
-    const activeButton = document.querySelector(
-      '.control-button.active'
-    );
-  
-    if (activeButton) activeButton.classList.remove('active');
-    e.currentTarget.classList.add('active');
+    const activeButton = document.querySelector(".control-button.active");
+
+    if (activeButton) activeButton.classList.remove("active");
+    e.currentTarget.classList.add("active");
   }
 
   selectedCity = cityName;
@@ -89,14 +85,11 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
     lat = cities[cityName].lat;
     elev = cities[cityName].elev;
     pollution = cities[cityName].contaminacion;
-  }
-  else {
+  } else {
     pollution = await getBortleIndex({ lat, lon });
     console.log("This location calculaterd pollution:", pollution);
   }
   // pollution = cities[cityName] ? cities[cityName].contaminacion : await getBortleIndex({ lat, lon });
-
-  
 
   updatePollution();
 
@@ -105,10 +98,10 @@ async function applyLocation({ e, cityName = 'Custom', lon, lat, elev }) {
     lon,
     lat,
     elev,
-    bortle_index: pollution
-  }
+    bortle_index: pollution,
+  };
 
-  Protobject.Core.send(data).to("index.html");
+  // Protobject.Core.send(data).to("index.html");
 }
 
 function updateLocationInputValues(cityName) {
@@ -120,15 +113,15 @@ function updateLocationInputValues(cityName) {
   if (latInput === undefined) {
     latInput = document.querySelector(
       '#locationVariablesContainer input[name="lat"]'
-    )
+    );
 
     lonInput = document.querySelector(
       '#locationVariablesContainer input[name="lon"]'
-    )
+    );
 
     elevInput = document.querySelector(
       '#locationVariablesContainer input[name="elev"]'
-    )
+    );
   }
 
   latInput.value = currentLat;
@@ -140,22 +133,20 @@ function submitLocation() {
   if (latInput === undefined) {
     latInput = document.querySelector(
       '#locationVariablesContainer input[name="lat"]'
-    )
+    );
 
     lonInput = document.querySelector(
       '#locationVariablesContainer input[name="lon"]'
-    )
+    );
 
     elevInput = document.querySelector(
       '#locationVariablesContainer input[name="elev"]'
-    )
+    );
   }
 
-  const activeButton = document.querySelector(
-    '.control-button.active'
-  );
+  const activeButton = document.querySelector(".control-button.active");
 
-  if (activeButton) activeButton.classList.remove('active');
+  if (activeButton) activeButton.classList.remove("active");
 
   currentLat = latInput.value;
   currentLon = lonInput.value;
@@ -164,6 +155,6 @@ function submitLocation() {
   applyLocation({
     lat: currentLat,
     lon: currentLon,
-    elev: currentElev
-  })
+    elev: currentElev,
+  });
 }

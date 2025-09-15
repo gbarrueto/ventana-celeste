@@ -13,16 +13,15 @@ const functionMap = {
   "arduinoCommand": arduinoCommand,
 };
 
-
 Protobject.Core.onReceived((data) => {
   const { msg, values } = data;
-  
+
   // console.log("Data received");
 
   if (msg && functionMap[msg]) {
     const targetFunction = functionMap[msg];
-    
-    if (typeof targetFunction === 'function') {
+
+    if (typeof targetFunction === "function") {
       // console.log(`Ejecutando función: ${msg} con valores:`, values);
       targetFunction(values);
     }

@@ -30,6 +30,7 @@ function displayDateTime(e) {
 
   else {
     datetimeSection.style.display = 'flex';
+    datetimeSection.style.transform = 'translateY(0)';
     datetimeSection.classList.add('active');
   }
 

@@ -26,11 +26,16 @@
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+<<<<<<< .merge_file_hOxLOU
     <link
       rel="stylesheet"
       href="telescope/Menu/Mapa/src/Control.Geocoder.css"
     />
     <link rel="stylesheet" href="telescope/Menu/Mapa/src/L.Control.Range.css" />
+=======
+    <link rel="stylesheet" href="util/Control.Geocoder.css" />
+    <link rel="stylesheet" href="util/L.Control.Range.css" />
+>>>>>>> .merge_file_1YWzFt
   </head>
 
   <body>
@@ -38,6 +43,11 @@
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="data/locations/cities.js"></script>
+<<<<<<< .merge_file_hOxLOU
+=======
+    <script src="https://unpkg.com/three"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+>>>>>>> .merge_file_1YWzFt
 
     <!-- Start screen -->
     <div id="startContainer" class="main-container">
@@ -62,17 +72,23 @@
       <section class="header">
         <button class="image-button close-image" onclick="closeMenu()"></button>
         <div class="header-container">
+<<<<<<< .merge_file_hOxLOU
           <button class="button active" onclick="displayMainMenu(event)">
             Inicio
           </button>
           <button class="button" onclick="displayLocation(event)">
             Ubicacion
           </button>
+=======
+          <button class="button" onclick="displayMap(event)">Mapa</button>
+          <button class="button" onclick="displayGlobe(event)">Globo</button>
+>>>>>>> .merge_file_1YWzFt
           <button class="button" onclick="displayDateTime(event)">
             Fecha y Tiempo
           </button>
         </div>
       </section>
+<<<<<<< .merge_file_hOxLOU
 
       <!-- Option Interaction -->
       <section id="interactionSection">
@@ -108,6 +124,40 @@
             </button>
           </div>
 
+=======
+
+      <!-- Option Interaction -->
+      <section id="menuInteractionSection">
+        <section id="mainMenuSection" class="grid-container active">
+          <!-- Stellarium Options -->
+          <div id="stellariumOptionsContainer" class="grid-container">
+            <button name="constellations" class="image-button stel-button">
+              <div class="image-button constellations-image"></div>
+              <p>Constelaciones</p>
+            </button>
+            <button name="atmosphere" class="image-button stel-button active">
+              <div class="image-button atmosphere-image"></div>
+              <p>Atmosfera</p>
+            </button>
+            <button name="landscape" class="image-button stel-button active">
+              <div class="image-button landscape-image"></div>
+              <p>Terreno</p>
+            </button>
+            <button name="azimuthal" class="image-button stel-button">
+              <div class="image-button azimuthal-image"></div>
+              <p>Azimuthal</p>
+            </button>
+            <button name="equatorial" class="image-button stel-button">
+              <div class="image-button equatorial-image"></div>
+              <p>Equatorial</p>
+            </button>
+            <button name="dss" class="image-button stel-button">
+              <div class="image-button nebulae-image"></div>
+              <p>Nebulosa</p>
+            </button>
+          </div>
+
+>>>>>>> .merge_file_1YWzFt
           <!-- Pollution -->
           <div id="pollutionSection" class="container">
             <p>Contaminacion Luminica</p>
@@ -129,6 +179,10 @@
             />
           </div>
         </section>
+<<<<<<< .merge_file_hOxLOU
+=======
+        <section id="interactionSection"></section>
+>>>>>>> .merge_file_1YWzFt
       </section>
     </div>
 
@@ -154,9 +208,12 @@
         modeButtonElement.classList.toggle("advanced-mode-image");
         enableFinderMode();
       }
+      function fixTime(values) {
+        engineUTC = values.engineUTC;
+      }
     </script>
 
-    <script src="http://unpkg.com/browser-geo-tz@latest/dist/geotz.js"></script>
+    <script src="https://unpkg.com/browser-geo-tz@latest/dist/geotz.js"></script>
     <script src="telescope/utils/tz.js"></script>
 
     <script src="telescope/utils/updateDisplay.js"></script>
@@ -165,6 +222,7 @@
     <script src="telescope/Menu/menu.js"></script>
     <script src="telescope/Menu/DateTime/datetime.js"></script>
     <script src="telescope/Menu/Location/location.js"></script>
+    <script src="telescope/Menu/Location/globe.js"></script>
     <script src="telescope/Menu/Pollution/pollution.js"></script>
     <script src="telescope/utils/protobject.js"></script>
     <script src="telescope/utils/luxon.js"></script>
@@ -172,7 +230,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="telescope/Menu/Mapa/src/Control.Geocoder.js"></script>
     <script src="telescope/Menu/Mapa/src/L.Control.Range.js"></script>
-    <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script>
+    <!-- <script src="telescope/Menu/Mapa/src/pako_inflate.min.js"></script> -->
     <script src="telescope/utils/arduino.js"></script>
 
     <script>
