@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Globo Móvil Interactivo - Sensores y Calibración</title>
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: #eee;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        overflow: hidden;
+      }
+
+      #globeViz {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        display: block;
+      }
+
+      /* Panel de controles superpuesto */
+      .panel {
+        position: fixed;
+        right: 12px;
+        top: 12px;
+        width: 320px;
+        background: rgba(20, 20, 20, 0.85);
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        z-index: 999;
+        font-size: 14px;
+      }
+      .panel h3 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+      }
+      .panel button {
+        margin: 6px 6px 6px 0;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: none;
+        background: #2b7;
+        color: #022;
+        cursor: pointer;
+      }
+      .panel button.critical {
+        background: #e33;
+        color: #fff;
+      }
+      .panel label {
+        display: block;
+        margin-top: 8px;
+      }
+      .small {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 4px;
+      }
+      .status {
+        margin: 6px 0;
+        font-size: 13px;
+        color: #9f9;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .kbd {
+        font-family: monospace;
+        background: #111;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .footer {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #9aa;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="globeViz"></div>
+
+    <div class="panel" id="controls">
+      <h3>Globo — sensores y calibración</h3>
+
+      <div id="sensorInfo" class="small">
+        Sensor: <span id="sensorType">–</span>
+      </div>
+
+      <div class="row">
+        <button id="btnCalibrate">Calibrar (establecer referencia)</button>
+        <button id="btnReset" class="critical">Reset</button>
+      </div>
+
+      <div class="row" style="margin-top: 8px">
+        <button id="btnRecenter">Re-centrar (offset actual)</button>
+      </div>
+
+      <label>Smoothing (SLERP): <span id="smoothingVal">0.10</span></label>
+      <input
+        id="smoothing"
+        type="range"
+        min="0"
+        max="0.98"
+        step="0.01"
+        value="0.1"
+      />
+
+      <label>
+        <input id="invertLng" type="checkbox" /> Invertir longitud (E/W)
+      </label>
+      <label>
+        <input id="invertLat" type="checkbox" /> Invertir latitud (N/S)
+      </label>
+
+      <div class="small" id="calStatus">
+        Calibración: <span id="calState">no calibrado</span>
+      </div>
+
+      <div class="status" id="posReadout">Lat: – , Lng: –</div>
+
+      <div class="footer">
+        <div><strong>Instrucciones rápidas:</strong></div>
+        <div class="small">
+          1) Coloca el teléfono en la posición estándar dentro del globo (por
+          ejemplo: pantalla hacia el centro, "top" apuntando a la aguja). 2)
+          Pulsa <span class="kbd">Calibrar</span>. 3) Si el norte es importante,
+          haz una calibración magnética por separado (mencionado abajo).
+        </div>
+      </div>
+    </div>
+
+    <!-- Librerías de visualización (mantén o cambia versión si lo deseas) -->
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="config.js"></script>
+
+    <script src="https://unpkg.com/three"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
+
+    <script>
+      /**************************************************************************
+       * Implementación de sensores + calibración para mapear orientación -> lat/lng
+       * - Usa AbsoluteOrientationSensor si está disponible (mejor fusión interna).
+       * - Fallback a DeviceOrientationEvent.
+       * - Calibración por referencia: guardamos q_ref (cuaternión) y calculamos
+       *   q_rel = q_ref^{-1} * q_current para obtener orientación relativa.
+       * - Suavizado por SLERP entre quaterniones.
+       *
+       **************************************************************************/
+
+      // ---------- UTILIDADES QUATERNIONES ----------
+      function quatNormalize(q) {
+        const [x, y, z, w] = q;
+        const n = Math.hypot(x, y, z, w) || 1;
+        return [x / n, y / n, z / n, w / n];
+      }
+
+      function quatConjugate(q) {
+        const [x, y, z, w] = q;
+        return [-x, -y, -z, w];
+      }
+
+      function quatInverse(q) {
+        // Para quaterniones unitarios, la inversa es conjugada.
+        return quatConjugate(q);
+      }
+
+      function quatMultiply(a, b) {
+        // Hamilton product (a * b)
+        const [ax, ay, az, aw] = a;
+        const [bx, by, bz, bw] = b;
+        return [
+          aw * bx + ax * bw + ay * bz - az * by,
+          aw * by - ax * bz + ay * bw + az * bx,
+          aw * bz + ax * by - ay * bx + az * bw,
+          aw * bw - ax * bx - ay * by - az * bz,
+        ];
+      }
+
+      function quatDot(a, b) {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+      }
+
+      function quatSlerp(a, b, t) {
+        // SLERP between unit quaternions a and b
+        let dot = quatDot(a, b);
+        // If dot < 0, negate b to take shortest path
+        if (dot < 0) {
+          b = [-b[0], -b[1], -b[2], -b[3]];
+          dot = -dot;
+        }
+
+        const DOT_THRESHOLD = 0.9995;
+        if (dot > DOT_THRESHOLD) {
+          // fallback to linear interpolation (very close)
+          let res = [
+            a[0] + t * (b[0] - a[0]),
+            a[1] + t * (b[1] - a[1]),
+            a[2] + t * (b[2] - a[2]),
+            a[3] + t * (b[3] - a[3]),
+          ];
+          return quatNormalize(res);
+        }
+
+        const theta0 = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const theta = theta0 * t;
+        const sinTheta = Math.sin(theta);
+        const sinTheta0 = Math.sin(theta0);
+
+        const s0 = Math.cos(theta) - (dot * sinTheta) / sinTheta0;
+        const s1 = sinTheta / sinTheta0;
+
+        return [
+          s0 * a[0] + s1 * b[0],
+          s0 * a[1] + s1 * b[1],
+          s0 * a[2] + s1 * b[2],
+          s0 * a[3] + s1 * b[3],
+        ];
+      }
+
+      function quaternionFromDeviceEuler(alphaDeg, betaDeg, gammaDeg) {
+        // Convert DeviceOrientation Euler angles (degrees) -> quaternion
+        // Uses the common Z-X'-Y'' intrinsic rotation order for DeviceOrientation.
+        const _x = (betaDeg * Math.PI) / 180; // beta  : x-axis
+        const _y = (gammaDeg * Math.PI) / 180; // gamma : y-axis
+        const _z = (alphaDeg * Math.PI) / 180; // alpha : z-axis
+
+        const cX = Math.cos(_x / 2),
+          sX = Math.sin(_x / 2);
+        const cY = Math.cos(_y / 2),
+          sY = Math.sin(_y / 2);
+        const cZ = Math.cos(_z / 2),
+          sZ = Math.sin(_z / 2);
+
+        // W3C recommended conversion for deviceorientation (Z-X'-Y'')
+        const w = cZ * cX * cY - sZ * sX * sY;
+        const x = cZ * sX * cY + sZ * cX * sY;
+        const y = cZ * cX * sY + sZ * sX * cY;
+        const z = sZ * cX * cY - cZ * sX * sY;
+
+        return quatNormalize([x, y, z, w]);
+      }
+
+      function eulerFromQuaternion(q) {
+        // Convert quaternion -> Euler (roll, pitch, yaw) in radians
+        // Tait-Bryan angles (X = roll, Y = pitch, Z = yaw)
+        const [x, y, z, w] = q;
+        // roll (x-axis rotation)
+        const sinr_cosp = 2 * (w * x + y * z);
+        const cosr_cosp = 1 - 2 * (x * x + y * y);
+        const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+        // pitch (y-axis rotation)
+        const sinp = 2 * (w * y - z * x);
+        let pitch;
+        if (Math.abs(sinp) >= 1) {
+          pitch = Math.sign(sinp) * (Math.PI / 2); // use 90 deg if out of range
+        } else {
+          pitch = Math.asin(sinp);
+        }
+
+        // yaw (z-axis rotation)
+        const siny_cosp = 2 * (w * z + x * y);
+        const cosy_cosp = 1 - 2 * (y * y + z * z);
+        const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+        return { roll, pitch, yaw };
+      }
+
+      // ---------- GLOBE (three-globe) ----------
+      const globeDiv = document.getElementById("globeViz");
+      const globe = Globe()(globeDiv)
+        .globeImageUrl(
+          "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        )
+        .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
+        .pointsData([{ lat: 0, lng: 0, size: 3, color: "red" }])
+        .pointAltitude("size");
+
+      // disable manual orbit controls (we control la vista desde sensores)
+      globe.controls().enabled = false;
+      globe.pointOfView({ lat: 0, lng: 0, altitude: 3 }, 0);
+
+      // ---------- ESTADO GLOBAL ----------
+      let sensorType = "none"; // 'absolute-sensor' | 'deviceorientation' | 'none'
+      let currentQuat = [0, 0, 0, 1]; // última lectura (unit quaternion)
+      let smoothQuat = [0, 0, 0, 1]; // quaternion suavizado
+      let prevQuat = [0, 0, 0, 1]; // para SLERP
+      let qRefInv = null; // si calibrado: inversa de quaternion de referencia
+      const storageKey = "globe_calibration_q"; // clave para guardar calibración
+      let smoothingFactor =
+        parseFloat(document.getElementById("smoothing").value) || 0.1;
+      let invertLng = false;
+      let invertLat = false;
+
+      // cargar calibración si existe
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const arr = JSON.parse(saved);
+          if (Array.isArray(arr) && arr.length === 4) {
+            qRefInv = quatInverse(arr); // guardamos la inversa directamente
+            document.getElementById("calState").textContent =
+              "calibrado (cargado)";
+          }
+        }
+      } catch (e) {
+        /* noop */
+      }
+
+      // UI bindings
+      const sensorTypeEl = document.getElementById("sensorType");
+      const calStateEl = document.getElementById("calState");
+      const posReadout = document.getElementById("posReadout");
+      document.getElementById("smoothing").addEventListener("input", (e) => {
+        smoothingFactor = parseFloat(e.target.value);
+        document.getElementById("smoothingVal").textContent =
+          smoothingFactor.toFixed(2);
+      });
+      document
+        .getElementById("invertLng")
+        .addEventListener("change", (e) => (invertLng = e.target.checked));
+      document
+        .getElementById("invertLat")
+        .addEventListener("change", (e) => (invertLat = e.target.checked));
+
+      document.getElementById("btnCalibrate").addEventListener("click", () => {
+        // fijamos la orientación actual como referencia "0"
+        if (!smoothQuat) return;
+        const qRef = smoothQuat.slice(); // copia
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(qRef));
+          qRefInv = quatInverse(qRef);
+          calStateEl.textContent = "calibrado (guardado)";
+          flashMessage("Calibración guardada ✔");
+        } catch (err) {
+          console.warn("No se pudo guardar calibración:", err);
+          calStateEl.textContent = "calibración (error al guardar)";
+        }
+      });
+
+      document.getElementById("btnReset").addEventListener("click", () => {
+        localStorage.removeItem(storageKey);
+        qRefInv = null;
+        calStateEl.textContent = "no calibrado";
+        flashMessage("Calibración reseteada");
+      });
+
+      document.getElementById("btnRecenter").addEventListener("click", () => {
+        // toma la orientación actual y la usa como referencia secundaria (no guarda)
+        if (!smoothQuat) return;
+        qRefInv = quatInverse(smoothQuat.slice());
+        calStateEl.textContent = "calibrado (temporal)";
+        flashMessage("Re-centrado aplicado (temporal)");
+      });
+
+      function flashMessage(text) {
+        // simple feedback visual
+        const el = document.createElement("div");
+        el.textContent = text;
+        el.style.position = "fixed";
+        el.style.left = "50%";
+        el.style.top = "12px";
+        el.style.transform = "translateX(-50%)";
+        el.style.background = "rgba(0,0,0,0.85)";
+        el.style.color = "#fff";
+        el.style.padding = "8px 12px";
+        el.style.borderRadius = "8px";
+        el.style.zIndex = 9999;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1800);
+      }
+
+      // ---------- SENSORES ----------
+      // Intentamos AbsoluteOrientationSensor (mejor si está disponible y permisos OK)
+      async function startAbsoluteOrientationSensor() {
+        if ("AbsoluteOrientationSensor" in window) {
+          try {
+            const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
+            sensor.addEventListener("reading", () => {
+              // sensor.quaternion es un Float32Array [x,y,z,w]
+              const q = Array.from(sensor.quaternion);
+              handleQuatReading(q, "absolute-sensor");
+            });
+            sensor.addEventListener("error", (e) => {
+              console.warn("AbsoluteOrientationSensor error", e.error);
+              // si falla, hacemos fallback
+              startDeviceOrientationFallback();
+            });
+            sensor.start();
+            sensorType = "absolute-sensor";
+            sensorTypeEl.textContent = "AbsoluteOrientationSensor";
+            return true;
+          } catch (err) {
+            console.warn("No se pudo iniciar AbsoluteOrientationSensor:", err);
+            return false;
+          }
+        }
+        return false;
+      }
+
+      // Fallback: DeviceOrientationEvent
+      function startDeviceOrientationFallback() {
+        if (typeof DeviceOrientationEvent !== "undefined") {
+          function onDevOrient(e) {
+            // e.alpha (z), e.beta (x), e.gamma (y)
+            if (e.absolute === false || typeof e.alpha !== "number") {
+              // Some devices set absolute=false but still usable; we'll use data anyway.
+              // But indicate it's not absolute.
+              sensorType = "deviceorientation-relative";
+              sensorTypeEl.textContent = "DeviceOrientation (relative)";
+            } else {
+              sensorType = "deviceorientation-absolute";
+              sensorTypeEl.textContent = "DeviceOrientation (absolute)";
+            }
+            const q = quaternionFromDeviceEuler(
+              e.alpha || 0,
+              e.beta || 0,
+              e.gamma || 0
+            );
+            handleQuatReading(q, "deviceorientation");
+          }
+          window.addEventListener("deviceorientation", onDevOrient, true);
+          return true;
+        } else {
+          sensorTypeEl.textContent = "no soportado";
+          return false;
+        }
+      }
+
+      let lastSent = 0; // para limitar frecuencia de envío (si se usa)
+
+      function handleQuatReading(rawQuat, source) {
+        // normalizamos lectura
+        currentQuat = quatNormalize(rawQuat);
+
+        // primero aplicamos suavizado SLERP contra el anterior
+        smoothQuat = quatSlerp(
+          prevQuat,
+          currentQuat,
+          1 - Math.max(0, Math.min(0.99, smoothingFactor))
+        );
+        prevQuat = smoothQuat.slice();
+
+        // si tenemos una referencia (calibración), aplicamos q_rel = qRefInv * q_current
+        let qRel = smoothQuat;
+        if (qRefInv) {
+          qRel = quatMultiply(qRefInv, smoothQuat);
+          qRel = quatNormalize(qRel);
+        }
+
+        // convertimos a euler y mapeamos a lat/lng
+        const { roll, pitch, yaw } = eulerFromQuaternion(qRel);
+
+        // Convenciones:
+        // - pitch: rotación en eje Y (inclinación) -> mapeamos a latitud (N/S)
+        // - yaw: rotación en eje Z (heading) -> mapeamos a longitud (E/W)
+        let lat = (roll * 180) / Math.PI; // -90 .. +90
+        let lng = (pitch * 180) / Math.PI; // -180 .. +180
+
+        // aplicar inversiones si el usuario lo desea
+        if (invertLat) lat = -lat;
+        if (invertLng) lng = -lng;
+
+        // opcional: clamp lat a [-90,90] y normalizar longitud
+        if (lat > 90) lat = 90;
+        if (lat < -90) lat = -90;
+        // normalizar longitud a (-180,180]
+        lng = ((((lng + 180) % 360) + 360) % 360) - 180;
+
+        lng = -lng; // invertir para que positivo vaya a Este
+        // actualizar UI y globo
+        posReadout.textContent = `Lat: ${lat.toFixed(4)} , Lng: ${lng.toFixed(
+          4
+        )}`;
+        globe.pointsData([{ lat, lng, size: 4, color: "red" }]);
+        globe.pointOfView({ lat, lng, altitude: 3 }, 50); // transición rápida
+
+        const now = Date.now();
+        if (now - lastSent >= 2000) {
+          // 2000 ms = 2 segundos
+          Protobject.Core.send({
+            msg: "sendCoordinates",
+            values: { lat: lat, lon: lng },
+          }).to("telescope.html");
+
+          lastSent = now;
+        }
+      }
+
+      // Inicia sensores (intento absoluto → fallback)
+      (async function initSensors() {
+        const ok = await startAbsoluteOrientationSensor();
+        if (!ok) startDeviceOrientationFallback();
+      })();
+
+      // ---------- SUGERENCIAS/NOTAS (para el usuario) ----------
+      // Estas notas aparecen en consola y ayudan durante pruebas.
+      console.log(
+        "%cGlobo: sensores inicializados",
+        "color:#7f7; font-weight:bold"
+      );
+      console.log("%cConsejos:", "color:#9aa");
+      console.log(
+        "- Asegúrate de ejecutar desde HTTPS (los sensores bloquean en HTTP)."
+      );
+      console.log(
+        '- Para calibrar: coloca el teléfono en la posición estándar dentro del globo (ej: "top" del teléfono apuntando a la aguja), pulsa "Calibrar".'
+      );
+      console.log(
+        "- Si obtienes lecturas fluctuantes, aumenta smoothing (valor más cercano a 1 suaviza más)."
+      );
+
+      // ---------- COMPORTAMIENTO ADICIONAL OPCIONAL (consejos) ----------
+      // - Si quieres alinearlo con el Norte geográfico: usa Magnetometer o AbsoluteOrientationSensor que
+      //   incluya referencia magnética. Ten presente que el magnetómetro sufre interferencias (metal).
+      // - Si observas drift (deriva), usa recalibración periódica o un algoritmo de fusión más sofisticado.
+      // - Para pruebas, imprime los quaterniones y/o guarda trayectorias para analizar errores.
+    </script>
+  </body>
+</html>

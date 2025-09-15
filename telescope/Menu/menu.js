@@ -11,26 +11,43 @@ function closeMenu() {
 function optionSelection(e) {
   // Handle button option
   const activeButton = document.querySelector(
-    '#menuContainer .header-container .active'
+    "#menuContainer .header-container .active"
   );
 
-  if (activeButton && activeButton) {
-    activeButton.classList.toggle('active');
+  if (activeButton && activeButton != e.currentTarget) {
+    activeButton.classList.toggle("active");
+    activeButton.style.transform = "translateY(0)"
   }
   
-  e.currentTarget.classList.toggle('active');
+  e.currentTarget.classList.toggle("active");
+  e.currentTarget.style.transform = "translateY(10%)"
 
   // Handle interaction section
-  const activeInteraction = document.querySelectorAll(
-    '#interactionSection > .active'
-  ).forEach(el => {
-    el.classList.remove('active');
-    el.style.display = 'none';
-  })
+  const activeInteraction = document
+    .querySelectorAll("#interactionSection > .active")
+    .forEach((el) => {
+      el.classList.remove("active");
+      el.style.display = "none";
+      el.style.transform = "translateY(-100%)"
+    });
+
+  if (activeButton == e.currentTarget) {
+    interactionSection.style.opacity = 0;
+    interactionSection.style.pointerEvents = 'none';
+    e.currentTarget.style.transform = "translateY(0)"
+  }
+  else {
+    interactionSection.style.opacity = 1;
+    interactionSection.style.pointerEvents = 'auto';
+
+  }
 
   // Clear Datetime Interval
   if (engineUTC !== null) {
-    Protobject.Core.send({msg: "setDatetimeInterval", values: { active: false }}).to("index.html");
+    Protobject.Core.send({
+      msg: "setDatetimeInterval",
+      values: { active: false },
+    }).to("index.html");
     engineUTC = null;
   }
 }
@@ -38,7 +55,7 @@ function optionSelection(e) {
 function displayMainMenu(e) {
   optionSelection(e);
 
-  let mainMenuSection = document.getElementById('mainMenuSection');
+  let mainMenuSection = document.getElementById("mainMenuSection");
 
   if (!mainMenuSection) {
     let section = `
@@ -51,10 +68,10 @@ function displayMainMenu(e) {
       </section>
     `;
 
-    interactionSection.insertAdjacentHTML("beforeend", section);
+    menuInteractionSection.insertAdjacentHTML("beforeend", section);
     return;
   }
 
-  mainMenuSection.style.display = 'grid';
-  mainMenuSection.classList.add('active');
+  mainMenuSection.style.display = "grid";
+  mainMenuSection.classList.add("active");
 }

@@ -30,6 +30,7 @@ function displayDateTime(e) {
 
   else {
     datetimeSection.style.display = 'flex';
+    datetimeSection.style.transform = 'translateY(0)';
     datetimeSection.classList.add('active');
   }
 
@@ -60,6 +61,8 @@ function updateDate(date) {
   //console.log("Sending MJD to engine:", mjd);
 
   Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
+  // change local time
+  engine.core.observer.utc = mjd;
 }
 
 function createInterval() {
