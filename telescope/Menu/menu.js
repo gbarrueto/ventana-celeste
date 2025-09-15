@@ -1,11 +1,9 @@
 function openMenu() {
-  menu.style.opacity = 1;
-  menu.style.zIndex = 1;
+  menu.classList.add('active');
 }
 
 function closeMenu() {
-  menu.style.opacity = 0;
-  menu.style.zIndex = -1;
+  menu.classList.remove('active');
 }
 
 function optionSelection(e) {

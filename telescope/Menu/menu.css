@@ -2,9 +2,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  opacity: 0;
-  z-index: -1;
   transition: 0.2s ease;
+  transform: translateX(-100%);
 
   #optionsSection {
     display: flex;
@@ -64,4 +63,8 @@
   #interactionSection > .exit {
     transform: translateY(-100%);
   }
+}
+
+#menuContainer.active {
+  transform: translateX(0);
 }
