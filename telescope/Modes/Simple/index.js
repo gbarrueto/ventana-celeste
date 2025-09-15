@@ -1,5 +1,5 @@
 const simpleModeContent = `
-  <div id="simpleMode" class="container no-display">
+  <div id="simpleMode" class="container">
     <p>Zoom</p>
 
     <div class="slider-container">

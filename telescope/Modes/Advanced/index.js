@@ -1,5 +1,5 @@
 const advancedModeContent = `
-  <div id="advancedMode" class="grid-container no-display">
+  <div id="advancedMode" class="grid-container">
     <section id="viewModeContainer" class="container">
 
     <!--
