@@ -59,7 +59,7 @@ function displayMap(e) {
 
 // Enviar coordenadas a telescope
 async function sendCoordinates({ lat, lon }) {
-  const pollution = await getBortleIndex({ lat, lon });
+  const pollution = await getMagFromLonLat({ lat, lon });
   console.log("Pollution level:", pollution);
 
   const elev = 0;
@@ -73,7 +73,7 @@ async function sendCoordinates({ lat, lon }) {
     lon,
     lat,
     elev,
-    bortle_index: pollution,
+    mag: pollution  
   };
 
   // Actualizar el punto en el globo

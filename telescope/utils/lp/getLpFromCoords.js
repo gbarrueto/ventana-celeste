@@ -1,11 +1,11 @@
-let bortleIndex = 0;
+// async function getBortleIndex(latlng) {
+//   // console.log("getting Bortle index for:", latlng);
+//   const mag = await getInfoFromLonLat(latlng);
+//   const b = magToBortle(mag);
+//   return b;
+// }
 
-async function getBortleIndex(latlng) {
-  // console.log("getting Bortle index for:", latlng);
-  return await getInfoFromLonLat(latlng);
-}
-
-function getInfoFromLonLat(elatlng) {
+function getMagFromLonLat(elatlng) {
   return new Promise((resolve, reject) => {
     //console.log("LatLong: ", elatlng);
     var xhr;
@@ -64,11 +64,14 @@ function getInfoFromLonLat(elatlng) {
           var brightnessRatio = compressed2full(compressed);
           var mpsas =
             22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
-          bortleIndex = magToBortle(mpsas);
+
+          // Convertir a Bortle
+
+          // bortleIndex = magToBortle(mpsas);
 
           // console.log("Bortle index at", elatlng, "is", bortleIndex);
 
-          resolve(bortleIndex);
+          resolve(mpsas);
         } catch (e) {
           console.error("Error processing tile data:", e);
           reject(e);
@@ -82,7 +85,7 @@ function getInfoFromLonLat(elatlng) {
       xhr.send();
     } else {
       // fuera de bounds
-      bortleIndex = null;
+      // bortleIndex = null;
       resolve(null);
     }
   });
@@ -96,18 +99,4 @@ function mod(n, m) {
 // function to convert compressed integers to brightness ratio:
 function compressed2full(x) {
   return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
-}
-// Convertion src: https://www.handprint.com/ASTRO/bortle.html
-// Nota: LPMap asigna escala 8-9 en ciudades ya que no es claro diferenciar si se está en el centro o en las afueras.
-// Aqui dejamos un valor de 16.53 como limite de la escala 8 pues es cercano al brillo del cielo al alejarse del centro urbano, pero no es exacto.
-function magToBortle(magArcsec2) {
-  if (magArcsec2 > 21.99) return 1; // Cielo prístino
-  if (magArcsec2 > 21.89) return 2; // Cielo excelente
-  if (magArcsec2 > 21.69) return 3; // Cielo rural
-  if (magArcsec2 > 20.49) return 4; // Suburbano oscuro
-  if (magArcsec2 > 19.5) return 5; // Suburbano intermedio
-  if (magArcsec2 > 18.94) return 6; // Suburbano brillante
-  if (magArcsec2 > 18.38) return 7; // Periurbano
-  if (magArcsec2 > 16.53) return 8; // Ciudad
-  return 9; // Centro de Ciudad
 }
