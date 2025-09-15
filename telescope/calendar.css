@@ -1,0 +1,31 @@
+.flatpickr-days {
+  height: 300px;
+}
+
+.dayContainer {
+  height: 100%;
+}
+
+.flatpickr-time {
+  height: 80px !important;
+  max-height: 80px;
+  align-items: center;
+
+  .flatpickr-time-separator {
+    height: fit-content;
+  }
+  
+  .numInputWrapper {
+    height: 100% !important;
+  
+    .arrowUp, .arrowDown {
+      opacity: 1;
+      width: 20%;
+      border: none;
+    }
+  
+    span.arrowUp::after, span.arrowDown::after {
+      right: 40%;
+    }
+  }
+}
