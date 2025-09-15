@@ -13,6 +13,7 @@ function computeEyePupil() {
 function computeNELM() {
     // var ff = document.forms[0];
     var SQ = parseFloat(SQM_READING);
+
     if (!isNaN(SQ)) {
         // var KV = parseFloat(EXTINCTION);
         var BS = 34.08 * Math.exp(20.7233 - 0.92104 * SQ)
@@ -26,6 +27,7 @@ function calculate_limit_mag() {
     var UseInch = false; //ff.UNITS.selectedIndex == 1;
     var D = parseFloat(DIAMETER); // Telescope aperture in mm
     if (UseInch) D = D * 25.4;
+
     var MG = parseFloat(FOCAL_LENGTH / EYEPIECE_FL); // MAGNIFICATION
     var MZ = parseFloat(computeNELM());
     // if (isNaN(MZ)) {
@@ -104,5 +106,6 @@ function calculate_limit_mag() {
     M = -16.57 - 2.5 * Math.log(IS) / Math.LN10;  // intensity to v mag
     M = M + (EX - 6) * 0.16;				// empirical experience correction
     // document.getElementById('magnitude').innerHTML = Math.round(M * 10) / 10;
+
     return Math.round(M * 10) / 10;
 }

@@ -56,9 +56,13 @@ let elevInput = undefined;
 let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
+  // Bortle index 1-9
   pollution = pollutionInput.value;
-  Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("index.html");
-  Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
+
+  const skyMag = bortleToMag(parseInt(pollution));
+
+  Protobject.Core.send({msg:"updatePollution", values: { mag: skyMag }}).to("index.html");
+  // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
 
 let advancedModeWarningText = undefined;
@@ -122,3 +126,30 @@ const BUTTONS = {
     attr: "visible",
   },
 };
+
+// Inverse conversion. Since mag is a range, return a random value in the range
+function bortleToMag(bortle) {
+
+  switch (bortle) {
+    case 1:
+      return (22.0 + 21.99) / 2 + Math.random() * 0.1; // Cielo prístino
+    case 2:
+      return (21.99 + 21.89) / 2 + Math.random() * 0.1; // Cielo excelente
+    case 3:
+      return (21.89 + 21.69) / 2 + Math.random() * 0.2; // Cielo rural
+    case 4:
+      return (21.69 + 20.49) / 2 + Math.random() * 1.2; // Suburbano oscuro
+    case 5:
+      return (20.49 + 19.5) / 2 + Math.random() * 0.99; // Suburbano intermedio
+    case 6:
+      return (19.5 + 18.94) / 2 + Math.random() * 0.56; // Suburbano brillante
+    case 7:
+      return (18.94 + 18.38) / 2 + Math.random() * 0.56; // Periurbano
+    case 8:
+      return (18.38 + 16.53) / 2 + Math.random() * 1.85; // Ciudad
+    case 9:
+      return (16.53 + 15.0) / 2 + Math.random() * 1.53; // Centro de Ciudad
+    default:
+      return null;
+  }
+}

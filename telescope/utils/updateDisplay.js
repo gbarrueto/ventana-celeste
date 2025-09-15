@@ -46,5 +46,5 @@ function toggleEyepieceOverlay(eyepieceSignal, event) {
 
   eyepieceSignal ? disableFinderMode() : enableFinderMode();
 
-  Protobject.Core.send({msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
+  Protobject.Core.send({ msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
 }

@@ -43,12 +43,6 @@ zoomSlider.addEventListener('input', () => {
     logFov = current_fov;
     
     // console.log("Slider:", sliderValue, "FOV:", current_fov);
-    
-    const deg_fov = (current_fov * 180) / Math.PI;
-
-    EYEPIECE_FL = FOCAL_LENGTH * deg_fov / 100;
-    
-    // console.log("Focal length eyepiece (mm):", EYEPIECE_FL.toFixed(2));
 
     updateDisplayFov();
 });
