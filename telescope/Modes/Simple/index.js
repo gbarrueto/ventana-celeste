@@ -7,7 +7,7 @@ const simpleModeContent = `
       id="zoomSlider"
       class="slider v-slider"
       type="range" 
-      min="${MIN_FOV}" max="${MAX_FOV}" value="${current_fov}" step="${FOV_STEP}"
+      min="0" max="150" value="100" step="0.01"
       orient="vertical">
     </div>
   </div>
