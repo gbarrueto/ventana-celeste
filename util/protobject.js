@@ -11,6 +11,7 @@ const functionMap = {
   "updatePollution": applyPollution,
   "stellariumOption": stellariumOption,
   "arduinoCommand": arduinoCommand,
+  "seeingOption": applySeeingOption,
 };
 
 Protobject.Core.onReceived((data) => {

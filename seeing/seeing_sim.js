@@ -1,3 +1,10 @@
+let seeingTargets;
+
+function applySeeingOption({ target, value }) {
+    const option = seeingTargets[target];
+    option.value = value
+}
+
 function initializeSeeingOverlay() {
     // Rimuovi istanze precedenti di tutti gli elementi
     document.getElementById('effect-canvas')?.remove();
@@ -235,6 +242,15 @@ function initializeSeeingOverlay() {
     focusSlider.addEventListener('input', updateCssFilters);
     saturationSlider.addEventListener('input', updateCssFilters);
     chaosSlider.addEventListener('input', (e) => { chaosValueSpan.textContent = e.target.value; });
+
+    seeingTargets = {
+        "turbulence": turbulenceSlider,
+        "speed": speedSlider,
+        "noise": noiseSlider,
+        "focus": focusSlider,
+        "saturation": saturationSlider,
+        "chaos": chaosSlider,
+    }
 
     updateCssFilters();
     animate(0);

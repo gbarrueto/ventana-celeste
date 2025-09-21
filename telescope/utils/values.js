@@ -45,6 +45,7 @@ const menu = document.getElementById('menuContainer');
 const interactionSection = document.getElementById('interactionSection');
 const menuInteractionSection = document.getElementById('menuInteractionSection');
 
+
 /********************************************************************
 ********************************************************************
  Cargar secciones interactivas del menu                   */
@@ -97,6 +98,24 @@ mapDiv.id = "map";
 mapDiv.style.width = "100%";
 mapDiv.style.height = "98%";
 interactionSection.appendChild(mapDiv);
+
+
+// Seeing
+let seeingSection = document.createElement('section');
+seeingSection.id = 'seeingOptionSection';
+let seeingTurbulenceSlider = document.createElement('input');
+seeingTurbulenceSlider.type = 'range';
+seeingTurbulenceSlider.min = 0;
+seeingTurbulenceSlider.max = 20;
+seeingTurbulenceSlider.value = 5;
+seeingSection.appendChild(seeingTurbulenceSlider);
+interactionSection.appendChild(seeingSection);
+
+function sendSeeingValue({ target, value }) {
+  console.log('****************Seeing:', target, value)
+  Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
+}
+seeingTurbulenceSlider.addEventListener('input', (e) => sendSeeingValue({ target: 'turbulence', value: e.target.value }));
 
 /*******************************************************************
 ********************************************************************/
