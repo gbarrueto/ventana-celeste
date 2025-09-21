@@ -103,19 +103,95 @@ interactionSection.appendChild(mapDiv);
 // Seeing
 let seeingSection = document.createElement('section');
 seeingSection.id = 'seeingOptionSection';
-let seeingTurbulenceSlider = document.createElement('input');
-seeingTurbulenceSlider.type = 'range';
-seeingTurbulenceSlider.min = 0;
-seeingTurbulenceSlider.max = 20;
-seeingTurbulenceSlider.value = 5;
-seeingSection.appendChild(seeingTurbulenceSlider);
+let seeingSliders = [
+  {
+    id: 'turbulenceAmount',
+    target: 'turbulence',
+    labelText: 'Intensidad turbulencia',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 20,
+    value: 5,
+    step: 1,
+  },
+  {
+    id: 'turbulenceSpeed',
+    target: 'speed',
+    labelText: 'Velocidad turbulencia',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 300,
+    value: 5,
+    step: 1,
+  },
+  {
+    id: 'focus',
+    target: 'focus',
+    labelText: 'Enfoque',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 10,
+    value: 0,
+    step: 0.1,
+  },
+  {
+    id: 'saturation',
+    target: 'saturation',
+    labelText: 'Saturacion',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 2,
+    value: 1,
+    step: 0.05,
+  },
+  {
+    id: 'noise',
+    target: 'noise',
+    labelText: 'Ruido',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 1,
+    value: 0.1,
+    step: 0.01,
+  },
+  {
+    id: 'chaos',
+    target: 'chaos',
+    labelText: 'Caos',
+    labelElement: document.createElement('label'),
+    sliderElement: document.createElement('input'),
+    min: 0,
+    max: 10,
+    value: 0,
+    step: 1,
+  },
+]
+
+for (let element of seeingSliders) {
+  element.labelElement.textContent = element.labelText;
+  element.sliderElement.type = 'range'
+  element.sliderElement.min = element.min;
+  element.sliderElement.max = element.max;
+  element.sliderElement.value = element.value;
+  element.sliderElement.step = element.step;
+  element.sliderElement.addEventListener('input', (e) => sendSeeingValue({ target: element.target, value: e.target.value }))
+  const container = document.createElement('div');
+  container.id = element.id;
+  container.appendChild(element.labelElement);
+  container.appendChild(element.sliderElement);
+  seeingSection.appendChild(container);
+}
 interactionSection.appendChild(seeingSection);
 
 function sendSeeingValue({ target, value }) {
   console.log('****************Seeing:', target, value)
   Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
 }
-seeingTurbulenceSlider.addEventListener('input', (e) => sendSeeingValue({ target: 'turbulence', value: e.target.value }));
 
 /*******************************************************************
 ********************************************************************/
