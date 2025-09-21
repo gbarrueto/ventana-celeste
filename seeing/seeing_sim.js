@@ -3,6 +3,7 @@ let seeingTargets;
 function applySeeingOption({ target, value }) {
     const option = seeingTargets[target];
     option.value = value
+    option.dispatchEvent(new Event("input"));
 }
 
 function initializeSeeingOverlay() {
@@ -236,12 +237,12 @@ function initializeSeeingOverlay() {
         saturationValueSpan.textContent = Math.round(saturation * 100);
     }
 
-    turbulenceSlider.addEventListener('change', (e) => { turbulenceValueSpan.textContent = e.target.value; });
-    speedSlider.addEventListener('change', (e) => { speedValueSpan.textContent = e.target.value; });
-    noiseSlider.addEventListener('change', (e) => { noiseValueSpan.textContent = parseFloat(e.target.value).toFixed(2); });
-    focusSlider.addEventListener('change', updateCssFilters);
-    saturationSlider.addEventListener('change', updateCssFilters);
-    chaosSlider.addEventListener('change', (e) => { chaosValueSpan.textContent = e.target.value; });
+    turbulenceSlider.addEventListener('input', (e) => { turbulenceValueSpan.textContent = e.target.value; });
+    speedSlider.addEventListener('input', (e) => { speedValueSpan.textContent = e.target.value; });
+    noiseSlider.addEventListener('input', (e) => { noiseValueSpan.textContent = parseFloat(e.target.value).toFixed(2); });
+    focusSlider.addEventListener('input', updateCssFilters);
+    saturationSlider.addEventListener('input', updateCssFilters);
+    chaosSlider.addEventListener('input', (e) => { chaosValueSpan.textContent = e.target.value; });
 
     seeingTargets = {
         "turbulence": turbulenceSlider,
