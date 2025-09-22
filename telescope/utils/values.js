@@ -179,6 +179,7 @@ for (let element of seeingSliders) {
   element.sliderElement.max = element.max;
   element.sliderElement.value = element.value;
   element.sliderElement.step = element.step;
+  element.sliderElement.classList.add('slider', 'h-slider')
   element.sliderElement.addEventListener('input', (e) => sendSeeingValue({ target: element.target, value: e.target.value }))
   const container = document.createElement('div');
   container.id = element.id;
