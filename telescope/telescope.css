@@ -37,9 +37,10 @@ body {
 
 .header {
   display: grid;
-  grid-template-columns: 10% auto;
+  grid-template-columns: 10% 85%;
   padding: 5px 10px;
   height: 100%;
+  justify-content: space-between;
 }
 
 .header-container {
@@ -75,7 +76,21 @@ body {
 }
 
 #menuContainer .header-container {
-  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  scroll-snap-type: x mandatory;
+  gap: 10px;
+  scrollbar-width: none;
+}
+
+#menuContainer .header-container > button {
+  flex: 0 0 35%;
+  scroll-snap-align: start;
+}
+
+#menuContainer .header-container > button:first-child {
+  scroll-snap-align: start;
 }
 
 .no-display {

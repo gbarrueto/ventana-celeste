@@ -18,7 +18,7 @@ function optionSelection(e) {
   }
   
   e.currentTarget.classList.toggle("active");
-  e.currentTarget.style.transform = `translateY(10%) scale(0.9)`
+  e.currentTarget.style.transform = `translateY(10%) scale(0.8)`
 
   // Handle interaction section
   const activeInteraction = document.querySelector("#interactionSection > .active");

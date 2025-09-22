@@ -1,3 +1,11 @@
+let seeingTargets;
+
+function applySeeingOption({ target, value }) {
+    const option = seeingTargets[target];
+    option.value = value
+    option.dispatchEvent(new Event("input"));
+}
+
 function initializeSeeingOverlay() {
     // Rimuovi istanze precedenti di tutti gli elementi
     document.getElementById('effect-canvas')?.remove();
@@ -30,6 +38,10 @@ function initializeSeeingOverlay() {
                 font-family: 'Inter', sans-serif;
                 color: #d1d5db;
                 box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+                /* Esconder panel, pero sin eliminar para mantener funcionamiento */
+                opacity: 0;
+                pointer-events: none;
             }
         `;
     document.head.appendChild(styleElement);
@@ -235,6 +247,15 @@ function initializeSeeingOverlay() {
     focusSlider.addEventListener('input', updateCssFilters);
     saturationSlider.addEventListener('input', updateCssFilters);
     chaosSlider.addEventListener('input', (e) => { chaosValueSpan.textContent = e.target.value; });
+
+    seeingTargets = {
+        "turbulence": turbulenceSlider,
+        "speed": speedSlider,
+        "noise": noiseSlider,
+        "focus": focusSlider,
+        "saturation": saturationSlider,
+        "chaos": chaosSlider,
+    }
 
     updateCssFilters();
     animate(0);
