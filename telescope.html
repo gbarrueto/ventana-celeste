@@ -6,6 +6,8 @@
     <title>Controllo Orientamento e FOV</title>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
@@ -63,12 +65,22 @@
       <section class="header">
         <button class="image-button close-image" onclick="closeMenu()"></button>
         <div class="header-container">
-          <button class="button" onclick="displayMap(event)">Mapa</button>
-          <button class="button" onclick="displayGlobe(event)">Globo</button>
-          <button class="button" onclick="displayDateTime(event)">
-            Fecha y Tiempo
+          <button class="button" onclick="displayMap(event)">
+            <p>Mapa</p>
+            <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
-          <button class="button" onclick="displaySeeingOptions(event)">Vista</button>
+          <button class="button" onclick="displayGlobe(event)">
+            <p>Globo</p>
+            <i class="fa fa-caret-down" aria-hidden="true"></i>
+          </button>
+          <button class="button" onclick="displayDateTime(event)">
+            <p>Fecha y Tiempo</p>
+            <i class="fa fa-caret-down" aria-hidden="true"></i>
+          </button>
+          <button class="button" onclick="displaySeeingOptions(event)">
+            <p>Vista</p>
+            <i class="fa fa-caret-down" aria-hidden="true"></i>
+          </button>
         </div>
       </section>
 
