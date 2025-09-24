@@ -1,41 +1,32 @@
+const functionMap = {
+  "toggleEyepiece": toggleEyepieceOverlay,
+  "updateFov": updateStellariumFov,
+  "updateBlur": updateStellariumBlur,
+  "updateView": updateStellariumView,
+  "applyLocation": applyLocation,
+  "setSpeed": setSpeed,
+  "updateDate": updateDate,
+  "setDatetimeInterval": () => setDatetimeInterval(),
+  "clearDatetimeInterval": () => clearDatetimeInterval(),
+  "updatePollution": applyPollution,
+  "stellariumOption": stellariumOption,
+  "arduinoCommand": arduinoCommand,
+  "seeingOption": applySeeingOption,
+};
+
 Protobject.Core.onReceived((data) => {
-  if (data.f !== undefined) updateStellariumFov(data.f); // Zoom
-  if (data.blur !== undefined) updateStellariumBlur(data.blur); // Enfoque
-  if (data.h !== undefined || data.v !== undefined) updateStellariumView(data); // Movimiento
+  const { msg, values } = data;
 
-  // if (data.lat !== undefined && data.lon !== undefined)
-  //   applyArUcoPosition(data.lat, data.lon); // Aruco
+  // console.log("Data received");
 
-  if (data.eyepieceSignal !== undefined)
-    data.eyepieceSignal === false
-      ? enableFinderOverlay()
-      : disableFinderOverlay(); // Vista ocular
+  if (msg && functionMap[msg]) {
+    const targetFunction = functionMap[msg];
 
-  // Aplicar ubicacion
-  if (data.cityName && data.lat !== undefined && data.lon !== undefined)
-    applyLocation({
-      cityName: data.cityName,
-      lat: data.lat,
-      lon: data.lon,
-      elev: data.elev,
-      bortle_index: data.bortle_index,
-    });
-
-  // Date && Time
-
-  // Actualizar velocidad del paso del tiempo
-  if (data.speed !== undefined) setSpeed(data.speed);
-  // Actualizar fecha interna del core
-  if (data.date !== undefined) updateDate(data.date);
-  if (data.setDatetimeInterval !== undefined) {
-    data.setDatetimeInterval == true
-      ? setDatetimeInterval()
-      : clearDatetimeInterval();
+    if (typeof targetFunction === "function") {
+      // console.log(`Ejecutando función: ${msg} con valores:`, values);
+      targetFunction(values);
+    }
+  } else {
+    console.warn(`Función no encontrada para el mensaje: ${msg}`);
   }
-
-  // Pollution
-  if (data.bortle !== undefined) applyPollution(data.bortle);
-
-  // Stellarium Options
-  if (data.optionInfo !== undefined) stellariumOption(data.optionInfo);
 });

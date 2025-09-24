@@ -1,9 +1,10 @@
 
 function updateDisplayFov() {
-  const fov = Math.exp(logFov);
-  
+  const fov = logFov;
+
   if (oldFov !== fov) {
-    Protobject.Core.send({ f: fov }).to("index.html");
+    Protobject.Core.send({ msg: "updateFov", values: { fov: fov } }).to("index.html");
+    // console.log("Sent fov:", fov);
   }
   oldFov = fov;
 
@@ -14,7 +15,9 @@ function updateDisplayFov() {
   blurTarget = 5 + (Math.random() - 0.5) * blurVariation;
   blurTarget = Math.max(0, Math.min(10, blurTarget));
 
-  updateDisplayBlur();
+  // Desenfoque desactivado momentaneamente
+
+  //updateDisplayBlur();
 }
 
 
@@ -26,10 +29,11 @@ function updateDisplayBlur() {
 
   const blurEffect = Math.min(diff * sensitivity, 1) * 10;
 
-  blurSlider.value = currentBlur;
+  //blurSlider.value = currentBlur;
   // blurText.textContent = currentBlur;
+
+  Protobject.Core.send({msg:"updateBlur", values: { blur: blurEffect } }).to("index.html");
   
-  Protobject.Core.send({ blur: blurEffect }).to("index.html");
 }
 
 function toggleEyepieceOverlay(eyepieceSignal, event) {
@@ -41,10 +45,7 @@ function toggleEyepieceOverlay(eyepieceSignal, event) {
   }
   event.target.classList.toggle('active');
 
-  if (eyepieceSignal === false) {
-    enableFinderMode()
-  }
-  else disableFinderMode();
+  eyepieceSignal ? disableFinderMode() : enableFinderMode();
 
-  Protobject.Core.send({ eyepieceSignal }).to("index.html");
+  Protobject.Core.send({ msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
 }

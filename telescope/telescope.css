@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   overflow: hidden;
@@ -15,7 +16,7 @@ body {
 
 .main-container {
   display: grid;
-  grid-template-rows: 5% auto;
+  grid-template-rows: 5% 95%;
   height: 100%;
   width: 100%;
   background: #02040a;
@@ -36,9 +37,10 @@ body {
 
 .header {
   display: grid;
-  grid-template-columns: 10% auto;
+  grid-template-columns: 10% 85%;
   padding: 5px 10px;
   height: 100%;
+  justify-content: space-between;
 }
 
 .header-container {
@@ -54,13 +56,17 @@ body {
 }
 
 .menu-image {
-  background-image: url('../images/menu.png');
+  background-image: url("../images/menu.png");
   width: 3em;
   height: 3em;
+  transition: .3s;
+}
+.menu-image:active {
+  transform: scale(0.8);
 }
 
 .close-image {
-  background-image: url('../images/close.png');
+  background-image: url("../images/close.png");
   width: 3em;
   height: 3em;
 }
@@ -70,21 +76,65 @@ body {
 }
 
 #menuContainer .header-container {
-  justify-content: space-around;
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  scroll-snap-type: x mandatory;
+  gap: 10px;
+  scrollbar-width: none;
+}
+
+#menuContainer .header-container > button {
+  flex: 0 0 35%;
+  scroll-snap-align: start;
+}
+
+#menuContainer .header-container > button:first-child {
+  scroll-snap-align: start;
 }
 
 .no-display {
   display: none;
 }
 
+#modeContent {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+}
+
+#modeContent > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: 0.2s;
+  opacity: 0;
+  pointer-events: none;
+  grid-row-start: 1;
+  grid-column-start: 1;
+}
+
+#modeContent .active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 #modeButton {
   width: 3em;
   height: 3em;
+  transition: .3s;
+}
+#modeButton:active {
+  transform: scale(0.8);
 }
 
 #advancedMode {
   height: 100%;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: 50% 20% 30%;
 }
 
 #lensContainer {
@@ -100,10 +150,12 @@ body {
   border: 1px solid #e3eaff;
   color: #e3eaff;
   border-radius: 1em;
+  transition: .2s;
 }
 
 .button.active {
   background-color: #0b5394;
+  transform: scale(0.9);
 }
 
 .button:disabled {
@@ -124,7 +176,7 @@ body {
 }
 
 #mainMenuSection {
-  grid-template-rows: 50% 50%;
+  grid-template-rows: 60% 40%;
   height: 100%;
 }
 
@@ -146,36 +198,70 @@ body {
   margin: 0;
 }
 
-
 .constellations-image {
-  background-image: url('../svg/btn-cst-lines.svg');
+  background-image: url("../svg/btn-cst-lines.svg");
 }
 .atmosphere-image {
-  background-image: url('../svg/btn-atmosphere.svg');
+  background-image: url("../svg/btn-atmosphere.svg");
 }
 .landscape-image {
-  background-image: url('../svg/btn-landscape.svg');
+  background-image: url("../svg/btn-landscape.svg");
 }
 .azimuthal-image {
-  background-image: url('../svg/btn-azimuthal-grid.svg');
+  background-image: url("../svg/btn-azimuthal-grid.svg");
 }
 .equatorial-image {
-  background-image: url('../svg/btn-equatorial-grid.svg');
+  background-image: url("../svg/btn-equatorial-grid.svg");
 }
 .nebulae-image {
-  background-image: url('../svg/btn-nebulae.svg');
+  background-image: url("../svg/btn-nebulae.svg");
+}
+
+#viewModeContainer {
+  display: flex;
+  justify-content: center;
+}
+
+#stel {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#stel::before,
+#stel::after {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 1px;  /* Grosor de cruceta */
+  background-color: red;
+}
+
+#stel::after {
+  transform: rotate(90deg);
+}
+
+#stel-canvas {
+  width: 300px;
+  height: 300px;
+  border-radius: 100%;
+  pointer-events: none;
 }
 
 
 /* MODES IMAGES */
 
 .simple-mode-image {
-  background-image: url('../svg/simple-mode.svg');
+  background-image: url("../svg/simple-mode.svg");
 }
 .advanced-mode-image {
-  background-image: url('../svg/advanced-mode.svg');
+  background-image: url("../svg/advanced-mode.svg");
 }
-
 
 /* SLIDER */
 
@@ -183,16 +269,24 @@ body {
   -webkit-appearance: none;
   appearance: none;
   /* height: 80%; */
-  background: transparent; 
+  background: transparent;
+}
+
+.slider-container {
+  width: 100%;
+  height: 80%;
+  align-content: center;
 }
 
 .v-slider {
-  height: 80%;
+  height: 100%;
   writing-mode: vertical-rl;
+  width: 100%;
 }
 
 .h-slider {
   width: 80%;
+  height: 100%;
 }
 
 /*** Track style ***/
@@ -204,12 +298,12 @@ body {
 .v-slider::-webkit-slider-runnable-track {
   height: 100%;
   width: 25%;
-  max-width: .5rem;
+  max-width: 0.5rem;
 }
 .h-slider::-webkit-slider-runnable-track {
   height: 25%;
   width: 100%;
-  max-height: .5rem;
+  max-height: 0.5rem;
 }
 
 /* Firefox */
@@ -220,12 +314,12 @@ body {
 .v-slider::-moz-range-track {
   height: 100%;
   width: 25%;
-  max-width: .5rem;
+  max-width: 0.5rem;
 }
 .h-slider::-moz-range-track {
   height: 25%;
   width: 100%;
-  max-height: .5rem;
+  max-height: 0.5rem;
 }
 
 /*** Thumb style ***/
@@ -234,8 +328,8 @@ body {
   -webkit-appearance: none;
   appearance: none;
   background-color: #bca898;
-  height: 20px;
-  width: 20px;
+  height: 40px;
+  width: 40px;
   border-radius: 10rem;
   border: 1px solid #cdd7f5;
   /* margin-right: -8.5px; */
@@ -243,10 +337,10 @@ body {
   /* margin-right: calc(-1rem / 2); */
 }
 .v-slider::-webkit-slider-thumb {
-  margin-right: -8.5px;
+  margin-right: -18px;
 }
 .h-slider::-webkit-slider-thumb {
-  margin-top: -8.5px;
+  margin-top: -18px;
 }
 
 /* Firefox */
@@ -254,8 +348,8 @@ body {
   -webkit-appearance: none;
   appearance: none;
   background-color: #bca898;
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 2rem;
+  width: 2rem;
   border-radius: 10rem;
   border: 1px solid #cdd7f5;
 }

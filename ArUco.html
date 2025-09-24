@@ -233,8 +233,7 @@
               `Enviando: lat=${medLat.toFixed(5)}, lon=${medLon.toFixed(5)}`,
               "info"
             );
-
-            Protobject.Core.send({ lat: medLat, lon: medLon }).to(
+            Protobject.Core.send({ msg: "applyLocation", values: { lat: medLat, lon: medLon } }).to(
               "telescope.html"
             );
           }

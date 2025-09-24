@@ -1,27 +1,16 @@
 // Variables para mapa y capas
 let map;
 let standard, lightpollution2024;
-let popup;
-let popuplatlng;
 let control;
 
-// Función para mostrar el mapa dentro del menú
-function displayLocation(e) {
-  optionSelection(e); // mantiene la selección de botón
+// Función para mostrar el mapa
+function displayMap(e) {
+  if (optionSelection(e)) return; // mantiene la selección de botón
 
   // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
-  if (!mapDiv) {
-    mapDiv = document.createElement("div");
-    mapDiv.id = "map";
-    mapDiv.classList.add("active");
-    mapDiv.style.width = "100%";
-    mapDiv.style.height = "600px"; // ajusta a tu preferencia
-    interactionSection.appendChild(mapDiv);
-  } else {
-    mapDiv.style.display = "block";
-    mapDiv.classList.add("active");
-  }
+    // mapDiv.style.display = "block";
+  mapDiv.classList.add("active");
 
   // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {
@@ -30,7 +19,7 @@ function displayLocation(e) {
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     );
 
-    // Capa 2024
+    // Capa contaminación lumínica 2024
     lightpollution2024 = L.tileLayer(
       "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
       {
@@ -43,104 +32,34 @@ function displayLocation(e) {
       }
     );
 
-    // Mapa
+    // Crear mapa sin botones de zoom ni escala
     map = L.map("map", {
       center: [currentLat || -33.45, currentLon || -70.66],
       zoom: 6,
       layers: [standard, lightpollution2024],
-      tap: false,
+      zoomControl: false,
+      attributionControl: false,
     });
 
-    // Control escala
-    L.control.scale({ maxWidth: 200, position: "topright" }).addTo(map);
-
-    // Geocoder
+    // Geocoder (solo búsqueda, sin marcador en mapa)
     const geocoder = L.Control.geocoder({ defaultMarkGeocode: false })
       .on("markgeocode", function (e) {
         const center = e.geocode.center;
-        const lat = center.lat;
-        const lng = center.lng;
-        if (lat >= -80 && lat <= 80 && lng >= -360 && lng <= 360) {
-          L.marker([lat, lng], {
-            title: `Lat, Lon = ${lat}, ${lng}`,
-            opacity: 0.7,
-          }).addTo(map);
-          map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
-          getInfoForMap(center, 2024);
-        }
+        map.flyTo(center, Math.max(map.getZoom(), 8));
+        sendCoordinates({ lat: center.lat, lon: center.lng });
       })
       .addTo(map);
 
-    // Click → info
+    // Click → enviar coordenadas directo
     map.on("click", function (e) {
-      getInfoForMap(e.latlng, 2024);
-      popuplatlng = e.latlng;
+      sendCoordinates({ lat: e.latlng.lat, lon: e.latlng.lng });
     });
-
-    // Slider opacidad
-    control = L.control.range({
-      position: "topright",
-      min: 0,
-      max: 100,
-      value: 50,
-      step: 1,
-      orient: "vertical",
-      icon: false,
-    });
-    control.on("change input", (e) => {
-      lightpollution2024.setOpacity(e.value / 100);
-    });
-    map.addControl(control);
   }
 }
 
-async function applyLocationForCities({
-  cityName = "Custom",
-  lon,
-  lat,
-  elev,
-  tz,
-}) {
-  //if (e) {
-  //  const activeButton = document.querySelector(
-  //    '.control-button.active'
-  //  );
-  //
-  //  if (activeButton) activeButton.classList.remove('active');
-  //  e.currentTarget.classList.add('active');
-  //}
-
-  selectedCity = cityName;
-
-  if (cities[cityName]) {
-    lon = cities[cityName].lon;
-    lat = cities[cityName].lat;
-    elev = cities[cityName].elev;
-    pollution = cities[cityName].contaminacion;
-    tz = cities[cityName].tz;
-  } else {
-    pollution = await getBortleIndex({ lat, lon });
-    // console.log("This location calculaterd pollution:", pollution);
-  }
-  // pollution = cities[cityName] ? cities[cityName].contaminacion : await getBortleIndex({ lat, lon });
-
-  updateTimeZone(tz || -4);
-  updatePollution();
-
-  const data = {
-    cityName: cityName,
-    lon,
-    lat,
-    elev,
-    bortle_index: pollution,
-  };
-
-  Protobject.Core.send(data).to("index.html");
-  Protobject.Core.send(pollution).to("Lamp.html");
-}
-
-async function applyLocationForAruco({ lat, lon }) {
-  const pollution = await getBortleIndex({ lat, lon });
+// Enviar coordenadas a telescope
+async function sendCoordinates({ lat, lon }) {
+  const pollution = await getMagFromLonLat({ lat, lon });
   console.log("Pollution level:", pollution);
 
   const elev = 0;
@@ -154,145 +73,37 @@ async function applyLocationForAruco({ lat, lon }) {
     lon,
     lat,
     elev,
-    bortle_index: pollution,
+    mag: pollution  
   };
 
-  Protobject.Core.send(data).to("index.html");
-  Protobject.Core.send(pollution).to("Lamp.html");
-}
+  // Actualizar el punto en el globo
+  if (globe) {
+    globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
+    globe.pointsData(globePoint);
 
-// --- Funciones auxiliares ---
-function getInfoForMap(elatlng) {
-  const lonFromDateLine = mod(parseFloat(elatlng.lng) + 180.0, 360.0);
-  const latFromStart = parseFloat(elatlng.lat) + 65.0;
-
-  const tilex = Math.floor(lonFromDateLine / 5.0) + 1;
-  const tiley = Math.floor(latFromStart / 5.0) + 1;
-
-  if (tiley >= 1 && tiley <= 28) {
-    const url =
-      "https://telescope.alessiobellino.com/data/binary_tiles/" +
-      "binary_tile_" +
-      tilex +
-      "_" +
-      tiley +
-      ".dat.gz";
-
-    const ix = Math.round(
-      120 * (lonFromDateLine - 5.0 * (tilex - 1) + 1 / 240)
-    );
-    const iy = Math.round(120 * (latFromStart - 5.0 * (tiley - 1) + 1 / 240));
-
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = "arraybuffer";
-    xhr.onload = function () {
-      const data_array = new Int8Array(pako.ungzip(xhr.response));
-      const first_number = 128 * Number(data_array[0]) + Number(data_array[1]);
-
-      let change = 0.0;
-      for (let i = 1; i < iy; i++) {
-        change += Number(data_array[600 * i + 1]);
-      }
-      for (let i = 1; i < ix; i++) {
-        change += Number(data_array[600 * (iy - 1) + 1 + i]);
-      }
-
-      const compressed = first_number + change;
-      const brightnessRatio = compressed2full(compressed);
-      const mpsas =
-        22.0 - (5.0 * Math.log(1.0 + brightnessRatio)) / Math.log(100);
-      const bortleIndex = magToBortle(mpsas);
-
-      // Popup con botón "Ir a lugar"
-      popup = L.popup()
-        .setLatLng(elatlng)
-        .setContent(
-          `
-          <div>
-            <b>Coordenadas:</b><br>
-            ${elatlng.lat.toFixed(4)}, ${(lonFromDateLine - 180).toFixed(4)}
-            <br><b>Contaminación lumínica:</b> ${bortleIndex}
-            <br><button id="goToPlaceBtn">Ir a lugar</button>
-          </div>
-        `
-        )
-        .openOn(map);
-
-      // Esperar a que el DOM del popup se monte y enlazar evento al botón
-      setTimeout(() => {
-        const btn = document.getElementById("goToPlaceBtn");
-        if (btn) {
-          btn.addEventListener("click", () => {
-            applyLocationForAruco({
-              lat: elatlng.lat,
-              lon: elatlng.lng,
-            });
-          });
-        }
-      }, 100);
-    };
-    xhr.open("GET", url, true);
-    xhr.send();
-  } else {
-    L.popup()
-      .setLatLng(elatlng)
-      .setContent(
-        "<br>Lat, Lon:</br>" +
-          elatlng.lat.toFixed(4) +
-          ", " +
-          (lonFromDateLine - 180).toFixed(4) +
-          "<br>Clicked location is out of bounds.<br>Atlas covers 65S to 75N latitude."
-      )
-      .openOn(map);
+    // Mover la cámara al nuevo punto
+    globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
   }
+
+  if (map) {
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
+  }
+
+  Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 
+// --- Funciones auxiliares mínimas ---
 function getUtcOffset(lat, lon) {
-  const tz = tzlookup(lat, lon); // 1) de lat/lon a "America/Santiago"
+  const tz = tzlookup(lat, lon);
   const now = new Date();
-
-  // 2) obtener el offset actual
   const options = { timeZone: tz, timeZoneName: "shortOffset" };
   const formatter = new Intl.DateTimeFormat("en-US", options);
   const parts = formatter.formatToParts(now);
-
   const offsetPart = parts.find((p) => p.type === "timeZoneName");
-  // offsetPart.value -> "GMT-4"
   const match = offsetPart.value.match(/GMT([+-]\d+)/);
   return match ? parseInt(match[1], 10) : 0;
 }
 
-function mod(n, m) {
-  return ((n % m) + m) % m;
-}
-
-function compressed2full(x) {
-  return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
-}
-
-function round_brightness(b) {
-  if (b < 0.1) return b.toFixed(3);
-  else if (b < 3) return b.toFixed(2);
-  else return b.toFixed(1);
-}
-
 function updateTimeZone(newTZ) {
   currentTZ = newTZ;
-  console.log("Time zone updated to:", currentTZ);
-}
-
-function compressed2full(x) {
-  return (5.0 / 195.0) * (Math.exp(0.0195 * x) - 1.0);
-}
-
-function magToBortle(magArcsec2) {
-  if (magArcsec2 > 21.99) return 1; // Cielo prístino
-  if (magArcsec2 > 21.89) return 2; // Cielo excelente
-  if (magArcsec2 > 21.69) return 3; // Cielo rural
-  if (magArcsec2 > 20.49) return 4; // Suburbano oscuro
-  if (magArcsec2 > 19.5) return 5; // Suburbano intermedio
-  if (magArcsec2 > 18.94) return 6; // Suburbano brillante
-  if (magArcsec2 > 18.38) return 7; // Periurbano
-  if (magArcsec2 > 16.53) return 8; // Ciudad
-  return 9; // Centro de Ciudad
 }

@@ -1,37 +1,13 @@
 function displayDateTime(e) {
-  optionSelection(e);
+  if (optionSelection(e)) return;
 
   let datetimeSection = document.getElementById('datetimeSection')
 
   let localTime = new Date();
 
-  if (!datetimeSection) {
-    let section = `
-      <section id="datetimeSection" class="active">
-        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
-
-        <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
-          <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
-          <div class="grid-container" style="grid-template-columns: auto auto;">
-            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-          </div>
-          <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
-            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-          </div>
-        </div>
-      </section>
-    `;
-
-    interactionSection.insertAdjacentHTML("beforeend", section);
-  }
-
-  else {
-    datetimeSection.style.display = 'flex';
-    datetimeSection.classList.add('active');
-  }
+    // datetimeSection.style.display = 'flex';
+    // datetimeSection.style.transform = 'translateY(0)';
+  datetimeSection.classList.add('active');
 
   updateSpeedButtons();
 
@@ -47,34 +23,25 @@ function applyCurrentDate() {
 }
 
 function setSpeed(multiplier) {
-  Protobject.Core.send({ speed: multiplier }).to("index.html");
+  Protobject.Core.send({msg:"setSpeed", values: { speed: multiplier }}).to("index.html");
   timeSpeed = multiplier;
   updateSpeedButtons();
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
 function updateDate(date) {
-  // const zone = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
-
-  // Creamos DateTime desde el Date del flatpickr en la zona actual
-
-  console.log("Passed date to update: ", date);
-
-  //const dateTime = luxon.DateTime.fromISO(date, { zone: zone }).toUTC();
-  //console.log("Converted to luxon:", dateTime.toISO());
-//
-  //const jd = dateTime.toMillis() / 86400000 + 2440587.5;
-  //const mjd = jd - 2400000.5;
 
   const mjd = isoToMJD(date);
 
   //console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ date: mjd }).to("index.html");
+  Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
+  // change local time
+  engine.core.observer.utc = mjd;
 }
 
 function createInterval() {
-  Protobject.Core.send({ setDatetimeInterval: true }).to("index.html");
+  Protobject.Core.send({ msg: "setDatetimeInterval", values: { active: true } }).to("index.html");
 }
 
 function isoToMJD(isoString) {
@@ -120,13 +87,6 @@ function fromMJDToLuxon(mjd, offsetHours = 0) {
   return luxon.DateTime.fromMillis(unixMs, { zone: "UTC" }).setZone(zone);
 }
 
-// function toJulianDateIso(iso) {
-//   const now = new Date(iso);
-//   const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
-//   const mjd = jd - 2400000.5; // Modified Julian Date
-//   return mjd;
-// }
-
 function updateSpeedButtons() {
   document
     .querySelectorAll("#datetimeSection .control-button")
@@ -158,13 +118,13 @@ function showTimeSelector() {
     onClose: () => (isUserTouchingCalendar = false),
 
     onValueUpdate: function (selectedDates) {
-      console.log("Called onValueUpdate function");
+      // console.log("Called onValueUpdate function");
       if (selectedDates.length > 0) {
         // fecha seleccionada siempre respecto al huso local
         const date = selectedDates[0];
         const dateTZ = getISOWithTZ(date);
-        console.log("Non ISO DATE onUpdate", selectedDates[0]);
-        console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
+        //console.log("Non ISO DATE onUpdate", selectedDates[0]);
+        //console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
         lastManualChange = Date.now();
         updateDate(dateTZ);
         updateDateTimeout = null;
