@@ -87,6 +87,19 @@ body {
 #menuContainer .header-container > button {
   flex: 0 0 35%;
   scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  i {
+    transition: .2s;
+  }
+}
+
+#menuContainer .header-container button.active {
+  i {
+    transform: rotate(180deg);
+  }
 }
 
 #menuContainer .header-container > button:first-child {
@@ -155,6 +168,9 @@ body {
 
 .button.active {
   background-color: #0b5394;
+}
+
+#lensContainer .button.active {
   transform: scale(0.9);
 }
 
