@@ -14,11 +14,9 @@ function optionSelection(e) {
 
   if (activeButton && activeButton != e.currentTarget) {
     activeButton.classList.toggle("active");
-    activeButton.style.transform = "translateY(0)"
   }
   
   e.currentTarget.classList.toggle("active");
-  e.currentTarget.style.transform = `translateY(10%) scale(0.8)`
 
   // Handle interaction section
   const activeInteraction = document.querySelector("#interactionSection > .active");
