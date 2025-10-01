@@ -1,13 +1,14 @@
 function displayDateTime(e) {
   if (optionSelection(e)) return;
 
-  let datetimeSection = document.getElementById('datetimeSection')
+  let datetimeSection = document.getElementById("datetimeSection");
 
   let localTime = new Date();
 
-    // datetimeSection.style.display = 'flex';
-    // datetimeSection.style.transform = 'translateY(0)';
-  datetimeSection.classList.add('active');
+  // datetimeSection.style.display = 'flex';
+  // datetimeSection.style.transform = 'translateY(0)';
+
+  datetimeSection.classList.add("active");
 
   updateSpeedButtons();
 
@@ -23,25 +24,31 @@ function applyCurrentDate() {
 }
 
 function setSpeed(multiplier) {
-  Protobject.Core.send({msg:"setSpeed", values: { speed: multiplier }}).to("index.html");
+  Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
+    "index.html"
+  );
   timeSpeed = multiplier;
   updateSpeedButtons();
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
 function updateDate(date) {
-
   const mjd = isoToMJD(date);
 
   //console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
+  Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to(
+    "index.html"
+  );
   // change local time
   engine.core.observer.utc = mjd;
 }
 
 function createInterval() {
-  Protobject.Core.send({ msg: "setDatetimeInterval", values: { active: true } }).to("index.html");
+  Protobject.Core.send({
+    msg: "setDatetimeInterval",
+    values: { active: true },
+  }).to("index.html");
 }
 
 function isoToMJD(isoString) {
@@ -146,4 +153,3 @@ function showTimeSelector() {
     }
   }, 300);
 }
-
