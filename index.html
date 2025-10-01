@@ -26,7 +26,6 @@
     <script src="limit_mag/params.js"></script>
     <script src="limit_mag/limit_magnitude.js"></script>
 
-
     <script src="util/time.js"></script>
     <script src="seeing/seeing_sim.js"></script>
     <!-- Init stellarium web engine -->
@@ -44,7 +43,7 @@
             lat: -33.4489,
             lon: -70.6693,
             elev: 570,
-            mag: 17.13
+            mag: 17.13,
           };
 
           core.observer.utc = toJulianDateIso(new Date().toISOString());
@@ -105,10 +104,10 @@
             url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
             key: "mpc_comets",
           });
-          core.satellites.addDataSource({
-            url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-            key: "jsonl/sat",
-          });
+          //core.satellites.addDataSource({
+          //  url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+          //  key: "jsonl/sat",
+          //});
 
           [
             "moon",
@@ -197,6 +196,5 @@
     </script>
 
     <script src="util/protobject.js"></script>
-
   </body>
 </html>
