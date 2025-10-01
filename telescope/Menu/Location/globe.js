@@ -1,5 +1,7 @@
 // Variable global para evitar múltiples inicializaciones
 let cesiumViewer = null;
+let cesiumInterval = null;
+let lastSentCesiumCoords = { lat: null, lon: null };
 
 async function displayGlobe(e) {
   if (optionSelection && optionSelection(e)) return;
@@ -53,18 +55,72 @@ async function displayGlobe(e) {
 
   // Posición inicial de la cámara (puedes ajustarla)
   cesiumViewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(-122.4175, 37.655, 300000),
+    destination: Cesium.Cartesian3.fromDegrees(0, 0, 15000000), // Altura de ~15.000 km
     orientation: {
       heading: Cesium.Math.toRadians(0.0),
-      pitch: Cesium.Math.toRadians(-15.0),
+      pitch: Cesium.Math.toRadians(-90.0), // Mirando directo al centro
+      roll: 0.0,
     },
   });
+  // ⏱️ Iniciar intervalo de envío de coordenadas del centro cada 100ms
+  if (cesiumInterval) clearInterval(cesiumInterval);
+  cesiumInterval = setInterval(() => {
+    if (!cesiumViewer || !cesiumViewer.scene) return;
 
-  // Agregar edificios (opcional)
-  try {
-    const buildings = await Cesium.createOsmBuildingsAsync();
-    cesiumViewer.scene.primitives.add(buildings);
-  } catch (error) {
-    console.error("Error cargando edificios:", error);
-  }
+    const scene = cesiumViewer.scene;
+    const canvas = scene.canvas;
+
+    const windowPosition = new Cesium.Cartesian2(
+      canvas.clientWidth / 2,
+      canvas.clientHeight / 2
+    );
+
+    const ray = cesiumViewer.camera.getPickRay(windowPosition);
+    const globePosition = scene.globe.pick(ray, scene);
+
+    if (!globePosition) return;
+
+    const cartographic = Cesium.Cartographic.fromCartesian(globePosition);
+    const lat = Cesium.Math.toDegrees(cartographic.latitude).toFixed(6);
+    const lon = Cesium.Math.toDegrees(cartographic.longitude).toFixed(6);
+
+    const latNum = parseFloat(
+      Cesium.Math.toDegrees(cartographic.latitude).toFixed(6)
+    );
+    const lonNum = parseFloat(
+      Cesium.Math.toDegrees(cartographic.longitude).toFixed(6)
+    );
+
+    // Comparación segura con floats
+    if (
+      lastSentCesiumCoords.lat !== latNum ||
+      lastSentCesiumCoords.lon !== lonNum
+    ) {
+      console.log("Centro del globo:", { lat: latNum, lon: lonNum });
+
+      lastSentCesiumCoords = { lat: latNum, lon: lonNum };
+      sendCoordinates({ lat: latNum, lon: lonNum });
+    }
+  }, 100);
+}
+
+async function sendCoordinates({ lat, lon }) {
+  const pollution = await getMagFromLonLat({ lat, lon });
+  console.log("Pollution level:", pollution);
+
+  const elev = 0;
+  const tz = getUtcOffset(lat, lon);
+
+  updateTimeZone(tz);
+  updatePollution();
+
+  const data = {
+    cityName: "Custom",
+    lon,
+    lat,
+    elev,
+    mag: pollution,
+  };
+
+  Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
