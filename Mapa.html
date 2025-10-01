@@ -38,31 +38,58 @@
     <!-- MapLibre GL JS -->
 
     <script>
-      // Inicializa el mapa con MapLibre y proyección rectangular
       const map = new maplibregl.Map({
         container: "map",
         style:
-          "https://api.maptiler.com/maps/dataviz/style.json?key=XKnr8aclyURxGiARsA8J", // Estilo simple
-        //https://api.maptiler.com/maps/aquarelle/style.json?key=XKnr8aclyURxGiARsA8J
-        center: [0, 0], // Centro del mapa
-        zoom: 1.5, // Zoom adecuado para pantalla completa
-        projection: "equirectangular", // <- Esto hace que el mapa sea rectangular
-        interactive: false, // Desactiva interacciones (estático)
+          "https://api.maptiler.com/maps/dataviz/style.json?key=XKnr8aclyURxGiARsA8J",
+        center: [0, 0],
+        zoom: 1.5,
+        projection: "equirectangular",
+        interactive: false,
       });
 
-      // Habilita solo el evento de click manualmente
+      let sendingInterval = null;
+      let lastSent = { lat: null, lon: null };
+
       map.once("load", () => {
         map.getCanvas().style.cursor = "pointer";
 
-        map.on("click", function (e) {
-          const lat = e.lngLat.lat;
-          const lon = e.lngLat.lng;
+        const mapElement = document.getElementById("map");
 
-          Protobject.Core.send({
-            msg: "sendCoordinates",
-            values: { lat, lon },
-          }).to("telescope.html");
+        mapElement.addEventListener("touchstart", () => {
+          if (sendingInterval) return;
+
+          sendingInterval = setInterval(() => {
+            const center = map.getCenter();
+            const lat = parseFloat(center.lat.toFixed(6));
+            const lon = parseFloat(center.lng.toFixed(6));
+
+            if (lastSent.lat !== lat || lastSent.lon !== lon) {
+              lastSent = { lat, lon };
+
+              Protobject.Core.send({
+                msg: "sendCoordinates",
+                values: { lat, lon },
+              }).to("telescope.html");
+            }
+          }, 100);
         });
+
+        mapElement.addEventListener("touchend", () => {
+          if (sendingInterval) {
+            clearInterval(sendingInterval);
+            sendingInterval = null;
+          }
+        });
+
+        // Previene el zoom doble toque o scroll táctil
+        mapElement.addEventListener(
+          "touchmove",
+          (e) => {
+            e.preventDefault();
+          },
+          { passive: false }
+        );
       });
     </script>
   </body>
