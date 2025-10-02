@@ -66,12 +66,15 @@ function addCenterMarker() {
     markerDiv.style.position = "absolute";
     markerDiv.style.top = "50%";
     markerDiv.style.left = "50%";
+    markerDiv.style.height = "10px";
+    markerDiv.style.width = "10px";
+    markerDiv.style.backgroundColor = "red";
+    markerDiv.style.borderRadius = "50%";
     markerDiv.style.transform = "translate(-50%, -50%)";
     markerDiv.style.pointerEvents = "none"; // Para que el div no interfiera con eventos del mapa
     markerDiv.style.zIndex = 1000;
 
     // Aquí puedes poner un icono o emoji o imagen para la persona
-    markerDiv.innerHTML = "&#128100;"; // Emoji persona
 
     mapDiv.appendChild(markerDiv);
   }
@@ -129,7 +132,7 @@ async function sendCoordinates({ lat, lon }) {
   // }
 
   // if (map) {
-  //   map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
+  // map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
   // }
 
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");

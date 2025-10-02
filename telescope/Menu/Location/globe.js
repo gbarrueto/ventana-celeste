@@ -55,12 +55,44 @@ async function displayGlobe(e) {
     animation: false,
     timeline: false,
     baseLayerPicker: false,
+    addImageryProviders: false,
     fullscreenButton: false,
     homeButton: false,
     navigationHelpButton: false,
     sceneModePicker: false,
     geocoder: true,
   });
+
+  const osm = new Cesium.OpenStreetMapImageryProvider({
+    url: "https://tile.openstreetmap.org/", // tiles OSM oficiales
+  });
+  cesiumViewer.imageryLayers.addImageryProvider(osm);
+
+  const baseLayer = Cesium.ImageryLayer.fromWorldImagery();
+  cesiumViewer.scene.imageryLayers.add(baseLayer, 0); // índice 0 => la pones abajo. (documentado)
+  // Ejemplo alternativo: usar OpenStreetMap
+  // const osm = new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }));
+  // cesiumViewer.scene.imageryLayers.add(osm, 0);
+
+  // tu proveedor de contaminación lumínica (ya lo tienes)
+  const lightPollutionProvider = new Cesium.UrlTemplateImageryProvider({
+    url: "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
+    minimumLevel: 2,
+    maximumLevel: 8,
+    tileWidth: 1024,
+    tileHeight: 1024,
+  });
+
+  // addImageryProvider devuelve el ImageryLayer creado; así puedes ajustar su alpha.
+  const lpLayer = cesiumViewer.imageryLayers.addImageryProvider(
+    lightPollutionProvider
+  );
+
+  // cesiumViewer.scene.globe.enableLighting = true;
+  // lpLayer.dayAlpha = 0.0;  // casi invisible de día
+  // lpLayer.nightAlpha = 1.0; // visible en la noche
+
+  lpLayer.alpha = 0.5;
 
   cesiumViewer.scene.requestRenderMode = true;
   cesiumViewer.scene.maximumRenderTimeChange = Infinity;
@@ -76,27 +108,6 @@ async function displayGlobe(e) {
   });
   // ⏱️ Iniciar intervalo de envío de coordenadas del centro cada 100ms
   startCesiumInterval();
-}
-
-async function sendCoordinates({ lat, lon }) {
-  const pollution = await getMagFromLonLat({ lat, lon });
-  console.log("Pollution level:", pollution);
-
-  const elev = 0;
-  const tz = getUtcOffset(lat, lon);
-
-  updateTimeZone(tz);
-  updatePollution();
-
-  const data = {
-    cityName: "Custom",
-    lon,
-    lat,
-    elev,
-    mag: pollution,
-  };
-
-  Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 
 function pauseCesium() {
