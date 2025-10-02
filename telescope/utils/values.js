@@ -24,14 +24,14 @@ const sensitivity = 0.5;
 let currentBlur = 5;
 let blurTarget = currentBlur;
 
-let selectedCity = 'Santiago';
-let cities = cities_data;
-
-const defaultCityData = cities[selectedCity]
-let currentLat = defaultCityData.lat;
-let currentLon = defaultCityData.lon;
-let currentElev = defaultCityData.elev;
-let currentTZ = defaultCityData.tz;
+// let selectedCity = 'Santiago';
+// let cities = cities_data;
+// 
+// const defaultCityData = cities[selectedCity]
+// let currentLat = defaultCityData.lat;
+// let currentLon = defaultCityData.lon;
+// let currentElev = defaultCityData.elev;
+let currentTZ = -4;
 
 const fovDisplay = document.getElementById("fovDisplay");
 const touchArea = document.getElementById("touchArea");
@@ -227,7 +227,7 @@ let lastManualChange = 0;
 let engineUTC = null;
 let timeSpeed = 0;
 
-let pollution = cities[selectedCity].contaminacion;
+let pollution = 9;
 
 let modes = {
   simple: true,

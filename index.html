@@ -26,166 +26,13 @@
     <script src="limit_mag/params.js"></script>
     <script src="limit_mag/limit_magnitude.js"></script>
 
-
     <script src="util/time.js"></script>
     <script src="seeing/seeing_sim.js"></script>
     <!-- Init stellarium web engine -->
+    <script src="util/initStel.js"></script>
     <script>
-      StelWebEngine({
-        wasmFile:
-          "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
-        canvas: document.getElementById("stel-canvas"),
-        onReady(stel) {
-          engine = stel;
-          const core = stel.core;
-
-          const defaultLocation = {
-            cityName: "Santiago",
-            lat: -33.4489,
-            lon: -70.6693,
-            elev: 570,
-            mag: 17.13
-          };
-
-          core.observer.utc = toJulianDateIso(new Date().toISOString());
-
-          const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
-          const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
-
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars",
-            key: "minimal",
-          });
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars",
-            key: "base",
-          });
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars",
-            key: "extended",
-          });
-          core.stars.addDataSource({
-            url: baseUrlBig + "surveys/gaia/v1",
-            key: "gaia",
-          });
-
-          core.skycultures.addDataSource({
-            url: baseUrl + "skycultures/v3/western",
-            key: "western",
-          });
-
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso",
-          });
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
-          });
-
-          core.landscapes.addDataSource({
-            url: baseUrl + "landscapes/v1/guereins",
-            key: "guereins",
-          });
-          core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
-          core.dss.addDataSource({ url: baseUrlBig + "surveys/dss/v1" });
-          core.minor_planets.addDataSource({
-            url: baseUrl + "mpc/v1/mpcorb.dat",
-            key: "mpc_asteroids",
-          });
-          core.comets.addDataSource({
-            url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
-            key: "mpc_comets",
-          });
-          core.satellites.addDataSource({
-            url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-            key: "jsonl/sat",
-          });
-
-          [
-            "moon",
-            "sun",
-            "jupiter",
-            "mercury",
-            "venus",
-            "mars",
-            "saturn",
-            "uranus",
-            "neptune",
-            "io",
-            "europa",
-            "ganymede",
-            "callisto",
-            "moon-normal",
-          ].forEach((p) => {
-            core.planets.addDataSource({
-              url: baseUrl + `surveys/sso/${p}/v1`,
-              key: p,
-            });
-          });
-
-          // Se puede usar esto como una funcion para sincronizar nuevas conexiones.
-
-          setTimeout(() => {
-            if (core.planets.hints_visible) {
-              core.planets.hints_visible = false;
-              core.dsos.hints_visible = false;
-              core.minor_planets.hints_visible = false;
-              // core.dss.hints_visible = false;
-              // core.milkyway.hints_visible = false;
-              core.stars.hints_visible = false;
-              // core.comets.hints_visible = false;
-
-              core.cardinals.visible = false;
-            }
-          }, 500);
-
-          // On object click listener
-
-          stel.change((obj, attr) => {
-            if (attr === "hovered") return;
-
-            const info = document.getElementById("info-card");
-            if (stel.core.selection) {
-              const s = stel.core.selection;
-              const name = s.designations()[0].replace(/^NAME /, "");
-              const radec = stel.convertFrame(
-                core.observer,
-                "ICRF",
-                "CIRS",
-                s.getInfo("radec")
-              );
-              const coords = stel.c2s(radec);
-              const ra = stel.anp(coords[0]);
-              const dec = stel.anpm(coords[1]);
-              const mag = s.getInfo("vmag");
-              info.innerHTML = `
-                  <h3>${name}</h3>
-                  <p><strong>Magnitude:</strong> ${
-                    mag !== undefined ? mag.toFixed(2) : "Unknown"
-                  }</p>
-                  <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-                  <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
-              info.style.display = "block";
-            } else {
-              info.style.display = "none";
-            }
-          });
-
-          applyLocation(defaultLocation);
-          initializeSeeingOverlay();
-        },
-      });
+      initializeStelEngine(isTelescope = true);
     </script>
-
     <script src="util/stel.js"></script>
     <script src="util/overlay.js"></script>
     <script src="util/location.js"></script>
@@ -197,6 +44,5 @@
     </script>
 
     <script src="util/protobject.js"></script>
-
   </body>
 </html>

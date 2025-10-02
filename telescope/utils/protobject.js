@@ -19,3 +19,5 @@ Protobject.Core.onReceived((data) => {
     console.warn(`Función no encontrada para el mensaje: ${msg}`);
   }
 });
+
+Protobject.Core.onConnected((() => {})());

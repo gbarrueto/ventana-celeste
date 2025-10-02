@@ -60,7 +60,7 @@ function displayMap(e) {
 // Enviar coordenadas a telescope
 async function sendCoordinates({ lat, lon }) {
   const pollution = await getMagFromLonLat({ lat, lon });
-  console.log("Pollution level:", pollution);
+  // console.log("Pollution level:", pollution);
 
   const elev = 0;
   const tz = getUtcOffset(lat, lon);
