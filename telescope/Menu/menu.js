@@ -1,36 +1,42 @@
 function openMenu() {
-  menu.classList.add('active');
+  menu.classList.add("active");
 }
 
 function closeMenu() {
-  menu.classList.remove('active');
+  menu.classList.remove("active");
 }
 
 function optionSelection(e) {
-  // Handle button option
   const activeButton = document.querySelector(
     "#menuContainer .header-container .active"
   );
+  const activeInteraction = document.querySelector(
+    "#interactionSection > .active"
+  );
 
-  if (activeButton && activeButton != e.currentTarget) {
+  if (activeInteraction && activeInteraction.id === "cesiumContainer") {
+    // Si estábamos en el globo y salimos, pausamos Cesium
+    pauseCesium();
+  }
+
+  if (activeButton && activeButton !== e.currentTarget) {
     activeButton.classList.toggle("active");
   }
-  
+
   e.currentTarget.classList.toggle("active");
 
-  // Handle interaction section
-  const activeInteraction = document.querySelector("#interactionSection > .active");
   if (activeInteraction) {
     activeInteraction.classList.remove("active");
     activeInteraction.classList.add("exit");
-
-    // clean up after transition ends
-    activeInteraction.addEventListener("transitionend", () => {
-      activeInteraction.classList.remove("exit");
-    }, { once: true });
+    activeInteraction.addEventListener(
+      "transitionend",
+      () => {
+        activeInteraction.classList.remove("exit");
+      },
+      { once: true }
+    );
   }
-  
-  // Clear Datetime Interval
+
   if (engineUTC !== null) {
     Protobject.Core.send({
       msg: "setDatetimeInterval",
@@ -39,18 +45,16 @@ function optionSelection(e) {
     engineUTC = null;
   }
 
-  if (activeButton == e.currentTarget) {
+  if (activeButton === e.currentTarget) {
     interactionSection.style.opacity = 0;
-    interactionSection.style.pointerEvents = 'none';
+    interactionSection.style.pointerEvents = "none";
     e.currentTarget.style.transform = "translateY(0)";
-    return 1; // End section processing
-  }
-  else {
+    return 1;
+  } else {
     interactionSection.style.opacity = 1;
-    interactionSection.style.pointerEvents = 'auto';
-    return 0; // Return something false
+    interactionSection.style.pointerEvents = "auto";
+    return 0;
   }
-
 }
 
 function displayMainMenu(e) {
