@@ -1,6 +1,6 @@
 const functionMap = {
   sendCoordinates: sendCoordinates,
-  fixTime: fixTime,
+  syncTime: syncTime,
 };
 
 Protobject.Core.onReceived((data) => {

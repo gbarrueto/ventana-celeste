@@ -89,6 +89,7 @@ async function sendCoordinates({ lat, lon }) {
     map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
   }
 
+  applyLocation(data); // Para guidescope
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 

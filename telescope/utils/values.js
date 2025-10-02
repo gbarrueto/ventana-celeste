@@ -28,9 +28,10 @@ let blurTarget = currentBlur;
 // let cities = cities_data;
 // 
 // const defaultCityData = cities[selectedCity]
-// let currentLat = defaultCityData.lat;
-// let currentLon = defaultCityData.lon;
-// let currentElev = defaultCityData.elev;
+
+let currentLat = null;
+let currentLon = null;
+let currentElev = null;
 let currentTZ = -4;
 
 const fovDisplay = document.getElementById("fovDisplay");
@@ -213,7 +214,7 @@ pollutionInput.addEventListener("input", () => {
 
   const skyMag = bortleToMag(parseInt(pollution));
 
-  Protobject.Core.send({msg:"updatePollution", values: { mag: skyMag }}).to("index.html");
+  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
   // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
 

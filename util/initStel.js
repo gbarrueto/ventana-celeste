@@ -7,6 +7,8 @@ function initializeStelEngine(isTelescope = false) {
             engine = stel;
             const core = stel.core;
 
+            core.observer.utc = toJulianDateIso(new Date().toISOString());
+
             const defaultLocation = {
                 cityName: "Santiago",
                 lat: -33.4489,
@@ -14,8 +16,6 @@ function initializeStelEngine(isTelescope = false) {
                 elev: 570,
                 mag: 17.13
             };
-
-            core.observer.utc = toJulianDateIso(new Date().toISOString());
 
             const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
             const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
@@ -149,6 +149,8 @@ function initializeStelEngine(isTelescope = false) {
                 core.stars.hints_visible = false;
                 core.comets.hints_visible = false;
                 core.cardinals.visible = false;
+
+                core.exposure_scale = 0.8;
             } catch (error) {
                 console.error("Error loading data sources:", error);
             }
