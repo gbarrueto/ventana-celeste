@@ -31,12 +31,18 @@ function setEyepieceOverlayOpacity(opacity) {
     overlay.style.opacity = opacity;
 }
 
+function setSeeingOpacity(opacity) {
+    const seeing = document.getElementById('effect-canvas');
+    seeing.style.opacity = opacity;
+}
+
 function enableSimpleModeSettings() {
     engine.core.planets.hints_visible = true;
     engine.core.minor_planets.hints_visible = true;
     engine.core.stars.hints_visible = true;
     engine.core.cardinals.visible = true;
     setEyepieceOverlayOpacity(0);
+    setSeeingOpacity(0);
 }
 
 function enableAdvancedModeSettings() {
@@ -45,4 +51,5 @@ function enableAdvancedModeSettings() {
     engine.core.stars.hints_visible = false;
     engine.core.cardinals.visible = false;
     setEyepieceOverlayOpacity(1);
+    setSeeingOpacity(1);
 }
