@@ -83,7 +83,7 @@
             <p>Fecha y Tiempo</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
-          <button class="button" onclick="displaySeeingOptions(event)">
+          <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
             <p>Vista</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
@@ -178,6 +178,9 @@
         // enableFinderMode();
       }
 
+      const viewControlsButton = document.getElementById('viewControlsButton');
+      viewControlsButton.disabled = modes.simple == true;
+
       function fixTime(values) {
         engineUTC = values.engineUTC;
       }
@@ -219,7 +222,7 @@
       });
 
       function setModeSettings(mode) {
-        console.log(`${mode}Settings`)
+        viewControlsButton.disabled = mode == 'simple';
         Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
           "index.html"
         );
