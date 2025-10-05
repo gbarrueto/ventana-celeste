@@ -175,8 +175,9 @@
       } else {
         advancedModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("advanced-mode-image");
-        enableFinderMode();
+        // enableFinderMode();
       }
+
       function fixTime(values) {
         engineUTC = values.engineUTC;
       }
@@ -217,6 +218,13 @@
         };
       });
 
+      function setModeSettings(mode) {
+        console.log(`${mode}Settings`)
+        Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
+          "index.html"
+        );
+      }
+
       function toggleMode() {
         simpleModeElement.classList.toggle("active");
         advancedModeElement.classList.toggle("active");
@@ -224,6 +232,9 @@
         modeButtonElement.classList.toggle("advanced-mode-image");
         for (let mode in modes) {
           modes[mode] = !modes[mode];
+          if (modes[mode] == true) {
+            setModeSettings(mode);
+          }
         }
       }
 

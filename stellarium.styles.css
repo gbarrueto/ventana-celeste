@@ -23,6 +23,7 @@ body {
   background-repeat: no-repeat;
   background-position: center center;
   z-index: 4;
+  opacity: 0;
 }
 #finder-overlay {
   position: absolute;

@@ -25,3 +25,24 @@ function stellariumOption({ path, attr }) {
         obj[attr] = !obj[attr];
     }
 }
+
+function setEyepieceOverlayOpacity(opacity) {
+    const overlay = document.getElementById('eyepiece-overlay');
+    overlay.style.opacity = opacity;
+}
+
+function enableSimpleModeSettings() {
+    engine.core.planets.hints_visible = true;
+    engine.core.minor_planets.hints_visible = true;
+    engine.core.stars.hints_visible = true;
+    engine.core.cardinals.visible = true;
+    setEyepieceOverlayOpacity(0);
+}
+
+function enableAdvancedModeSettings() {
+    engine.core.planets.hints_visible = false;
+    engine.core.minor_planets.hints_visible = false;
+    engine.core.stars.hints_visible = false;
+    engine.core.cardinals.visible = false;
+    setEyepieceOverlayOpacity(1);
+}
