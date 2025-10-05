@@ -83,7 +83,7 @@
             <p>Fecha y Tiempo</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
-          <button class="button" onclick="displaySeeingOptions(event)">
+          <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
             <p>Vista</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
@@ -175,8 +175,12 @@
       } else {
         advancedModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("advanced-mode-image");
-        enableFinderMode();
+        // enableFinderMode();
       }
+
+      const viewControlsButton = document.getElementById('viewControlsButton');
+      viewControlsButton.disabled = modes.simple == true;
+
       function fixTime(values) {
         engineUTC = values.engineUTC;
       }
@@ -217,6 +221,13 @@
         };
       });
 
+      function setModeSettings(mode) {
+        viewControlsButton.disabled = mode == 'simple';
+        Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
+          "index.html"
+        );
+      }
+
       function toggleMode() {
         simpleModeElement.classList.toggle("active");
         advancedModeElement.classList.toggle("active");
@@ -224,6 +235,9 @@
         modeButtonElement.classList.toggle("advanced-mode-image");
         for (let mode in modes) {
           modes[mode] = !modes[mode];
+          if (modes[mode] == true) {
+            setModeSettings(mode);
+          }
         }
       }
 
