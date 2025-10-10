@@ -191,7 +191,7 @@ for (let element of seeingSliders) {
 interactionSection.appendChild(seeingSection);
 
 function sendSeeingValue({ target, value }) {
-  console.log('****************Seeing:', target, value)
+  // console.log('****************Seeing:', target, value)
   Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
 }
 
@@ -214,6 +214,9 @@ pollutionInput.addEventListener("input", () => {
 
   const skyMag = bortleToMag(parseInt(pollution));
 
+  // To guidescope
+  applyPollution({ mag: skyMag });
+  // To telescope
   Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
   // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });

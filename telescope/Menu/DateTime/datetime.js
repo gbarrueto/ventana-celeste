@@ -124,7 +124,7 @@ function showTimeSelector() {
     onClose: () => (isUserTouchingCalendar = false),
 
     onValueUpdate: function (selectedDates) {
-      console.log("Called onValueUpdate function");
+      // console.log("Called onValueUpdate function");
       if (selectedDates.length > 0) {
         // fecha seleccionada siempre respecto al huso local
         const date = selectedDates[0];
