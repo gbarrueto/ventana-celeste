@@ -71,10 +71,10 @@
       <section class="header">
         <button class="image-button close-image" onclick="closeMenu()"></button>
         <div class="header-container">
-          <button class="button" onclick="displayMap(event)">
+          <!-- <button class="button" onclick="displayMap(event)">
             <p>Mapa</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
-          </button>
+          </button> -->
           <button class="button" onclick="displayGlobe(event)">
             <p>Globo</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
@@ -83,7 +83,11 @@
             <p>Fecha y Tiempo</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
-          <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
+          <button
+            id="viewControlsButton"
+            class="button"
+            onclick="displaySeeingOptions(event)"
+          >
             <p>Vista</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
@@ -146,7 +150,7 @@
         </section>
         <section id="interactionSection">
           <!-- Mapa -->
-          <div id="map" class="tab"></div>
+          <!-- <div id="map" class="tab"></div> -->
 
           <!-- Globo (Cesium) -->
           <div id="cesiumContainer" class="tab"></div>
@@ -178,7 +182,7 @@
         // enableFinderMode();
       }
 
-      const viewControlsButton = document.getElementById('viewControlsButton');
+      const viewControlsButton = document.getElementById("viewControlsButton");
       viewControlsButton.disabled = modes.simple == true;
 
       function fixTime(values) {
@@ -194,16 +198,16 @@
     <script src="telescope/utils/lp/getLpFromCoords.js"></script>
     <script src="telescope/Menu/menu.js"></script>
     <script src="telescope/Menu/DateTime/datetime.js"></script>
-    <script src="telescope/Menu/Location/location.js"></script>
+    <!-- <script src="telescope/Menu/Location/location.js"></script> -->
     <script src="telescope/Menu/Location/globe.js"></script>
     <script src="telescope/Menu/Seeing/seeing.js"></script>
     <script src="telescope/Menu/Pollution/pollution.js"></script>
     <script src="telescope/utils/protobject.js"></script>
     <script src="telescope/utils/luxon.js"></script>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="util/Control.Geocoder.js"></script>
-    <script src="util/L.Control.Range.js"></script>
+    <script src="util/L.Control.Range.js"></script> -->
 
     <script>
       const stellariumOptionButtons = document.querySelectorAll(
@@ -222,7 +226,7 @@
       });
 
       function setModeSettings(mode) {
-        viewControlsButton.disabled = mode == 'simple';
+        viewControlsButton.disabled = mode == "simple";
         Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
           "index.html"
         );
