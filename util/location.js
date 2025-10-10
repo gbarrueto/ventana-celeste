@@ -1,38 +1,37 @@
 async function applyLocation({
-    cityName = "Custom",
-    lat = 0,
-    lon = 0,
-    elev = 0,
-    mag = null
+  cityName = "Custom",
+  lat = 0,
+  lon = 0,
+  elev = 0,
+  mag = null,
 }) {
-    if (!engine) return;
+  if (!engine) return;
 
-    engine.core.observer.latitude = lat * (Math.PI / 180);
-    engine.core.observer.longitude = lon * (Math.PI / 180);
-    engine.core.observer.elevation = elev;
+  engine.core.observer.latitude = lat * (Math.PI / 180);
+  engine.core.observer.longitude = lon * (Math.PI / 180);
+  engine.core.observer.elevation = elev;
 
-    // Set LP to new location
+  // Set LP to new location
 
-    applyPollution({ mag });
+  applyPollution({ mag });
 
-    //console.log("Bortle index for", cityName, ":", bortle_index);
+  //console.log("Bortle index for", cityName, ":", bortle_index);
 }
 
 function applyPollution({ mag = 20 }) {
+  SQM_READING = mag;
 
-    SQM_READING = mag;
+  bortle = magToBortle(mag);
 
-    bortle = magToBortle(mag);
+  if (engine.core) {
+    engine.core.bortle_index = bortle; // de 1 a 9
+    engine.core.milkyway.visible = bortle < 6;
 
-    if (engine.core) {
-        engine.core.bortle_index = bortle; // de 1 a 9
-        engine.core.milkyway.visible = bortle < 6;
-        
-        engine.core.display_limit_mag = calculate_limit_mag();
+    engine.core.display_limit_mag = calculate_limit_mag();
 
-        engine.core.star_relative_scale = 0.6;
-    }
-    updatePollutionOverlay({ bortle });
+    engine.core.star_relative_scale = 0.6;
+  }
+  // updatePollutionOverlay({ bortle });
 }
 
 // Convertion src: https://www.handprint.com/ASTRO/bortle.html
