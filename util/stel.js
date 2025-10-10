@@ -43,6 +43,7 @@ function enableSimpleModeSettings() {
     engine.core.cardinals.visible = true;
     setEyepieceOverlayOpacity(0);
     setSeeingOpacity(0);
+    updateStellariumBlur({ blur: 0 })
 }
 
 function enableAdvancedModeSettings() {
