@@ -25,7 +25,6 @@
     <link rel="stylesheet" href="telescope/Slider/slider.css" />
     <link rel="stylesheet" href="telescope/Zoom/zoom.css" />
     <link rel="stylesheet" href="telescope/Menu/menu.css" />
-    <link rel="stylesheet" href="telescope/Menu/Location/location.css" />
     <link rel="stylesheet" href="telescope/Menu/DateTime/datetime.css" />
     <link rel="stylesheet" href="telescope/Menu/Seeing/seeing.css" />
     <link rel="stylesheet" href="telescope/calendar.css" />
@@ -35,6 +34,10 @@
     />
     <link rel="stylesheet" href="util/Control.Geocoder.css" />
     <link rel="stylesheet" href="util/L.Control.Range.css" />
+    <link
+      href="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css"
+      rel="stylesheet"
+    />
   </head>
 
   <body>
@@ -44,6 +47,7 @@
     <!-- <script src="data/locations/cities.js"></script> -->
     <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/globe.gl"></script>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
 
     <!-- Start screen -->
     <div id="startContainer" class="main-container">
@@ -80,7 +84,7 @@
             <p>Fecha y Tiempo</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
-          <button class="button" onclick="displaySeeingOptions(event)">
+          <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
             <p>Vista</p>
             <i class="fa fa-caret-down" aria-hidden="true"></i>
           </button>
@@ -141,7 +145,13 @@
             </div>
           </div>
         </section>
-        <section id="interactionSection"></section>
+        <section id="interactionSection">
+          <!-- Mapa -->
+          <div id="map" class="tab"></div>
+
+          <!-- Globo (Cesium) -->
+          <div id="cesiumContainer" class="tab"></div>
+        </section>
       </section>
     </div>
 
@@ -166,7 +176,7 @@
       } else {
         advancedModeElement.classList.toggle("active");
         modeButtonElement.classList.toggle("advanced-mode-image");
-        enableFinderMode();
+        // enableFinderMode();
       }
       function syncTime(values) {
         engineUTC = values.engineUTC;
@@ -210,6 +220,13 @@
         };
       });
 
+      function setModeSettings(mode) {
+        viewControlsButton.disabled = mode == 'simple';
+        Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
+          "index.html"
+        );
+      }
+
       function toggleMode() {
         simpleModeElement.classList.toggle("active");
         advancedModeElement.classList.toggle("active");
@@ -217,6 +234,9 @@
         modeButtonElement.classList.toggle("advanced-mode-image");
         for (let mode in modes) {
           modes[mode] = !modes[mode];
+          if (modes[mode] == true) {
+            setModeSettings(mode);
+          }
         }
       }
 

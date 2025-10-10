@@ -1,13 +1,14 @@
 function displayDateTime(e) {
   if (optionSelection(e)) return;
 
-  let datetimeSection = document.getElementById('datetimeSection')
+  let datetimeSection = document.getElementById("datetimeSection");
 
   // let localTime = new Date();
 
-    // datetimeSection.style.display = 'flex';
-    // datetimeSection.style.transform = 'translateY(0)';
-  datetimeSection.classList.add('active');
+  // datetimeSection.style.display = 'flex';
+  // datetimeSection.style.transform = 'translateY(0)';
+
+  datetimeSection.classList.add("active");
 
   updateSpeedButtons();
 
@@ -23,7 +24,9 @@ function applyCurrentDate() {
 }
 
 function setSpeed(multiplier) {
-  Protobject.Core.send({msg:"setSpeed", values: { speed: multiplier }}).to("index.html");
+  Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
+    "index.html"
+  );
   timeSpeed = multiplier;
   updateSpeedButtons();
 }
@@ -41,7 +44,10 @@ function updateStelDate(date) {
 }
 
 function createInterval() {
-  Protobject.Core.send({ msg: "setDatetimeInterval", values: { active: true } }).to("index.html");
+  Protobject.Core.send({
+    msg: "setDatetimeInterval",
+    values: { active: true },
+  }).to("index.html");
 }
 
 function isoToMJD(isoString) {
@@ -147,4 +153,3 @@ function showTimeSelector() {
     }
   }, 300);
 }
-

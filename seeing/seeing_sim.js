@@ -87,6 +87,7 @@ function initializeSeeingOverlay() {
 
     const effectCanvas = document.createElement('canvas');
     effectCanvas.id = 'effect-canvas';
+    effectCanvas.style.opacity = 0;
     document.body.appendChild(effectCanvas);
 
     const gl = effectCanvas.getContext('webgl', { preserveDrawingBuffer: false });
