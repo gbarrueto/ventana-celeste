@@ -19,8 +19,6 @@ const functionMap = {
 Protobject.Core.onReceived((data) => {
   const { msg, values } = data;
 
-  console.log("Data received");
-
   if (msg && functionMap[msg]) {
     const targetFunction = functionMap[msg];
 
@@ -31,4 +29,8 @@ Protobject.Core.onReceived((data) => {
   } else {
     console.warn(`Función no encontrada para el mensaje: ${msg}`);
   }
+});
+
+Protobject.Core.onConnected(() => {
+  console.log("new connection to index.html");
 });

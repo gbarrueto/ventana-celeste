@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Controllo Orientamento e FOV</title>
+    <title>Controllo Telescopio</title>
     <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
 
     <link
@@ -44,7 +44,8 @@
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="data/locations/cities.js"></script>
+    <!-- <script src="data/locations/cities.js"></script> -->
+    <script src="https://unpkg.com/three"></script>
     <script src="https://unpkg.com/globe.gl"></script>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
 
@@ -177,27 +178,25 @@
         modeButtonElement.classList.toggle("advanced-mode-image");
         // enableFinderMode();
       }
-
-      const viewControlsButton = document.getElementById('viewControlsButton');
-      viewControlsButton.disabled = modes.simple == true;
-
-      function fixTime(values) {
+      function syncTime(values) {
         engineUTC = values.engineUTC;
       }
     </script>
 
     <script src="https://unpkg.com/browser-geo-tz@latest/dist/geotz.js"></script>
-    <script src="telescope/utils/tz.js"></script>
 
+    <script src="telescope/utils/tz.js"></script>
     <script src="telescope/utils/updateDisplay.js"></script>
     <script src="telescope/utils/lp/pako_inflate.min.js"></script>
     <script src="telescope/utils/lp/getLpFromCoords.js"></script>
+
     <script src="telescope/Menu/menu.js"></script>
     <script src="telescope/Menu/DateTime/datetime.js"></script>
     <script src="telescope/Menu/Location/location.js"></script>
     <script src="telescope/Menu/Location/globe.js"></script>
     <script src="telescope/Menu/Seeing/seeing.js"></script>
     <script src="telescope/Menu/Pollution/pollution.js"></script>
+
     <script src="telescope/utils/protobject.js"></script>
     <script src="telescope/utils/luxon.js"></script>
 
@@ -288,153 +287,16 @@
       }
     </script>
 
+    <script src="limit_mag/limit_magnitude.js"></script>
+    <script src="util/time.js"></script>
     <script src="util/overlay.js"></script>
-    <script>
-      function toJulianDateIso(iso) {
-        const now = new Date(iso);
-        const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
-        const mjd = jd - 2400000.5; // Modified Julian Date
-        return mjd;
-      }
-    </script>
     <script src="util/location.js"></script>
     <script src="util/stel.js"></script>
 
-    <style>
-      #info-card,
-      #pollution-overlay {
-        display: none;
-      }
-    </style>
+    <!-- Init stellarium web engine -->
+    <script src="util/initStel.js"></script>
     <script>
-      StelWebEngine({
-        wasmFile:
-          "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
-        canvas: document.getElementById("stel-canvas"),
-        onReady(stel) {
-          engine = stel;
-          const core = stel.core;
-
-          const defaultLocation = {
-            cityName: "Santiago",
-            lat: -33.4489,
-            lon: -70.6693,
-            elev: 570,
-            bortle_index: 9,
-          };
-
-          core.observer.utc = toJulianDateIso(new Date().toISOString());
-
-          const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
-          const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
-
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars",
-            key: "minimal",
-          });
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars",
-            key: "base",
-          });
-          core.stars.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars",
-            key: "extended",
-          });
-          core.stars.addDataSource({
-            url: baseUrlBig + "surveys/gaia/v1",
-            key: "gaia",
-          });
-
-          core.skycultures.addDataSource({
-            url: baseUrl + "skycultures/v3/western",
-            key: "western",
-          });
-
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso",
-          });
-          core.dsos.addDataSource({
-            url:
-              baseUrl +
-              "swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso",
-          });
-
-          core.landscapes.addDataSource({
-            url: baseUrl + "landscapes/v1/guereins",
-            key: "guereins",
-          });
-          core.milkyway.addDataSource({ url: baseUrl + "surveys/milkyway/v1" });
-          core.dss.addDataSource({ url: baseUrlBig + "surveys/dss/v1" });
-          core.minor_planets.addDataSource({
-            url: baseUrl + "mpc/v1/mpcorb.dat",
-            key: "mpc_asteroids",
-          });
-          core.comets.addDataSource({
-            url: baseUrl + "mpc/v1/CometEls.txt?v=2019-12-17",
-            key: "mpc_comets",
-          });
-          // core.satellites.addDataSource({
-          //   url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-          //   key: "jsonl/sat",
-          // });
-
-          [
-            "moon",
-            "sun",
-            "jupiter",
-            "mercury",
-            "venus",
-            "mars",
-            "saturn",
-            "uranus",
-            "neptune",
-            "io",
-            "europa",
-            "ganymede",
-            "callisto",
-            "moon-normal",
-          ].forEach((p) => {
-            core.planets.addDataSource({
-              url: baseUrl + `surveys/sso/${p}/v1`,
-              key: p,
-            });
-          });
-
-          // Se puede usar esto como una funcion para sincronizar nuevas conexiones.
-
-          setTimeout(() => {
-            if (core.planets.hints_visible) {
-              core.planets.hints_visible = false;
-              core.dsos.hints_visible = false;
-              core.minor_planets.hints_visible = false;
-              // core.dss.hints_visible = false;
-              // core.milkyway.hints_visible = false;
-              // core.stars.hints_visible = false;
-              // core.comets.hints_visible = false;
-
-              core.cardinals.visible = false;
-
-              core.fov = 0.4; // zoom del guia
-            }
-          }, 500);
-
-          // On object click listener
-
-          stel.change((obj, attr) => {
-            //no creo que sirva
-          });
-
-          applyLocation(defaultLocation);
-        },
-      });
+      initializeStelEngine((isTelescope = true));
     </script>
 
     <script>
