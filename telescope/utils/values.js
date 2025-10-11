@@ -1,3 +1,5 @@
+let engine;
+let bortle;
 
 /* FOV */
 
@@ -79,20 +81,7 @@ globeDiv.style.position = "relative";
 globeDiv.style.overflow = "hidden";
 interactionSection.appendChild(globeDiv);
 
-// Inicializar globo
-let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
-let globe = Globe()(globeDiv)
-  .globeImageUrl(
-    "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-  )
-  .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
-  .pointAltitude("size")
-  .pointColor("color")
-  .pointsData(globePoint);
 
-// Mover la cámara al punto inicial
-const { lat, lng } = globePoint[0];
-globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
 
 let mapDiv = document.createElement("div");
 mapDiv.id = "map";
@@ -198,8 +187,6 @@ function sendSeeingValue({ target, value }) {
 /*******************************************************************
 ********************************************************************/
 
-const modeContainer = document.getElementById('modeContent');
-
 const modeButtonElement = document.getElementById('modeButton');
 
 let latInput = undefined;
@@ -208,18 +195,6 @@ let elevInput = undefined;
 
 let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
 let pollutionInput = document.querySelector("#pollutionSlider");
-pollutionInput.addEventListener("input", () => {
-  // Bortle index 1-9
-  pollution = pollutionInput.value;
-
-  const skyMag = bortleToMag(parseInt(pollution));
-
-  // To guidescope
-  applyPollution({ mag: skyMag });
-  // To telescope
-  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
-  // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
-});
 
 let advancedModeWarningText = undefined;
 

@@ -12,3 +12,5 @@ const simpleModeContent = `
     </div>
   </div>
 `
+
+export default simpleModeContent;

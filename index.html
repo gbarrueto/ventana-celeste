@@ -23,19 +23,26 @@
     <!-- <div id="finder-overlay"></div> -->
     <div id="eyepiece-overlay"></div>
 
+    <script>
+      let engine;
+      let currentLat;
+      let currentLon;
+      let currentElev;
+      let bortle;
+    </script>
     <script src="limit_mag/params.js"></script>
-    <script src="limit_mag/limit_magnitude.js"></script>
+    <script type="module" src="limit_mag/limit_magnitude.js"></script>
 
-    <script src="util/time.js"></script>
+    <script type="module" src="util/time.js"></script>
     <script src="seeing/seeing_sim.js"></script>
     <!-- Init stellarium web engine -->
-    <script src="util/initStel.js"></script>
-    <script>
-      initializeStelEngine(isTelescope = false);
+    <script type="module">
+      import initializeStelEngine from "./util/initStel.js";
+      initializeStelEngine(false);
     </script>
-    <script src="util/stel.js"></script>
-    <script src="util/overlay.js"></script>
-    <script src="util/location.js"></script>
+    <script type="module" src="util/stel.js"></script>
+    <script type="module" src="util/overlay.js"></script>
+    <script type="module" src="util/location.js"></script>
 
     <script>
       function arduinoCommand(data) {
@@ -43,6 +50,6 @@
       }
     </script>
 
-    <script src="util/protobject.js"></script>
+    <script type="module" src="util/protobject.js"></script>
   </body>
 </html>

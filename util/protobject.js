@@ -1,3 +1,8 @@
+import { setSpeed, updateDate } from "./time.js";
+import { applyLocation, applyPollution } from "./location.js";
+import { toggleEyepieceOverlay, updateStellariumBlur } from "./overlay.js";
+import { updateStellariumFov, updateStellariumView, stellariumOption } from "./stel.js";
+
 const functionMap = {
   "toggleEyepiece": toggleEyepieceOverlay,
   "updateFov": updateStellariumFov,

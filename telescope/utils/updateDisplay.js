@@ -1,5 +1,5 @@
 
-function updateDisplayFov() {
+export function updateDisplayFov() {
   const fov = logFov;
 
   if (oldFov !== fov) {
@@ -21,7 +21,7 @@ function updateDisplayFov() {
 }
 
 
-function updateDisplayBlur() {
+export function updateDisplayBlur() {
   const diff = Math.abs(currentBlur - blurTarget);
 
   const zoomLevel = (Math.log(MAX_FOV) - logFov) / (Math.log(MAX_FOV) - Math.log(MIN_FOV));
@@ -36,7 +36,7 @@ function updateDisplayBlur() {
   
 }
 
-function toggleEyepieceOverlay(eyepieceSignal, event) {
+export function toggleEyepieceOverlay(eyepieceSignal, event) {
   const button = document.querySelector(
     '#viewModeContainer .active'
   );

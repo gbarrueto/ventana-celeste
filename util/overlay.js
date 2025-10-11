@@ -1,9 +1,9 @@
-function updateStellariumBlur({ blur }) {
+export function updateStellariumBlur({ blur }) {
     const canvas_blur = document.getElementById("stel-canvas");
     canvas_blur.style.filter = `blur(${blur}px)`;
 }
 
-function updatePollutionOverlay({ bortle }) {
+export function updatePollutionOverlay({ bortle }) {
     const pollutionOverlay = document.getElementById("pollution-overlay");
     if (!pollutionOverlay) return;
 
@@ -21,20 +21,20 @@ function updatePollutionOverlay({ bortle }) {
           rgba(0,0,0,0.0) 100%)`;
 }
 
-function enableFinderOverlay() {
+export function enableFinderOverlay() {
     const overlay = document.getElementById("finder-overlay");
     if (overlay) {
         overlay.style.opacity = 1;
     }
 }
 
-function disableFinderOverlay() {
+export function disableFinderOverlay() {
     const overlay = document.getElementById("finder-overlay");
     if (overlay) {
         overlay.style.opacity = 0;
     }
 }
 
-function toggleEyepieceOverlay( { signal } ) {
+export function toggleEyepieceOverlay( { signal } ) {
     signal ? disableFinderOverlay() : enableFinderOverlay();
 }

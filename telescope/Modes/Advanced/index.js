@@ -30,9 +30,11 @@ const advancedModeContent = `
           id="focusSlider"
           class="slider h-slider"
           type="range" 
-          min="${MIN_FOCUS}" max="${MAX_FOCUS}" value="${current_focus}" step="${FOCUS_STEP}">
+          min="${0}" max="${10}" value="${5}" step="${0.001}">
         </input>
       </div>
     </section>
   </div>
 `
+
+export default advancedModeContent;

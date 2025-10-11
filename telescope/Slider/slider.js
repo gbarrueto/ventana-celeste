@@ -1,5 +1,5 @@
 // Función para mapear el valor del slider (0-150) a FOV (MIN_FOV a MAX_FOV)
-function sliderToFov(sliderValue) {
+export function sliderToFov(sliderValue) {
     // Normalizar el valor del slider de 0-150 a 0-1
     const normalized = sliderValue / 150;
     
@@ -17,7 +17,7 @@ function sliderToFov(sliderValue) {
 }
 
 // Función inversa para obtener el valor del slider dado un FOV
-function fovToSlider(fov) {
+export function fovToSlider(fov) {
     const fovRange = MAX_FOV - MIN_FOV;
     const normalized = (fov - MIN_FOV) / fovRange;
     
@@ -30,20 +30,3 @@ function fovToSlider(fov) {
     
     return logValue * 150;
 }
-
-blurSlider.addEventListener('input', () => {
-    currentBlur = parseFloat(blurSlider.value);
-    updateDisplayBlur();
-}); 
-
-zoomSlider.addEventListener('input', () => {
-    const sliderValue = parseFloat(zoomSlider.value);
-    current_fov = sliderToFov(sliderValue);
-    
-    logFov = current_fov;
-    
-    // console.log("Slider:", sliderValue, "FOV:", current_fov);
-
-    updateDisplayFov();
-});
-

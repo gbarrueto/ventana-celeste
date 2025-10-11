@@ -1,3 +1,5 @@
+let FO,FD,FT,FS,K,MZZ,XX,BS,FB,DP,FP,FA,FM,FC,B,CC,KK,FE, TH,FR,I,IS,M;
+
 // Telescope parameters
 let DIAMETER = 100; 
 let FOCAL_LENGTH = 1000;

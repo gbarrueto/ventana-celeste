@@ -1,3 +1,18 @@
+// Inicializar globo
+let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
+let globe = Globe()(globeDiv)
+  .globeImageUrl(
+    "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+  )
+  .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
+  .pointAltitude("size")
+  .pointColor("color")
+  .pointsData(globePoint);
+
+// Mover la cámara al punto inicial
+const { lat, lng } = globePoint[0];
+globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
+
 // Variable global para evitar múltiples inicializaciones
 let cesiumViewer = null;
 let cesiumInterval = null;
