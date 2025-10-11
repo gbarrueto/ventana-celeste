@@ -146,6 +146,9 @@ async function main() {
 
   initializeStelEngine(true);
 
+  const loadingScreenElement = document.getElementById('loadingScreen');
+
+  // Esperar carga del DOM
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM is ready!");
 
@@ -183,7 +186,7 @@ async function main() {
       };
     });
 
-
+    loadingScreenElement.style.display = 'none';
     
   });
   
