@@ -3,27 +3,27 @@ import advancedModeContent from '../Modes/Advanced/index.js';
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 
-function loadScript(url) {    
+function loadScript(url, type) {    
     const head = document.getElementsByTagName('head')[0];
     const script = document.createElement('script');
-    script.type = 'text/javascript/module';
+    script.type = type;
     script.src = url;
     head.appendChild(script);
 }
 
 async function loadScentialScripts() {
   let paths = [
-    "telescope/utils/updateDisplay.js",
-    "telescope/Menu/menu.js",
-    "telescope/Slider/slider.js",
-    "telescope/Zoom/zoom.js",
-    "telescope/utils/stellarium.js",
-    "telescope/utils/events.js",
-    "util/time.js",
+    { path: "telescope/utils/updateDisplay.js", type: 'module'},
+    { path: "telescope/Menu/menu.js", type: 'text/javascript'},
+    { path: "telescope/Slider/slider.js", type: 'module'},
+    { path: "telescope/Zoom/zoom.js", type: 'module'},
+    { path: "telescope/utils/stellarium.js", type: 'module'},
+    { path: "telescope/utils/events.js", type: 'module'},
+    { path: "util/time.js", type: 'module'},
   ]
 
-  paths.forEach((path) => {
-    loadScript(path);
+  paths.forEach((content) => {
+    loadScript(content.path, content.type);
   })
 }
 
@@ -57,6 +57,11 @@ async function loadExtraScripts() {
   })
 }
 
+function setLoading(state = true) {
+  if (state === true) loadingScreenElement.style.display = 'block';
+  else loadingScreenElement.style.display = 'none';
+}
+
 function setModeSettings(mode) {
   viewControlsButton.disabled = mode == 'simple';
   Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
@@ -65,16 +70,43 @@ function setModeSettings(mode) {
 }
 
 function toggleMode() {
-  simpleModeElement.classList.toggle("active");
-  advancedModeElement.classList.toggle("active");
-  modeButtonElement.classList.toggle("simple-mode-image");
-  modeButtonElement.classList.toggle("advanced-mode-image");
+  // Cambiar a avanzado
+  if (modes.simple === true) {
+    if (!advancedModeElement) {
+      modeContainer.insertAdjacentHTML('beforeend', advancedModeContent);
+      advancedModeElement = document.getElementById('advancedMode');
+      if (!stelInitialized) {
+        setLoading(true);
+        setTimeout(() => setLoading(false), 500);
+        initializeStelEngine(true);
+        stelInitialized = true;
+      };
+    }
+    advancedModeElement.classList.add("active");
+    simpleModeElement.classList.remove("active");
+    modeButtonElement.classList.add("advanced-mode-image");
+    modeButtonElement.classList.remove("simple-mode-image");
+  }
+  // Cambiar a simple
+  else {
+    if (!simpleModeElement) {
+      modeContainer.insertAdjacentHTML('beforeend', simpleModeContent);
+      simpleModeElement = document.getElementById('simpleMode');
+    }
+    simpleModeElement.classList.add("active");
+    advancedModeElement.classList.remove("active");
+    modeButtonElement.classList.add("simple-mode-image");
+    modeButtonElement.classList.remove("advanced-mode-image");
+  }
+
+  // Intercambiar modo activo
   for (let mode in modes) {
     modes[mode] = !modes[mode];
     if (modes[mode] == true) {
       setModeSettings(mode);
     }
   }
+
 }
 
 function enableFinderMode() {
@@ -137,37 +169,32 @@ function unwrapAngle(newAngle, prevAngle) {
 let modeContainer;
 let blurSlider;
 let zoomSlider;
-let simpleModeElement;
-let advancedModeElement;
+let simpleModeElement = null;
+let advancedModeElement = null;
+let loadingScreenElement;
+let stelInitialized = false;
 
 async function main() {
   await loadScentialScripts();
   setTimeout(() => loadExtraScripts(), 2000);
 
-  initializeStelEngine(true);
-
-  const loadingScreenElement = document.getElementById('loadingScreen');
+  loadingScreenElement = document.getElementById('loadingScreen');
 
   // Esperar carga del DOM
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM is ready!");
 
     modeContainer = document.getElementById('modeContent');
-    modeContainer.innerHTML = simpleModeContent + advancedModeContent;
+    modeContainer.innerHTML = simpleModeContent;
     
-    blurSlider = document.getElementById("focusSlider");
+    // blurSlider = document.getElementById("focusSlider");
     zoomSlider = document.getElementById("zoomSlider");
     
     simpleModeElement = document.getElementById("simpleMode");
-    advancedModeElement = document.getElementById("advancedMode");
-    
-    if (modes.simple === true) {
-      simpleModeElement.classList.toggle("active");
-      modeButtonElement.classList.toggle("simple-mode-image");
-    } else {
-      advancedModeElement.classList.toggle("active");
-      modeButtonElement.classList.toggle("advanced-mode-image");
-    }
+    // advancedModeElement = document.getElementById("advancedMode");
+
+    simpleModeElement.classList.toggle("active");
+    modeButtonElement.classList.toggle("simple-mode-image");
 
     addZoomSliderEvent(zoomSlider);
     
@@ -186,7 +213,8 @@ async function main() {
       };
     });
 
-    loadingScreenElement.style.display = 'none';
+    window.toggleMode = toggleMode;
+    setLoading(false);
     
   });
   

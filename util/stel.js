@@ -1,4 +1,5 @@
 import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
+import { updateStellariumBlur } from "./overlay.js";
 
 export function updateStellariumView({ h, v }) {
     if (!engine?.core?.observer) return;
