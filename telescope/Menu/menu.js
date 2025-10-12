@@ -1,12 +1,21 @@
-function openMenu() {
+import { addPollutionSliderEvent } from "../utils/events.js";
+
+let listenerLoaded = false;
+
+export function openMenu() {
   menu.classList.add("active");
+  if (!listenerLoaded) {
+    setLoading(true);
+    addPollutionSliderEvent(pollutionInput);
+    setLoading(false);
+  }
 }
 
-function closeMenu() {
+export function closeMenu() {
   menu.classList.remove("active");
 }
 
-function optionSelection(e) {
+export function optionSelection(e) {
   const activeButton = document.querySelector(
     "#menuContainer .header-container .active"
   );
@@ -57,7 +66,7 @@ function optionSelection(e) {
   }
 }
 
-function displayMainMenu(e) {
+export function displayMainMenu(e) {
   optionSelection(e);
 
   let mainMenuSection = document.getElementById("mainMenuSection");

@@ -2,6 +2,8 @@ import simpleModeContent from '../Modes/Simple/index.js';
 import advancedModeContent from '../Modes/Advanced/index.js';
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
+import { updateDisplayFov } from './updateDisplay.js';
+import { closeMenu, openMenu } from '../Menu/menu.js';
 
 function loadScript(url, type) {    
     const head = document.getElementsByTagName('head')[0];
@@ -14,9 +16,8 @@ function loadScript(url, type) {
 async function loadScentialScripts() {
   let paths = [
     { path: "telescope/utils/updateDisplay.js", type: 'module'},
-    { path: "telescope/Menu/menu.js", type: 'text/javascript'},
+    { path: "telescope/Menu/menu.js", type: 'module'},
     { path: "telescope/Slider/slider.js", type: 'module'},
-    { path: "telescope/Zoom/zoom.js", type: 'module'},
     { path: "telescope/utils/stellarium.js", type: 'module'},
     { path: "telescope/utils/events.js", type: 'module'},
     { path: "util/time.js", type: 'module'},
@@ -82,10 +83,11 @@ function toggleMode() {
         stelInitialized = true;
       };
     }
+    modeTextElement.textContent = 'Simple';
     advancedModeElement.classList.add("active");
     simpleModeElement.classList.remove("active");
-    modeButtonElement.classList.add("advanced-mode-image");
-    modeButtonElement.classList.remove("simple-mode-image");
+    modeButtonElement.classList.add("simple-mode-image");
+    modeButtonElement.classList.remove("advanced-mode-image");
   }
   // Cambiar a simple
   else {
@@ -93,10 +95,11 @@ function toggleMode() {
       modeContainer.insertAdjacentHTML('beforeend', simpleModeContent);
       simpleModeElement = document.getElementById('simpleMode');
     }
+    modeTextElement.textContent = 'Avanzado';
     simpleModeElement.classList.add("active");
     advancedModeElement.classList.remove("active");
-    modeButtonElement.classList.add("simple-mode-image");
-    modeButtonElement.classList.remove("advanced-mode-image");
+    modeButtonElement.classList.add("advanced-mode-image");
+    modeButtonElement.classList.remove("simple-mode-image");
   }
 
   // Intercambiar modo activo
@@ -163,6 +166,50 @@ function unwrapAngle(newAngle, prevAngle) {
 }
 
 
+function toggleZoomOptions() {
+  zoomOptions.classList.toggle('visible');
+}
+
+
+function applyZoom(selected_eyepiece_fl, event) {
+  const button = document.querySelector(
+    '#lensContainer .active'
+  );
+
+  if (button) {
+    button.classList.toggle('active')
+  }
+
+  event.target.classList.toggle('active');
+  
+  EYEPIECE_FL = selected_eyepiece_fl;
+
+  // Calcular nuevo FOV
+
+  const m = FOCAL_LENGTH / EYEPIECE_FL; // Magnification
+  const proyection_const = 100; // Ni idea de porqué es 100, pero asi funciona
+  
+  // new_fov es fov de stellarium, no fov aparente del ocular
+  
+  let new_fov = (proyection_const / m)
+  // Convertir a radianes
+  new_fov = new_fov * Math.PI / 180;
+  
+  logFov = new_fov;
+  updateDisplayFov();
+}
+
+function setWindowFunctions() {
+  window.toggleMode = toggleMode;
+  window.applyZoom = applyZoom;
+  window.updateDisplayFov = updateDisplayFov;
+  window.autoPollution = autoPollution;
+  window.openMenu = openMenu;
+  window.setLoading = setLoading;
+  window.closeMenu = closeMenu;
+}
+
+
 
 /**************************  CÓDIGO  *************************************/
 
@@ -173,10 +220,11 @@ let simpleModeElement = null;
 let advancedModeElement = null;
 let loadingScreenElement;
 let stelInitialized = false;
+let modeTextElement;
 
 async function main() {
   await loadScentialScripts();
-  setTimeout(() => loadExtraScripts(), 2000);
+  setTimeout(() => loadExtraScripts(), 1000);
 
   loadingScreenElement = document.getElementById('loadingScreen');
 
@@ -193,8 +241,11 @@ async function main() {
     simpleModeElement = document.getElementById("simpleMode");
     // advancedModeElement = document.getElementById("advancedMode");
 
+    modeTextElement = document.getElementById('modeText');
+
     simpleModeElement.classList.toggle("active");
     modeButtonElement.classList.toggle("simple-mode-image");
+    modeTextElement.textContent = 'Avanzado';
 
     addZoomSliderEvent(zoomSlider);
     
@@ -213,7 +264,7 @@ async function main() {
       };
     });
 
-    window.toggleMode = toggleMode;
+    setWindowFunctions();
     setLoading(false);
     
   });

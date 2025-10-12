@@ -51,11 +51,13 @@
       <section class="header">
         <button class="image-button menu-image" onclick="openMenu()"></button>
         <div class="header-container">
-          <button
-            id="modeButton"
-            class="image-button simple-mode-image advanced-mode-image"
-            onclick="toggleMode()"
-          ></button>
+          <div id="modeButtonContainer" onclick="toggleMode()">
+            <p id="modeText"></p>
+            <button
+              id="modeButton"
+              class="image-button simple-mode-image advanced-mode-image"
+            ></button>
+          </div>
         </div>
       </section>
 

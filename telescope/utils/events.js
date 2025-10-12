@@ -1,3 +1,4 @@
+import { applyPollution } from "../../util/location.js";
 import { sliderToFov } from "../Slider/slider.js";
 import { updateDisplayFov } from "./updateDisplay.js";
 

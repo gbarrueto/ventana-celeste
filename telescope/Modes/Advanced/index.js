@@ -15,7 +15,7 @@ const advancedModeContent = `
       <!--  <p>Oculares</p>
       <p class="alert-text" style="opacity: 1;"><i>Desactivado en modo guia</i></p> -->
       <div id="lensContainer" class="grid-container">
-        <button class="button active" onclick="applyZoom(40, event)">len 1</button>
+        <button class="button" onclick="applyZoom(40, event)">len 1</button>
         <button class="button" onclick="applyZoom(24, event)">len 2</button>
         <button class="button" onclick="applyZoom(10, event)">len 3</button>
         <button class="button" onclick="applyZoom(2, event)">len 4</button>
