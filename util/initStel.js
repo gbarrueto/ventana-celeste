@@ -175,12 +175,17 @@ function initializeStelEngine(isTelescope = false) {
                         const ra = stel.anp(coords[0]);
                         const dec = stel.anpm(coords[1]);
                         const mag = s.getInfo("vmag");
+
+                        const altaz = getObjAltAz(s);
+
                         info.innerHTML = `
                           <h3>${name}</h3>
                           <p><strong>Magnitude:</strong> ${mag !== undefined ? mag.toFixed(2) : "Unknown"
                             }</p>
                           <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-                          <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
+                          <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>
+                          <p><strong>Alt:</strong> ${altaz.alt.toFixed(3)}°</p>
+                          <p><strong>Az:</strong> ${altaz.az.toFixed(3)}°</p>`;
                         info.style.display = "block";
                     } else {
                         info.style.display = "none";

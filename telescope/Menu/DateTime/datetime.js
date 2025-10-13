@@ -135,6 +135,15 @@ function showTimeSelector() {
         // console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
         updateStelDate(dateTZ);
         // updateDateTimeout = null;
+        const sun = engine.getObj("NAME Sun");
+        const sunPos = getObjAltAz(sun);
+        console.log("Sun alt:", sunPos.alt);
+        if (sunPos && sunPos.alt > -0.5) {
+          console.log("Is daytime");
+        }
+        else {
+          console.log("Is nighttime");
+        }
       }
     },
   });
