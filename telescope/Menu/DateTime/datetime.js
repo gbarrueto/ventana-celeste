@@ -1,4 +1,4 @@
-function displayDateTime(e) {
+export function displayDateTime(e) {
   if (optionSelection(e)) return;
 
   let datetimeSection = document.getElementById("datetimeSection");
@@ -18,12 +18,12 @@ function displayDateTime(e) {
   }, 100);
 }
 
-function applyCurrentDate() {
+export function applyCurrentDate() {
   const dateTZ = getISOWithTZ(new Date());
   updateDate(dateTZ);
 }
 
-function setSpeed(multiplier) {
+export function setSpeed(multiplier) {
   Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
     "index.html"
   );
@@ -32,7 +32,7 @@ function setSpeed(multiplier) {
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
-function updateStelDate(date) {
+export function updateStelDate(date) {
 
   const mjd = isoToMJD(date);
 
@@ -43,25 +43,25 @@ function updateStelDate(date) {
   engine.core.observer.utc = mjd;
 }
 
-function createInterval() {
+export function createInterval() {
   Protobject.Core.send({
     msg: "setDatetimeInterval",
     values: { active: true },
   }).to("index.html");
 }
 
-function isoToMJD(isoString) {
+export function isoToMJD(isoString) {
   const date = new Date(isoString);
   const jd = date.getTime() / 86400000 + 2440587.5;
   return jd - 2400000.5;
 }
 
-function fromMJDToDate(mjd) {
+export function fromMJDToDate(mjd) {
   const jd = mjd + 2400000.5;
   return new Date((jd - 2440587.5) * 86400000);
 }
 
-function getISOWithTZ(date) {
+export function getISOWithTZ(date) {
   const offset = currentTZ;
   const localOffset = -new Date().getTimezoneOffset() / 60;
 
@@ -84,7 +84,7 @@ function getISOWithTZ(date) {
   );
   return dt.toUTC().toISO();
 }
-function fromMJDToLuxon(mjd, offsetHours = 0) {
+export function fromMJDToLuxon(mjd, offsetHours = 0) {
   const JD = mjd + 2400000.5;
   const unixMs = (JD - 2440587.5) * 86400000;
 
@@ -93,7 +93,7 @@ function fromMJDToLuxon(mjd, offsetHours = 0) {
   return luxon.DateTime.fromMillis(unixMs, { zone: "UTC" }).setZone(zone);
 }
 
-function updateSpeedButtons() {
+export function updateSpeedButtons() {
   document
     .querySelectorAll("#datetimeSection .control-button")
     .forEach((btn) => {
@@ -110,7 +110,7 @@ function updateSpeedButtons() {
     });
 }
 
-function showTimeSelector() {
+export function showTimeSelector() {
   if (activeFlatpickr) return;
 
   activeFlatpickr = flatpickr("#datetime-picker", {

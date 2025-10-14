@@ -53,136 +53,136 @@ const menuInteractionSection = document.getElementById('menuInteractionSection')
 ********************************************************************
  Cargar secciones interactivas del menu                   */
 
-let section = `
-  <section id="datetimeSection">
-    <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
+// let section = `
+//   <section id="datetimeSection">
+//     <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
 
-    <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
-      <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
-      <div class="grid-container" style="grid-template-columns: auto auto;">
-        <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
-        <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
-      </div>
-      <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
-        <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-        <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-        <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
-      </div>
-    </div>
-  </section>
-`;
-interactionSection.insertAdjacentHTML("beforeend", section);
+//     <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
+//       <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
+//       <div class="grid-container" style="grid-template-columns: auto auto;">
+//         <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+//         <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+//       </div>
+//       <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
+//         <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+//         <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+//         <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+//       </div>
+//     </div>
+//   </section>
+// `;
+// interactionSection.insertAdjacentHTML("beforeend", section);
 
-let globeDiv = document.createElement("div");
-globeDiv.id = "globeViz";
-globeDiv.style.width = "100%";
-globeDiv.style.height = "98%";
-globeDiv.style.position = "relative";
-globeDiv.style.overflow = "hidden";
-interactionSection.appendChild(globeDiv);
-
-
-
-let mapDiv = document.createElement("div");
-mapDiv.id = "map";
-mapDiv.style.width = "100%";
-mapDiv.style.height = "98%";
-interactionSection.appendChild(mapDiv);
+// let globeDiv = document.createElement("div");
+// globeDiv.id = "globeViz";
+// globeDiv.style.width = "100%";
+// globeDiv.style.height = "98%";
+// globeDiv.style.position = "relative";
+// globeDiv.style.overflow = "hidden";
+// interactionSection.appendChild(globeDiv);
 
 
-// Seeing
-let seeingSection = document.createElement('section');
-seeingSection.id = 'seeingOptionSection';
-let seeingSliders = [
-  {
-    id: 'turbulenceAmount',
-    target: 'turbulence',
-    labelText: 'Intensidad turbulencia',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 20,
-    value: 5,
-    step: 1,
-  },
-  {
-    id: 'turbulenceSpeed',
-    target: 'speed',
-    labelText: 'Velocidad turbulencia',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 300,
-    value: 5,
-    step: 1,
-  },
-  {
-    id: 'focus',
-    target: 'focus',
-    labelText: 'Enfoque',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 10,
-    value: 0,
-    step: 0.1,
-  },
-  {
-    id: 'saturation',
-    target: 'saturation',
-    labelText: 'Saturacion',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 2,
-    value: 1,
-    step: 0.05,
-  },
-  {
-    id: 'noise',
-    target: 'noise',
-    labelText: 'Ruido',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 1,
-    value: 0.1,
-    step: 0.01,
-  },
-  {
-    id: 'chaos',
-    target: 'chaos',
-    labelText: 'Caos',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 10,
-    value: 0,
-    step: 1,
-  },
-]
 
-for (let element of seeingSliders) {
-  element.labelElement.textContent = element.labelText;
-  element.sliderElement.type = 'range'
-  element.sliderElement.min = element.min;
-  element.sliderElement.max = element.max;
-  element.sliderElement.value = element.value;
-  element.sliderElement.step = element.step;
-  element.sliderElement.classList.add('slider', 'h-slider')
-  element.sliderElement.addEventListener('input', (e) => sendSeeingValue({ target: element.target, value: e.target.value }))
-  const container = document.createElement('div');
-  container.id = element.id;
-  container.appendChild(element.labelElement);
-  container.appendChild(element.sliderElement);
-  seeingSection.appendChild(container);
-}
-interactionSection.appendChild(seeingSection);
+// let mapDiv = document.createElement("div");
+// mapDiv.id = "map";
+// mapDiv.style.width = "100%";
+// mapDiv.style.height = "98%";
+// interactionSection.appendChild(mapDiv);
 
-function sendSeeingValue({ target, value }) {
-  // console.log('****************Seeing:', target, value)
-  Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
-}
+
+// // Seeing
+// let seeingSection = document.createElement('section');
+// seeingSection.id = 'seeingOptionSection';
+// let seeingSliders = [
+//   {
+//     id: 'turbulenceAmount',
+//     target: 'turbulence',
+//     labelText: 'Intensidad turbulencia',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 20,
+//     value: 5,
+//     step: 1,
+//   },
+//   {
+//     id: 'turbulenceSpeed',
+//     target: 'speed',
+//     labelText: 'Velocidad turbulencia',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 300,
+//     value: 5,
+//     step: 1,
+//   },
+//   {
+//     id: 'focus',
+//     target: 'focus',
+//     labelText: 'Enfoque',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 10,
+//     value: 0,
+//     step: 0.1,
+//   },
+//   {
+//     id: 'saturation',
+//     target: 'saturation',
+//     labelText: 'Saturacion',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 2,
+//     value: 1,
+//     step: 0.05,
+//   },
+//   {
+//     id: 'noise',
+//     target: 'noise',
+//     labelText: 'Ruido',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 1,
+//     value: 0.1,
+//     step: 0.01,
+//   },
+//   {
+//     id: 'chaos',
+//     target: 'chaos',
+//     labelText: 'Caos',
+//     labelElement: document.createElement('label'),
+//     sliderElement: document.createElement('input'),
+//     min: 0,
+//     max: 10,
+//     value: 0,
+//     step: 1,
+//   },
+// ]
+
+// for (let element of seeingSliders) {
+//   element.labelElement.textContent = element.labelText;
+//   element.sliderElement.type = 'range'
+//   element.sliderElement.min = element.min;
+//   element.sliderElement.max = element.max;
+//   element.sliderElement.value = element.value;
+//   element.sliderElement.step = element.step;
+//   element.sliderElement.classList.add('slider', 'h-slider')
+//   element.sliderElement.addEventListener('input', (e) => sendSeeingValue({ target: element.target, value: e.target.value }))
+//   const container = document.createElement('div');
+//   container.id = element.id;
+//   container.appendChild(element.labelElement);
+//   container.appendChild(element.sliderElement);
+//   seeingSection.appendChild(container);
+// }
+// interactionSection.appendChild(seeingSection);
+
+// function sendSeeingValue({ target, value }) {
+//   // console.log('****************Seeing:', target, value)
+//   Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
+// }
 
 /*******************************************************************
 ********************************************************************/

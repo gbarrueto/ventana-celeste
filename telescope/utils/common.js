@@ -1,9 +1,9 @@
-import simpleModeContent from '../Modes/Simple/index.js';
 import advancedModeContent from '../Modes/Advanced/index.js';
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
-import { closeMenu, openMenu } from '../Menu/menu.js';
+import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu/menu.js';
+import { displayDateTime } from '../Menu/DateTime/datetime.js';
 
 function loadScript(url, type) {    
     const head = document.getElementsByTagName('head')[0];
@@ -30,31 +30,31 @@ async function loadScentialScripts() {
 
 async function loadExtraScripts() {
   let paths = [
-    "https://unpkg.com/three",
-    "https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js",
-    "https://unpkg.com/browser-geo-tz@latest/dist/geotz.js",
-    "telescope/utils/lp/pako_inflate.min.js",
-    "telescope/utils/lp/getLpFromCoords.js",
-    "telescope/Menu/DateTime/datetime.js",
-    "telescope/Menu/Location/location.js",
-    "telescope/Menu/Location/globe.js",
-    "telescope/Menu/Seeing/seeing.js",
-    "telescope/Menu/Pollution/pollution.js",
-    "telescope/utils/luxon.js",
-    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
-    "util/Control.Geocoder.js",
-    "util/L.Control.Range.js",
-    "limit_mag/limit_magnitude.js",
-    "util/overlay.js",
-    "util/location.js",
-    "util/stel.js",
-    "telescope/utils/tz.js",
-    "https://unpkg.com/globe.gl",
-    "https://cdn.jsdelivr.net/npm/flatpickr",
+    { path: "https://unpkg.com/three", type: 'module' },
+    { path: "https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js", type: 'text/javascript' },
+    { path: "https://unpkg.com/browser-geo-tz@latest/dist/geotz.js", type: 'text/javascript' },
+    { path: "https://cdn.jsdelivr.net/npm/flatpickr", type: 'text/javascript' },
+    { path: "https://unpkg.com/globe.gl", type: 'text/javascript' },
+    { path: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", type: 'text/javascript' },
+    { path: "telescope/utils/lp/pako_inflate.min.js", type: 'text/javascript' },
+    { path: "telescope/utils/lp/getLpFromCoords.js", type: 'text/javascript' },
+    { path: "telescope/Menu/DateTime/datetime.js", type: 'module' },
+    { path: "telescope/Menu/Location/location.js", type: 'module' },
+    { path: "telescope/Menu/Location/globe.js", type: 'text/javascript' },
+    { path: "telescope/Menu/Seeing/seeing.js", type: 'module' },
+    { path: "telescope/Menu/Pollution/pollution.js", type: 'module' },
+    { path: "telescope/utils/luxon.js", type: 'text/javascript' },
+    { path: "util/Control.Geocoder.js", type: 'text/javascript' },
+    { path: "util/L.Control.Range.js", type: 'text/javascript' },
+    { path: "limit_mag/limit_magnitude.js", type: 'module' },
+    { path: "util/overlay.js", type: 'module' },
+    { path: "util/location.js", type: 'module' },
+    { path: "util/stel.js", type: 'module' },
+    { path: "telescope/utils/tz.js", type: 'text/javascript' },
   ]
 
-  paths.forEach((path) => {
-    loadScript(path);
+  paths.forEach((content) => {
+    loadScript(content.path, content.type);
   })
 }
 
@@ -76,12 +76,6 @@ function toggleMode() {
     if (!advancedModeElement) {
       modeContainer.insertAdjacentHTML('beforeend', advancedModeContent);
       advancedModeElement = document.getElementById('advancedMode');
-      if (!stelInitialized) {
-        setLoading(true);
-        setTimeout(() => setLoading(false), 500);
-        initializeStelEngine(true);
-        stelInitialized = true;
-      };
     }
     modeTextElement.textContent = 'Simple';
     advancedModeElement.classList.add("active");
@@ -92,7 +86,6 @@ function toggleMode() {
   // Cambiar a simple
   else {
     if (!simpleModeElement) {
-      modeContainer.insertAdjacentHTML('beforeend', simpleModeContent);
       simpleModeElement = document.getElementById('simpleMode');
     }
     modeTextElement.textContent = 'Avanzado';
@@ -199,6 +192,32 @@ function applyZoom(selected_eyepiece_fl, event) {
   updateDisplayFov();
 }
 
+function bortleToMag(bortle) {
+
+  switch (bortle) {
+    case 1:
+      return (22.0 + 21.99) / 2 + Math.random() * 0.1; // Cielo prístino
+    case 2:
+      return (21.99 + 21.89) / 2 + Math.random() * 0.1; // Cielo excelente
+    case 3:
+      return (21.89 + 21.69) / 2 + Math.random() * 0.2; // Cielo rural
+    case 4:
+      return (21.69 + 20.49) / 2 + Math.random() * 1.2; // Suburbano oscuro
+    case 5:
+      return (20.49 + 19.5) / 2 + Math.random() * 0.99; // Suburbano intermedio
+    case 6:
+      return (19.5 + 18.94) / 2 + Math.random() * 0.56; // Suburbano brillante
+    case 7:
+      return (18.94 + 18.38) / 2 + Math.random() * 0.56; // Periurbano
+    case 8:
+      return (18.38 + 16.53) / 2 + Math.random() * 1.85; // Ciudad
+    case 9:
+      return (16.53 + 15.0) / 2 + Math.random() * 1.53; // Centro de Ciudad
+    default:
+      return null;
+  }
+}
+
 function setWindowFunctions() {
   window.toggleMode = toggleMode;
   window.applyZoom = applyZoom;
@@ -207,11 +226,115 @@ function setWindowFunctions() {
   window.openMenu = openMenu;
   window.setLoading = setLoading;
   window.closeMenu = closeMenu;
+  window.displayDateTime = displayDateTime;
+  window.optionSelection = optionSelection;
+  window.bortleToMag = bortleToMag;
+}
+
+function addMenuElement() {
+  const element = document.getElementById('startContainer');
+  const menuElement = createMenuElement();
+  element.after(menuElement);
+  const pollutionInput = document.getElementById("pollutionSlider");
+  window.pollutionInput = pollutionInput;
+  window.menu = menuElement;
+  setStellariumOptionButtons();
+}
+
+function setStellariumOptionButtons() {
+  const stellariumOptionButtons = document.querySelectorAll(
+    "#stellariumOptionsContainer button"
+  );
+  
+  stellariumOptionButtons.forEach((btn) => {
+    btn.onclick = () => {
+      const info = BUTTONS[btn.name];
+      Protobject.Core.send({
+        msg: "stellariumOption",
+        values: { path: info.path, attr: info.attr },
+      }).to("index.html");
+      btn.classList.toggle("active");
+    };
+  });
 }
 
 
 
+
+
 /**************************  CÓDIGO  *************************************/
+
+window.oldFov = 3;
+window.MIN_FOV = 0.000005;
+window.MAX_FOV = 3.228859;
+window.FOV_STEP = 0.000001;
+window.minLogFov = Math.log(MIN_FOV);
+window.maxLogFov = Math.log(MAX_FOV);
+window.logFov = maxLogFov;
+window.current_fov = 3;
+
+window.currentBlur = 5;
+window.blurTarget = currentBlur;
+
+window.engine = null;
+window.bortle = null;
+
+window.currentLat = null;
+window.currentLon = null;
+window.currentElev = null;
+window.currentTZ = -4;
+
+window.pollution = 9;
+
+const BUTTONS = {
+  constellations: {
+    label: "Constellations",
+    img: "https://telescope.alessiobellino.com/svg/btn-cst-lines.svg",
+    path: "constellations",
+    attr: "lines_visible",
+  },
+  atmosphere: {
+    label: "Atmosphere",
+    img: "https://telescope.alessiobellino.com/svg/btn-atmosphere.svg",
+    path: "atmosphere",
+    attr: "visible",
+  },
+  landscape: {
+    label: "Landscape",
+    img: "https://telescope.alessiobellino.com/svg/btn-landscape.svg",
+    path: "landscapes",
+    attr: "visible",
+  },
+  azimuthal: {
+    label: "Azimuthal Grid",
+    img: "https://telescope.alessiobellino.com/svg/btn-azimuthal-grid.svg",
+    path: "lines.azimuthal",
+    attr: "visible",
+  },
+  equatorial: {
+    label: "Equatorial Grid",
+    img: "https://telescope.alessiobellino.com/svg/btn-equatorial-grid.svg",
+    path: "lines.equatorial",
+    attr: "visible",
+  },
+  nebulae: {
+    label: "Nebulae",
+    img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+    path: "dsos",
+    attr: "visible",
+  },
+  dss: {
+    label: "DSS",
+    img: "https://telescope.alessiobellino.com/svg/btn-nebulae.svg",
+    path: "dss",
+    attr: "visible",
+  },
+};
+
+let modes = {
+  simple: true,
+  advanced: false
+}
 
 let modeContainer;
 let blurSlider;
@@ -219,21 +342,23 @@ let zoomSlider;
 let simpleModeElement = null;
 let advancedModeElement = null;
 let loadingScreenElement;
-let stelInitialized = false;
 let modeTextElement;
+let modeButtonElement;
 
 async function main() {
-  await loadScentialScripts();
-  setTimeout(() => loadExtraScripts(), 1000);
+  // await loadScentialScripts();
+  // setTimeout(() => loadExtraScripts(), 1000);
 
   loadingScreenElement = document.getElementById('loadingScreen');
 
   // Esperar carga del DOM
   document.addEventListener("DOMContentLoaded", () => {
-    console.log("DOM is ready!");
-
+    // console.log("DOM is ready!");
+    
+    addMenuElement();
+    
     modeContainer = document.getElementById('modeContent');
-    modeContainer.innerHTML = simpleModeContent;
+    modeButtonElement = document.getElementById('modeButton');
     
     // blurSlider = document.getElementById("focusSlider");
     zoomSlider = document.getElementById("zoomSlider");
@@ -248,23 +373,8 @@ async function main() {
     modeTextElement.textContent = 'Avanzado';
 
     addZoomSliderEvent(zoomSlider);
-    
-    const stellariumOptionButtons = document.querySelectorAll(
-      "#stellariumOptionsContainer button"
-    );
-    
-    stellariumOptionButtons.forEach((btn) => {
-      btn.onclick = () => {
-        const info = BUTTONS[btn.name];
-        Protobject.Core.send({
-          msg: "stellariumOption",
-          values: { path: info.path, attr: info.attr },
-        }).to("index.html");
-        btn.classList.toggle("active");
-      };
-    });
-
     setWindowFunctions();
+    initializeStelEngine(true);
     setLoading(false);
     
   });
