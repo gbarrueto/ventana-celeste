@@ -24,6 +24,14 @@ function stellariumOption({ path, attr }) {
     if (obj) {
         obj[attr] = !obj[attr];
     }
+    // Atm OFF -> Disable atmospheric effects (pollution, seeing, etc)
+    if (path === "atmosphere" && attr === "visible") {
+
+        console.log("Atmosphere toggled:", obj[attr]);
+        console.log("Current SQM:", SQM_READING);
+        obj[attr] ? applyPollution({ mag: SQM_READING }) : applyPollution({ mag: 22 });
+        // TODO: Disable seeing effects
+    }
 }
 
 function setEyepieceOverlayOpacity(opacity) {

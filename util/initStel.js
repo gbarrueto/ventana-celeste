@@ -1,7 +1,7 @@
 function initializeStelEngine(isTelescope = false) {
     StelWebEngine({
         wasmFile:
-            "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
+            "stellarium-web-engine.wasm",
         canvas: document.getElementById("stel-canvas"),
         async onReady(stel) {
             engine = stel;
@@ -104,12 +104,12 @@ function initializeStelEngine(isTelescope = false) {
                         key: "mpc_comets",
                     })
                 );
-                dataSourcePromises.push(
-                    core.satellites.addDataSource({
-                        url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-                        key: "jsonl/sat",
-                    })
-                );
+                // dataSourcePromises.push(
+                //     core.satellites.addDataSource({
+                //         url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+                //         key: "jsonl/sat",
+                //     })
+                // );
 
                 [
                     "moon",

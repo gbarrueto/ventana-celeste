@@ -9,6 +9,7 @@ const functionMap = {
   "setDatetimeInterval": () => setDatetimeInterval(),
   "clearDatetimeInterval": () => clearDatetimeInterval(),
   "updatePollution": applyPollution,
+  "togglePollution": togglePollutionOverlay,
   "stellariumOption": stellariumOption,
   "arduinoCommand": arduinoCommand,
   "seeingOption": applySeeingOption,

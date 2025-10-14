@@ -25,6 +25,17 @@ function getObjAltAz(obj) {
 
 }
 
+function isNightime() {
+    if (!engine) return;
+    const sun = engine.getObj("NAME Sun");
+    const sunPos = getObjAltAz(sun);
+
+    if (sunPos && sunPos.alt > -3) {
+        return false;
+    }
+    return true;
+}
+
 function radToDeg(val) {
    return val * (180 / Math.PI);
 }

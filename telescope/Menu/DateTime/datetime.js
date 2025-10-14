@@ -38,7 +38,7 @@ function updateStelDate(date) {
 
   // console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
+  Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to("index.html");
   // change guidescope time
   engine.core.observer.utc = mjd;
 }
@@ -130,22 +130,17 @@ function showTimeSelector() {
         const date = selectedDates[0];
         const dateTZ = getISOWithTZ(date);
         //console.log("Non ISO DATE onUpdate", selectedDates[0]);
-        
+
         lastManualChange = Date.now();
         // console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
         updateStelDate(dateTZ);
         // updateDateTimeout = null;
-        const sun = engine.getObj("NAME Sun");
-        const sunPos = getObjAltAz(sun);
-        console.log("Sun alt:", sunPos.alt);
-        if (sunPos && sunPos.alt > -0.5) {
-          console.log("Is daytime");
-        }
-        else {
-          console.log("Is nighttime");
-        }
+
+        isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
+        Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
+
       }
-    },
+    }
   });
 
   // Sincronización periódica con el engine
