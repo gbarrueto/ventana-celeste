@@ -1,5 +1,30 @@
+let datetimeLoaded = false;
+
 export function displayDateTime(e) {
   if (optionSelection(e)) return;
+  
+  if (!datetimeLoaded) {
+    setLoading(true, menuLoadingElement);
+    let section = `
+      <section id="datetimeSection">
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
+    
+        <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
+          <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
+          <div class="grid-container" style="grid-template-columns: auto auto;">
+            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          </div>
+          <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
+            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
+            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
+            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+          </div>
+        </div>
+      </section>
+    `;
+    interactionSection.insertAdjacentHTML("beforeend", section);
+  }
 
   let datetimeSection = document.getElementById("datetimeSection");
 
@@ -15,7 +40,9 @@ export function displayDateTime(e) {
   setTimeout(() => {
     showTimeSelector();
     createInterval();
+    setLoading(false, menuLoadingElement);
   }, 100);
+
 }
 
 export function applyCurrentDate() {

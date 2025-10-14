@@ -83,7 +83,11 @@ export function createMenuElement() {
           </div>
         </div>
       </section>
+
       <section id="interactionSection">
+        <div id="menuLoadingScreen" class="loading-screen">
+          <div class="loader"></div>
+        </div>
         <!-- Mapa -->
         <div id="map" class="tab"></div>
   
@@ -99,9 +103,9 @@ export function createMenuElement() {
 export function openMenu() {
   menu.classList.add("active");
   if (!listenerLoaded) {
-    setLoading(true);
+    setLoading(true, mainLoadingScreenElement);
     addPollutionSliderEvent(pollutionInput);
-    setLoading(false);
+    setLoading(false, mainLoadingScreenElement);
   }
 }
 

@@ -1,4 +1,3 @@
-import advancedModeContent from '../Modes/Advanced/index.js';
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
@@ -16,7 +15,6 @@ function loadScript(url, type) {
 async function loadScentialScripts() {
   let paths = [
     { path: "telescope/utils/updateDisplay.js", type: 'module'},
-    { path: "telescope/Menu/menu.js", type: 'module'},
     { path: "telescope/Slider/slider.js", type: 'module'},
     { path: "telescope/utils/stellarium.js", type: 'module'},
     { path: "telescope/utils/events.js", type: 'module'},
@@ -33,7 +31,7 @@ async function loadExtraScripts() {
     { path: "https://unpkg.com/three", type: 'module' },
     { path: "https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js", type: 'text/javascript' },
     { path: "https://unpkg.com/browser-geo-tz@latest/dist/geotz.js", type: 'text/javascript' },
-    { path: "https://cdn.jsdelivr.net/npm/flatpickr", type: 'text/javascript' },
+    // { path: "https://cdn.jsdelivr.net/npm/flatpickr", type: 'text/javascript' },
     { path: "https://unpkg.com/globe.gl", type: 'text/javascript' },
     { path: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", type: 'text/javascript' },
     { path: "telescope/utils/lp/pako_inflate.min.js", type: 'text/javascript' },
@@ -58,9 +56,9 @@ async function loadExtraScripts() {
   })
 }
 
-function setLoading(state = true) {
-  if (state === true) loadingScreenElement.style.display = 'block';
-  else loadingScreenElement.style.display = 'none';
+function setLoading(state = true, element) {
+  if (state === true) element.style.display = 'block';
+  else element.style.display = 'none';
 }
 
 function setModeSettings(mode) {
@@ -74,7 +72,6 @@ function toggleMode() {
   // Cambiar a avanzado
   if (modes.simple === true) {
     if (!advancedModeElement) {
-      modeContainer.insertAdjacentHTML('beforeend', advancedModeContent);
       advancedModeElement = document.getElementById('advancedMode');
     }
     modeTextElement.textContent = 'Simple';
@@ -238,6 +235,8 @@ function addMenuElement() {
   const pollutionInput = document.getElementById("pollutionSlider");
   window.pollutionInput = pollutionInput;
   window.menu = menuElement;
+  window.interactionSection = document.getElementById('interactionSection');
+  window.menuLoadingElement = document.getElementById('menuLoadingScreen');
   setStellariumOptionButtons();
 }
 
@@ -285,6 +284,13 @@ window.currentElev = null;
 window.currentTZ = -4;
 
 window.pollution = 9;
+
+window.engineUTC = null;
+window.timeSpeed = 0;
+window.activeFlatpickr = null;
+window.flatpickrSyncInterval = null;
+window.lastManualChange = 0;
+window.isUserTouchingCalendar = false;
 
 const BUTTONS = {
   constellations: {
@@ -341,7 +347,7 @@ let blurSlider;
 let zoomSlider;
 let simpleModeElement = null;
 let advancedModeElement = null;
-let loadingScreenElement;
+window.mainLoadingScreenElement = null;
 let modeTextElement;
 let modeButtonElement;
 
@@ -349,14 +355,14 @@ async function main() {
   // await loadScentialScripts();
   // setTimeout(() => loadExtraScripts(), 1000);
 
-  loadingScreenElement = document.getElementById('loadingScreen');
+  mainLoadingScreenElement = document.getElementById('mainLoadingScreen');
 
   // Esperar carga del DOM
   document.addEventListener("DOMContentLoaded", () => {
     // console.log("DOM is ready!");
     
     addMenuElement();
-    
+
     modeContainer = document.getElementById('modeContent');
     modeButtonElement = document.getElementById('modeButton');
     
@@ -375,7 +381,7 @@ async function main() {
     addZoomSliderEvent(zoomSlider);
     setWindowFunctions();
     initializeStelEngine(true);
-    setLoading(false);
+    setLoading(false, mainLoadingScreenElement);
     
   });
   

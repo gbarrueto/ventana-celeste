@@ -1,4 +1,4 @@
-import { setSpeed, updateDate } from "./time.js";
+import { clearDatetimeInterval, setDatetimeInterval, setSpeed, updateDate } from "./time.js";
 import { applyLocation, applyPollution } from "./location.js";
 import { toggleEyepieceOverlay, updateStellariumBlur } from "./overlay.js";
 import { updateStellariumFov, updateStellariumView, stellariumOption, enableAdvancedModeSettings, enableSimpleModeSettings } from "./stel.js";
