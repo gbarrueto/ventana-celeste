@@ -9,11 +9,6 @@ function applySeeingOption({ target, value }) {
 }
 
 function initializeSeeingOverlay() {
-  // Eliminar instancias previas para una reinicialización limpia
-  document.getElementById("effect-canvas")?.remove();
-  document.getElementById("controls-panel")?.remove();
-  document.getElementById("seeing-effect-styles")?.remove();
-
   const styleElement = document.createElement("style");
   styleElement.id = "seeing-effect-styles";
   styleElement.innerHTML = `
@@ -217,9 +212,9 @@ function initializeSeeingOverlay() {
     // La velocidad crece linealmente
     const baseSpeed = 5 + disturbanceFactor * 295; // Mapea de 5 a 300
     // El ruido crece linealmente desde un mínimo casi imperceptible
-    const noiseValue = 0.01 + disturbanceFactor * 0.49; // Mapea de 0.01 a 0.5
-    // El caos se activa a medida que aumenta la perturbación
-    const chaosFactor = disturbanceFactor * 0.8; // Mapea de 0 a 8 en una escala de 10
+    const noiseValue = 0.01 + disturbanceFactor * 0.1;
+    // El caos siempre activo para evitar patrones repetitivos
+    const chaosFactor = 1;
 
     // 3. Aplicar el caos para modular la velocidad e intensidad
     const chaosSpeedFluctuation =
