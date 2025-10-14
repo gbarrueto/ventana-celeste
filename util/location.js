@@ -17,14 +17,14 @@ async function applyLocation({
 
     // Set LP to new location
 
+    SQM_READING = mag;
+
     applyPollution({ mag });
 
     //console.log("Bortle index for", cityName, ":", bortle_index);
 }
 
 function applyPollution({ mag = 20 }) {
-
-    SQM_READING = mag;
 
     bortle = magToBortle(mag);
 
@@ -36,7 +36,8 @@ function applyPollution({ mag = 20 }) {
 
         engine.core.star_relative_scale = 0.6;
     }
-    updatePollutionOverlay({ bortle });
+
+    isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
 }
 
 // Convertion src: https://www.handprint.com/ASTRO/bortle.html

@@ -1,7 +1,7 @@
 function initializeStelEngine(isTelescope = false) {
     StelWebEngine({
         wasmFile:
-            "https://telescope.alessiobellino.com/stellarium-web-engine.wasm",
+            "stellarium-web-engine.wasm",
         canvas: document.getElementById("stel-canvas"),
         async onReady(stel) {
             engine = stel;
@@ -104,12 +104,12 @@ function initializeStelEngine(isTelescope = false) {
                         key: "mpc_comets",
                     })
                 );
-                dataSourcePromises.push(
-                    core.satellites.addDataSource({
-                        url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
-                        key: "jsonl/sat",
-                    })
-                );
+                // dataSourcePromises.push(
+                //     core.satellites.addDataSource({
+                //         url: baseUrl + "skysources/v1/tle_satellite.jsonl.gz?v=2019-09-16",
+                //         key: "jsonl/sat",
+                //     })
+                // );
 
                 [
                     "moon",
@@ -175,12 +175,17 @@ function initializeStelEngine(isTelescope = false) {
                         const ra = stel.anp(coords[0]);
                         const dec = stel.anpm(coords[1]);
                         const mag = s.getInfo("vmag");
+
+                        const altaz = getObjAltAz(s);
+
                         info.innerHTML = `
                           <h3>${name}</h3>
                           <p><strong>Magnitude:</strong> ${mag !== undefined ? mag.toFixed(2) : "Unknown"
                             }</p>
                           <p><strong>Ra:</strong> ${ra.toFixed(3)}</p>
-                          <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>`;
+                          <p><strong>Dec:</strong> ${dec.toFixed(3)}</p>
+                          <p><strong>Alt:</strong> ${altaz.alt.toFixed(3)}°</p>
+                          <p><strong>Az:</strong> ${altaz.az.toFixed(3)}°</p>`;
                         info.style.display = "block";
                     } else {
                         info.style.display = "none";

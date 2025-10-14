@@ -27,3 +27,4 @@ function setDatetimeInterval() {
 function clearDatetimeInterval() {
   clearInterval(datetimeInterval);
 }
+
