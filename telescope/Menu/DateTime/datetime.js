@@ -1,3 +1,4 @@
+import { updateDate } from "../../../util/time.js";
 import { luxon } from "../../utils/luxon.js";
 
 let datetimeLoaded = false;
@@ -6,7 +7,7 @@ export function displayDateTime(e) {
   if (optionSelection(e)) return;
   
   if (!datetimeLoaded) {
-    setLoading(true, menuLoadingElement);
+    setLoading(true);
     let section = `
       <section id="datetimeSection">
         <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
@@ -43,7 +44,7 @@ export function displayDateTime(e) {
   setTimeout(() => {
     showTimeSelector();
     createInterval();
-    setLoading(false, menuLoadingElement);
+    setLoading(false);
   }, 100);
 
 }

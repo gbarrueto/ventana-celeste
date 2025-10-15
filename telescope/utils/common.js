@@ -2,7 +2,7 @@ import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
 import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu/menu.js';
-import { displayDateTime } from '../Menu/DateTime/datetime.js';
+import { applyCurrentDate, displayDateTime, setSpeed } from '../Menu/DateTime/datetime.js';
 import { displayGlobe } from "../Menu/Location/globe.js";
 import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
 import { getUtcOffset, updateTimeZone } from "../Menu/Location/location.js";
@@ -66,7 +66,7 @@ function setLoading(state = true) {
 }
 
 function setModeSettings(mode) {
-  viewControlsButton.disabled = mode == 'simple';
+  // viewControlsButton.disabled = mode == 'simple';
   Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
     "index.html"
   );
@@ -242,6 +242,8 @@ function setWindowFunctions() {
   window.updateTimeZone = updateTimeZone;
   window.updatePollution = updatePollution;
   window.applyLocation = applyLocation;
+  window.setSpeed = setSpeed;
+  window.applyCurrentDate = applyCurrentDate;
 }
 
 function addMenuElement() {
