@@ -1,4 +1,3 @@
-
 /* FOV */
 
 let oldFov;
@@ -9,7 +8,6 @@ const minLogFov = Math.log(MIN_FOV);
 const maxLogFov = Math.log(MAX_FOV);
 let logFov = maxLogFov;
 let current_fov = 3;
-
 
 /* FOCUS */
 
@@ -24,14 +22,15 @@ const sensitivity = 0.5;
 let currentBlur = 5;
 let blurTarget = currentBlur;
 
-let selectedCity = 'Santiago';
-let cities = cities_data;
+// let selectedCity = 'Santiago';
+// let cities = cities_data;
+// 
+// const defaultCityData = cities[selectedCity]
 
-const defaultCityData = cities[selectedCity]
-let currentLat = defaultCityData.lat;
-let currentLon = defaultCityData.lon;
-let currentElev = defaultCityData.elev;
-let currentTZ = defaultCityData.tz;
+let currentLat = null;
+let currentLon = null;
+let currentElev = null;
+let currentTZ = -4;
 
 const fovDisplay = document.getElementById("fovDisplay");
 const touchArea = document.getElementById("touchArea");
@@ -39,12 +38,13 @@ const touchArea = document.getElementById("touchArea");
 // const blurSlider = document.getElementById('focusSlider');
 // const blurText = document.getElementById('blurText');
 
-const zoomOptions = document.getElementById('zoomOptions')
+const zoomOptions = document.getElementById("zoomOptions");
 
-const menu = document.getElementById('menuContainer');
-const interactionSection = document.getElementById('interactionSection');
-const menuInteractionSection = document.getElementById('menuInteractionSection');
-
+const menu = document.getElementById("menuContainer");
+const interactionSection = document.getElementById("interactionSection");
+const menuInteractionSection = document.getElementById(
+  "menuInteractionSection"
+);
 
 /********************************************************************
 ********************************************************************
@@ -81,9 +81,7 @@ interactionSection.appendChild(globeDiv);
 // Inicializar globo
 let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
 let globe = Globe()(globeDiv)
-  .globeImageUrl(
-    "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-  )
+  .globeImageUrl("//unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
   .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
   .pointAltitude("size")
   .pointColor("color")
@@ -99,89 +97,35 @@ mapDiv.style.width = "100%";
 mapDiv.style.height = "98%";
 interactionSection.appendChild(mapDiv);
 
-
 // Seeing
-let seeingSection = document.createElement('section');
-seeingSection.id = 'seeingOptionSection';
+let seeingSection = document.createElement("section");
+seeingSection.id = "seeingOptionSection";
 let seeingSliders = [
   {
-    id: 'turbulenceAmount',
-    target: 'turbulence',
-    labelText: 'Intensidad turbulencia',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
+    id: "Perturbacion Atmosferica",
+    target: "disturbance",
+    labelText: "Intensidad turbulencia",
+    labelElement: document.createElement("label"),
+    sliderElement: document.createElement("input"),
     min: 0,
-    max: 20,
-    value: 5,
-    step: 1,
-  },
-  {
-    id: 'turbulenceSpeed',
-    target: 'speed',
-    labelText: 'Velocidad turbulencia',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 300,
-    value: 5,
-    step: 1,
-  },
-  {
-    id: 'focus',
-    target: 'focus',
-    labelText: 'Enfoque',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 10,
-    value: 0,
-    step: 0.1,
-  },
-  {
-    id: 'saturation',
-    target: 'saturation',
-    labelText: 'Saturacion',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 2,
-    value: 1,
-    step: 0.05,
-  },
-  {
-    id: 'noise',
-    target: 'noise',
-    labelText: 'Ruido',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 1,
-    value: 0.1,
-    step: 0.01,
-  },
-  {
-    id: 'chaos',
-    target: 'chaos',
-    labelText: 'Caos',
-    labelElement: document.createElement('label'),
-    sliderElement: document.createElement('input'),
-    min: 0,
-    max: 10,
+    max: 100,
     value: 0,
     step: 1,
   },
-]
+];
 
 for (let element of seeingSliders) {
   element.labelElement.textContent = element.labelText;
-  element.sliderElement.type = 'range'
+  element.sliderElement.type = "range";
   element.sliderElement.min = element.min;
   element.sliderElement.max = element.max;
   element.sliderElement.value = element.value;
   element.sliderElement.step = element.step;
-  element.sliderElement.classList.add('slider', 'h-slider')
-  element.sliderElement.addEventListener('input', (e) => sendSeeingValue({ target: element.target, value: e.target.value }))
-  const container = document.createElement('div');
+  element.sliderElement.classList.add("slider", "h-slider");
+  element.sliderElement.addEventListener("input", (e) =>
+    sendSeeingValue({ target: element.target, value: e.target.value })
+  );
+  const container = document.createElement("div");
   container.id = element.id;
   container.appendChild(element.labelElement);
   container.appendChild(element.sliderElement);
@@ -190,22 +134,22 @@ for (let element of seeingSliders) {
 interactionSection.appendChild(seeingSection);
 
 function sendSeeingValue({ target, value }) {
-  console.log('****************Seeing:', target, value)
+  // console.log('****************Seeing:', target, value)
   Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
 }
 
 /*******************************************************************
-********************************************************************/
+ ********************************************************************/
 
-const modeContainer = document.getElementById('modeContent');
+const modeContainer = document.getElementById("modeContent");
 
-const modeButtonElement = document.getElementById('modeButton');
+const modeButtonElement = document.getElementById("modeButton");
 
 let latInput = undefined;
 let lonInput = undefined;
 let elevInput = undefined;
 
-let autoPollutionCheckbox = document.getElementById('autoPollutionCheckbox');
+let autoPollutionCheckbox = document.getElementById("autoPollutionCheckbox");
 let pollutionInput = document.querySelector("#pollutionSlider");
 pollutionInput.addEventListener("input", () => {
   // Bortle index 1-9
@@ -213,7 +157,10 @@ pollutionInput.addEventListener("input", () => {
 
   const skyMag = bortleToMag(parseInt(pollution));
 
-  Protobject.Core.send({msg:"updatePollution", values: { mag: skyMag }}).to("index.html");
+  // To guidescope
+  applyPollution({ mag: skyMag });
+  // To telescope
+  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
   // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
 
@@ -227,12 +174,12 @@ let lastManualChange = 0;
 let engineUTC = null;
 let timeSpeed = 0;
 
-let pollution = cities[selectedCity].contaminacion;
+let pollution = 9;
 
 let modes = {
   simple: true,
-  advanced: false
-}
+  advanced: false,
+};
 
 const BUTTONS = {
   constellations: {
@@ -281,7 +228,6 @@ const BUTTONS = {
 
 // Inverse conversion. Since mag is a range, return a random value in the range
 function bortleToMag(bortle) {
-
   switch (bortle) {
     case 1:
       return (22.0 + 21.99) / 2 + Math.random() * 0.1; // Cielo prístino

@@ -24,4 +24,41 @@ function stellariumOption({ path, attr }) {
     if (obj) {
         obj[attr] = !obj[attr];
     }
+    // Atm OFF -> Disable atmospheric effects (pollution, seeing, etc)
+    if (path === "atmosphere" && attr === "visible") {
+
+        console.log("Atmosphere toggled:", obj[attr]);
+        console.log("Current SQM:", SQM_READING);
+        obj[attr] ? applyPollution({ mag: SQM_READING }) : applyPollution({ mag: 22 });
+        // TODO: Disable seeing effects
+    }
+}
+
+function setEyepieceOverlayOpacity(opacity) {
+    const overlay = document.getElementById('eyepiece-overlay');
+    overlay.style.opacity = opacity;
+}
+
+function setSeeingOpacity(opacity) {
+    const seeing = document.getElementById('effect-canvas');
+    seeing.style.opacity = opacity;
+}
+
+function enableSimpleModeSettings() {
+    engine.core.planets.hints_visible = true;
+    engine.core.minor_planets.hints_visible = true;
+    engine.core.stars.hints_visible = true;
+    engine.core.cardinals.visible = true;
+    setEyepieceOverlayOpacity(0);
+    setSeeingOpacity(0);
+    updateStellariumBlur({ blur: 0 })
+}
+
+function enableAdvancedModeSettings() {
+    engine.core.planets.hints_visible = false;
+    engine.core.minor_planets.hints_visible = false;
+    engine.core.stars.hints_visible = false;
+    engine.core.cardinals.visible = false;
+    setEyepieceOverlayOpacity(1);
+    setSeeingOpacity(1);
 }

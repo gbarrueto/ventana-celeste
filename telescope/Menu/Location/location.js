@@ -1,25 +1,19 @@
-// Variables para mapa y capas
 let map;
 let standard, lightpollution2024;
-let control;
+let lastSentCenter = null;
+let sendInterval;
 
 // Función para mostrar el mapa
 function displayMap(e) {
-  if (optionSelection(e)) return; // mantiene la selección de botón
+  if (optionSelection(e)) return;
 
-  // Crear div del mapa si no existe
   let mapDiv = document.getElementById("map");
-    // mapDiv.style.display = "block";
   mapDiv.classList.add("active");
 
-  // Inicializar Leaflet solo una vez
   if (!mapDiv._leaflet_id) {
-    // Base OSM
     standard = L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     );
-
-    // Capa contaminación lumínica 2024
     lightpollution2024 = L.tileLayer(
       "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
       {
@@ -32,7 +26,6 @@ function displayMap(e) {
       }
     );
 
-    // Crear mapa sin botones de zoom ni escala
     map = L.map("map", {
       center: [currentLat || -33.45, currentLon || -70.66],
       zoom: 6,
@@ -41,7 +34,6 @@ function displayMap(e) {
       attributionControl: false,
     });
 
-    // Geocoder (solo búsqueda, sin marcador en mapa)
     const geocoder = L.Control.geocoder({ defaultMarkGeocode: false })
       .on("markgeocode", function (e) {
         const center = e.geocode.center;
@@ -50,17 +42,71 @@ function displayMap(e) {
       })
       .addTo(map);
 
-    // Click → enviar coordenadas directo
-    map.on("click", function (e) {
-      sendCoordinates({ lat: e.latlng.lat, lon: e.latlng.lng });
-    });
+    // Quitar envío directo al click (opcional)
+    // map.on("click", function (e) {
+    //   sendCoordinates({ lat: e.latlng.lat, lon: e.latlng.lng });
+    // });
+
+    // Crear un icono fijo en el centro del mapa (superpuesto en el div)
+    addCenterMarker();
+
+    // Iniciar intervalo para enviar coordenadas del centro si cambian
+    startCenterCoordinateSending();
   }
+}
+
+function addCenterMarker() {
+  // Crea un div con la persona/flecha en el centro del mapa
+  const mapDiv = document.getElementById("map");
+
+  // Crear elemento sólo si no existe
+  if (!document.getElementById("centerMarker")) {
+    const markerDiv = document.createElement("div");
+    markerDiv.id = "centerMarker";
+    markerDiv.style.position = "absolute";
+    markerDiv.style.top = "50%";
+    markerDiv.style.left = "50%";
+    markerDiv.style.height = "10px";
+    markerDiv.style.width = "10px";
+    markerDiv.style.backgroundColor = "red";
+    markerDiv.style.borderRadius = "50%";
+    markerDiv.style.transform = "translate(-50%, -50%)";
+    markerDiv.style.pointerEvents = "none"; // Para que el div no interfiera con eventos del mapa
+    markerDiv.style.zIndex = 1000;
+
+    // Aquí puedes poner un icono o emoji o imagen para la persona
+
+    mapDiv.appendChild(markerDiv);
+  }
+}
+
+function startCenterCoordinateSending() {
+  // Limpia intervalos anteriores
+  if (sendInterval) clearInterval(sendInterval);
+
+  sendInterval = setInterval(() => {
+    if (!map) return;
+
+    const center = map.getCenter();
+    const lat = center.lat.toFixed(6);
+    const lon = center.lng.toFixed(6);
+
+    // Comparar con última coordenada enviada
+    if (
+      !lastSentCenter ||
+      lastSentCenter.lat !== lat ||
+      lastSentCenter.lon !== lon
+    ) {
+      lastSentCenter = { lat, lon };
+      sendCoordinates({ lat: parseFloat(lat), lon: parseFloat(lon) });
+    }
+  }, 100);
 }
 
 // Enviar coordenadas a telescope
 async function sendCoordinates({ lat, lon }) {
   const pollution = await getMagFromLonLat({ lat, lon });
-  console.log("Pollution level:", pollution);
+  // console.log("Pollution level:", pollution);
 
   const elev = 0;
   const tz = getUtcOffset(lat, lon);
@@ -73,22 +119,23 @@ async function sendCoordinates({ lat, lon }) {
     lon,
     lat,
     elev,
-    mag: pollution  
+    mag: pollution,
   };
 
-  // Actualizar el punto en el globo
-  if (globe) {
-    globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
-    globe.pointsData(globePoint);
+  // // Actualizar el punto en el globo
+  // if (globe) {
+  //   globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
+  //   globe.pointsData(globePoint);
 
-    // Mover la cámara al nuevo punto
-    globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
-  }
+  //   // Mover la cámara al nuevo punto
+  //   globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
+  // }
 
-  if (map) {
-    map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
-  }
+  // if (map) {
+  // map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
+  // }
 
+  applyLocation(data); // Para guidescope
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 

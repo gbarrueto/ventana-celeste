@@ -488,11 +488,10 @@
           4
         )}`;
         globe.pointsData([{ lat, lng, size: 4, color: "red" }]);
-        globe.pointOfView({ lat, lng, altitude: 3 }, 50); // transición rápida
+        globe.pointOfView({ lat, lng, altitude: 3 }, 0); // transición rápida
 
         const now = Date.now();
-        if (now - lastSent >= 2000) {
-          // 2000 ms = 2 segundos
+        if (now - lastSent >= 100) {
           Protobject.Core.send({
             msg: "sendCoordinates",
             values: { lat: lat, lon: lng },

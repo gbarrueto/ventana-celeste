@@ -18,15 +18,13 @@ let datetimeInterval = null;
 function setDatetimeInterval() {
   datetimeInterval = setInterval(() => {
     Protobject.Core.send({
-      msg: "fixTime",
+      msg: "syncTime",
       values: { engineUTC: engine.core.observer.utc },
     }).to("telescope.html");
-    // Protobject.Core.send({ engineUTC: engine.core.observer.utc }).to(
-    //     "telescope.html"
-    // );
   }, 300);
 }
 
 function clearDatetimeInterval() {
   clearInterval(datetimeInterval);
 }
+
