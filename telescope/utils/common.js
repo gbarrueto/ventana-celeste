@@ -3,6 +3,10 @@ import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
 import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu/menu.js';
 import { displayDateTime } from '../Menu/DateTime/datetime.js';
+import { displayGlobe } from "../Menu/Location/globe.js";
+import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
+import { getUtcOffset, updateTimeZone } from "../Menu/Location/location.js";
+import { applyLocation } from "../../util/location.js";
 
 function loadScript(url, type) {    
     const head = document.getElementsByTagName('head')[0];
@@ -56,9 +60,9 @@ async function loadExtraScripts() {
   })
 }
 
-function setLoading(state = true, element) {
-  if (state === true) element.style.display = 'block';
-  else element.style.display = 'none';
+function setLoading(state = true) {
+  if (state === true) mainLoadingScreenElement.style.display = 'block';
+  else mainLoadingScreenElement.style.display = 'none';
 }
 
 function setModeSettings(mode) {
@@ -215,6 +219,12 @@ function bortleToMag(bortle) {
   }
 }
 
+function updatePollution() {
+  if (!pollutionInput) return;
+
+  pollutionInput.value = pollution;
+}
+
 function setWindowFunctions() {
   window.toggleMode = toggleMode;
   window.applyZoom = applyZoom;
@@ -224,8 +234,14 @@ function setWindowFunctions() {
   window.setLoading = setLoading;
   window.closeMenu = closeMenu;
   window.displayDateTime = displayDateTime;
+  window.displayGlobe = displayGlobe;
   window.optionSelection = optionSelection;
   window.bortleToMag = bortleToMag;
+  window.getMagFromLonLat = getMagFromLonLat;
+  window.getUtcOffset = getUtcOffset;
+  window.updateTimeZone = updateTimeZone;
+  window.updatePollution = updatePollution;
+  window.applyLocation = applyLocation;
 }
 
 function addMenuElement() {
@@ -381,7 +397,7 @@ async function main() {
     addZoomSliderEvent(zoomSlider);
     setWindowFunctions();
     initializeStelEngine(true);
-    setLoading(false, mainLoadingScreenElement);
+    setLoading(false);
     
   });
   

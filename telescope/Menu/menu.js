@@ -1,4 +1,5 @@
 import { addPollutionSliderEvent } from "../utils/events.js";
+import { pauseCesium } from "./Location/globe.js";
 
 let listenerLoaded = false;
 
@@ -10,10 +11,10 @@ export function createMenuElement() {
     <section class="header">
       <button class="image-button close-image" onclick="closeMenu()"></button>
       <div class="header-container">
-        <button class="button" onclick="displayMap(event)">
+        <!-- <button class="button" onclick="displayMap(event)">
           <p>Mapa</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
-        </button>
+        </button> -->
         <button class="button" onclick="displayGlobe(event)">
           <p>Globo</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
@@ -85,11 +86,8 @@ export function createMenuElement() {
       </section>
 
       <section id="interactionSection">
-        <div id="menuLoadingScreen" class="loading-screen">
-          <div class="loader"></div>
-        </div>
         <!-- Mapa -->
-        <div id="map" class="tab"></div>
+        <!-- <div id="map" class="tab"></div> -->
   
         <!-- Globo (Cesium) -->
         <div id="cesiumContainer" class="tab"></div>
@@ -103,9 +101,9 @@ export function createMenuElement() {
 export function openMenu() {
   menu.classList.add("active");
   if (!listenerLoaded) {
-    setLoading(true, mainLoadingScreenElement);
+    setLoading(true);
     addPollutionSliderEvent(pollutionInput);
-    setLoading(false, mainLoadingScreenElement);
+    setLoading(false);
   }
 }
 

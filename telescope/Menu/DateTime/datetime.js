@@ -1,3 +1,5 @@
+import { luxon } from "../../utils/luxon.js";
+
 let datetimeLoaded = false;
 
 export function displayDateTime(e) {
@@ -24,6 +26,7 @@ export function displayDateTime(e) {
       </section>
     `;
     interactionSection.insertAdjacentHTML("beforeend", section);
+    datetimeLoaded = true;
   }
 
   let datetimeSection = document.getElementById("datetimeSection");

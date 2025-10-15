@@ -401,6 +401,7 @@ body {
 #menuLoadingScreen {
   transform: translateY(0) !important;
   grid-row-start: 2 !important;
+  display: none !important;
 }
 
 .loader {

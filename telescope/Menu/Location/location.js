@@ -106,7 +106,7 @@ function startCenterCoordinateSending() {
 
 
 // --- Funciones auxiliares mínimas ---
-function getUtcOffset(lat, lon) {
+export function getUtcOffset(lat, lon) {
   const tz = tzlookup(lat, lon);
   const now = new Date();
   const options = { timeZone: tz, timeZoneName: "shortOffset" };
@@ -117,6 +117,6 @@ function getUtcOffset(lat, lon) {
   return match ? parseInt(match[1], 10) : 0;
 }
 
-function updateTimeZone(newTZ) {
+export function updateTimeZone(newTZ) {
   currentTZ = newTZ;
 }
