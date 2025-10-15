@@ -1,3 +1,5 @@
+import { updateStellariumView } from "../../util/stel.js";
+
 const Orientation = {
   oldX: null,
   oldY: null,

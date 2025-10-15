@@ -18,11 +18,11 @@ function loadScript(url, type) {
 
 async function loadScentialScripts() {
   let paths = [
-    { path: "telescope/utils/updateDisplay.js", type: 'module'},
-    { path: "telescope/Slider/slider.js", type: 'module'},
+    // { path: "telescope/utils/updateDisplay.js", type: 'module'},
+    // { path: "telescope/Slider/slider.js", type: 'module'},
     { path: "telescope/utils/stellarium.js", type: 'module'},
-    { path: "telescope/utils/events.js", type: 'module'},
-    { path: "util/time.js", type: 'module'},
+    // { path: "telescope/utils/events.js", type: 'module'},
+    // { path: "util/time.js", type: 'module'},
   ]
 
   paths.forEach((content) => {
@@ -244,6 +244,7 @@ function setWindowFunctions() {
   window.applyLocation = applyLocation;
   window.setSpeed = setSpeed;
   window.applyCurrentDate = applyCurrentDate;
+  window.unwrapAngle = unwrapAngle;
 }
 
 function addMenuElement() {
@@ -370,7 +371,7 @@ let modeTextElement;
 let modeButtonElement;
 
 async function main() {
-  // await loadScentialScripts();
+  await loadScentialScripts();
   // setTimeout(() => loadExtraScripts(), 1000);
 
   mainLoadingScreenElement = document.getElementById('mainLoadingScreen');
