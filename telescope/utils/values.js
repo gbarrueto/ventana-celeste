@@ -22,14 +22,15 @@ const sensitivity = 0.5;
 let currentBlur = 5;
 let blurTarget = currentBlur;
 
-let selectedCity = "Santiago";
-let cities = cities_data;
+// let selectedCity = 'Santiago';
+// let cities = cities_data;
+// 
+// const defaultCityData = cities[selectedCity]
 
-const defaultCityData = cities[selectedCity];
-let currentLat = defaultCityData.lat;
-let currentLon = defaultCityData.lon;
-let currentElev = defaultCityData.elev;
-let currentTZ = defaultCityData.tz;
+let currentLat = null;
+let currentLon = null;
+let currentElev = null;
+let currentTZ = -4;
 
 const fovDisplay = document.getElementById("fovDisplay");
 const touchArea = document.getElementById("touchArea");
@@ -133,10 +134,8 @@ for (let element of seeingSliders) {
 interactionSection.appendChild(seeingSection);
 
 function sendSeeingValue({ target, value }) {
-  console.log("****************Seeing:", target, value);
-  Protobject.Core.send({ msg: "seeingOption", values: { target, value } }).to(
-    "index.html"
-  );
+  // console.log('****************Seeing:', target, value)
+  Protobject.Core.send({ msg: 'seeingOption', values: { target, value } }).to("index.html");
 }
 
 /*******************************************************************
@@ -158,9 +157,10 @@ pollutionInput.addEventListener("input", () => {
 
   const skyMag = bortleToMag(parseInt(pollution));
 
-  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to(
-    "index.html"
-  );
+  // To guidescope
+  applyPollution({ mag: skyMag });
+  // To telescope
+  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
   // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 });
 
@@ -174,7 +174,7 @@ let lastManualChange = 0;
 let engineUTC = null;
 let timeSpeed = 0;
 
-let pollution = cities[selectedCity].contaminacion;
+let pollution = 9;
 
 let modes = {
   simple: true,

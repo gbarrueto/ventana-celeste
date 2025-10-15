@@ -3,7 +3,7 @@ function displayDateTime(e) {
 
   let datetimeSection = document.getElementById("datetimeSection");
 
-  let localTime = new Date();
+  // let localTime = new Date();
 
   // datetimeSection.style.display = 'flex';
   // datetimeSection.style.transform = 'translateY(0)';
@@ -32,15 +32,14 @@ function setSpeed(multiplier) {
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
-function updateDate(date) {
+function updateStelDate(date) {
+
   const mjd = isoToMJD(date);
 
-  //console.log("Sending MJD to engine:", mjd);
+  // console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to(
-    "index.html"
-  );
-  // change local time
+  Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to("index.html");
+  // change guidescope time
   engine.core.observer.utc = mjd;
 }
 
@@ -131,12 +130,17 @@ function showTimeSelector() {
         const date = selectedDates[0];
         const dateTZ = getISOWithTZ(date);
         //console.log("Non ISO DATE onUpdate", selectedDates[0]);
-        //console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
+
         lastManualChange = Date.now();
-        updateDate(dateTZ);
-        updateDateTimeout = null;
+        // console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
+        updateStelDate(dateTZ);
+        // updateDateTimeout = null;
+
+        isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
+        Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
+
       }
-    },
+    }
   });
 
   // Sincronización periódica con el engine

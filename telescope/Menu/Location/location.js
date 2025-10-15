@@ -106,7 +106,7 @@ function startCenterCoordinateSending() {
 // Enviar coordenadas a telescope
 async function sendCoordinates({ lat, lon }) {
   const pollution = await getMagFromLonLat({ lat, lon });
-  console.log("Pollution level:", pollution);
+  // console.log("Pollution level:", pollution);
 
   const elev = 0;
   const tz = getUtcOffset(lat, lon);
@@ -135,6 +135,7 @@ async function sendCoordinates({ lat, lon }) {
   // map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
   // }
 
+  applyLocation(data); // Para guidescope
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 

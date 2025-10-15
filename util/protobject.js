@@ -9,6 +9,7 @@ const functionMap = {
   "setDatetimeInterval": () => setDatetimeInterval(),
   "clearDatetimeInterval": () => clearDatetimeInterval(),
   "updatePollution": applyPollution,
+  "togglePollution": togglePollutionOverlay,
   "stellariumOption": stellariumOption,
   "arduinoCommand": arduinoCommand,
   "seeingOption": applySeeingOption,
@@ -19,16 +20,18 @@ const functionMap = {
 Protobject.Core.onReceived((data) => {
   const { msg, values } = data;
 
-  console.log("Data received");
-
   if (msg && functionMap[msg]) {
     const targetFunction = functionMap[msg];
 
     if (typeof targetFunction === "function") {
-      console.log(`Ejecutando función: ${msg} con valores:`, values);
+      // console.log(`Ejecutando función: ${msg} con valores:`, values);
       targetFunction(values);
     }
   } else {
     console.warn(`Función no encontrada para el mensaje: ${msg}`);
   }
+});
+
+Protobject.Core.onConnected(() => {
+  console.log("new connection to index.html");
 });
