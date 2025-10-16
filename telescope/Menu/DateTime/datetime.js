@@ -20,10 +20,12 @@ function displayDateTime(e) {
 
 function applyCurrentDate() {
   const dateTZ = getISOWithTZ(new Date());
-  updateDate(dateTZ);
+  updateStelDate(dateTZ); // For guide scope and main scope
+  setFlatpickrTime(activeFlatpickr, dateTZ);
 }
 
 function setSpeed(multiplier) {
+  // console.log("Set speed called with:", multiplier);
   Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
     "index.html"
   );
@@ -41,6 +43,8 @@ function updateStelDate(date) {
   Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to("index.html");
   // change guidescope time
   engine.core.observer.utc = mjd;
+
+
 }
 
 function createInterval() {
@@ -109,6 +113,12 @@ function updateSpeedButtons() {
       btn.classList.toggle("active", match);
     });
 }
+// date is ISO String in UTC
+function setFlatpickrTime(flatpickrInstance, date) {
+  if (!flatpickrInstance) return;
+  flatpickrInstance.setDate(date, false);
+
+}
 
 function showTimeSelector() {
   if (activeFlatpickr) return;
@@ -152,8 +162,8 @@ function showTimeSelector() {
 
     if (!isUserTouchingCalendar && !recentlyChanged) {
       const dateTime = fromMJDToLuxon(engineUTC, currentTZ);
-      // const time = fromMJDToDate(engineUTC);
-      activeFlatpickr.setDate(dateTime.toISO(), false);
+
+      setFlatpickrTime(activeFlatpickr, dateTime.toISO());
     }
   }, 300);
 }
