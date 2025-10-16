@@ -5,7 +5,6 @@ import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu
 import { applyCurrentDate, displayDateTime, setSpeed } from '../Menu/DateTime/datetime.js';
 import { displayGlobe } from "../Menu/Location/globe.js";
 import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
-import { getUtcOffset, updateTimeZone } from "../Menu/Location/location.js";
 import { applyLocation } from "../../util/location.js";
 
 function loadScript(url, type) {    
@@ -18,41 +17,7 @@ function loadScript(url, type) {
 
 async function loadScentialScripts() {
   let paths = [
-    // { path: "telescope/utils/updateDisplay.js", type: 'module'},
-    // { path: "telescope/Slider/slider.js", type: 'module'},
     { path: "telescope/utils/stellarium.js", type: 'module'},
-    // { path: "telescope/utils/events.js", type: 'module'},
-    // { path: "util/time.js", type: 'module'},
-  ]
-
-  paths.forEach((content) => {
-    loadScript(content.path, content.type);
-  })
-}
-
-async function loadExtraScripts() {
-  let paths = [
-    { path: "https://unpkg.com/three", type: 'module' },
-    { path: "https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js", type: 'text/javascript' },
-    { path: "https://unpkg.com/browser-geo-tz@latest/dist/geotz.js", type: 'text/javascript' },
-    // { path: "https://cdn.jsdelivr.net/npm/flatpickr", type: 'text/javascript' },
-    { path: "https://unpkg.com/globe.gl", type: 'text/javascript' },
-    { path: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", type: 'text/javascript' },
-    { path: "telescope/utils/lp/pako_inflate.min.js", type: 'text/javascript' },
-    { path: "telescope/utils/lp/getLpFromCoords.js", type: 'text/javascript' },
-    { path: "telescope/Menu/DateTime/datetime.js", type: 'module' },
-    { path: "telescope/Menu/Location/location.js", type: 'module' },
-    { path: "telescope/Menu/Location/globe.js", type: 'text/javascript' },
-    { path: "telescope/Menu/Seeing/seeing.js", type: 'module' },
-    { path: "telescope/Menu/Pollution/pollution.js", type: 'module' },
-    { path: "telescope/utils/luxon.js", type: 'text/javascript' },
-    { path: "util/Control.Geocoder.js", type: 'text/javascript' },
-    { path: "util/L.Control.Range.js", type: 'text/javascript' },
-    { path: "limit_mag/limit_magnitude.js", type: 'module' },
-    { path: "util/overlay.js", type: 'module' },
-    { path: "util/location.js", type: 'module' },
-    { path: "util/stel.js", type: 'module' },
-    { path: "telescope/utils/tz.js", type: 'text/javascript' },
   ]
 
   paths.forEach((content) => {
@@ -106,42 +71,6 @@ function toggleMode() {
 
 }
 
-function enableFinderMode() {
-  if (advancedModeWarningText === undefined) {
-    advancedModeWarningText = document.querySelector(
-      "#advancedMode .alert-text"
-    );
-  }
-  const buttons = document.querySelectorAll("#lensContainer button");
-
-  advancedModeWarningText.style.opacity = 1;
-  buttons.forEach((btn) => {
-    btn.disabled = true;
-  });
-}
-
-function disableFinderMode() {
-  if (advancedModeWarningText === undefined) {
-    advancedModeWarningText = document.querySelector(
-      "#advancedMode .alert-text"
-    );
-  }
-  advancedModeWarningText.style.opacity = 0;
-
-  const buttons = document.querySelectorAll("#lensContainer button");
-
-  buttons.forEach((btn) => {
-    btn.disabled = false;
-  });
-}
-
-function updateBlur(direction = 1) {
-  currentBlur += direction * 0.001;
-  currentBlur = Math.max(0, Math.min(10, currentBlur));
-
-  updateDisplayBlur();
-}
-
 function autoPollution() {
   if (autoPollutionCheckbox.checked == true) {
     pollutionInput.style.opacity = 0;
@@ -158,12 +87,6 @@ function unwrapAngle(newAngle, prevAngle) {
   if (delta < -Math.PI) delta += 2 * Math.PI;
   return prevAngle + delta;
 }
-
-
-function toggleZoomOptions() {
-  zoomOptions.classList.toggle('visible');
-}
-
 
 function applyZoom(selected_eyepiece_fl, event) {
   const button = document.querySelector(
@@ -225,6 +148,21 @@ function updatePollution() {
   pollutionInput.value = pollution;
 }
 
+function getUtcOffset(lat, lon) {
+  const tz = tzlookup(lat, lon);
+  const now = new Date();
+  const options = { timeZone: tz, timeZoneName: "shortOffset" };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(now);
+  const offsetPart = parts.find((p) => p.type === "timeZoneName");
+  const match = offsetPart.value.match(/GMT([+-]\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function updateTimeZone(newTZ) {
+  currentTZ = newTZ;
+}
+
 function setWindowFunctions() {
   window.toggleMode = toggleMode;
   window.applyZoom = applyZoom;
@@ -248,9 +186,10 @@ function setWindowFunctions() {
 }
 
 function addMenuElement() {
-  const element = document.getElementById('startContainer');
-  const menuElement = createMenuElement();
-  element.after(menuElement);
+  // const element = document.getElementById('startContainer');
+  const menuElement = document.getElementById('menuContainer');
+  createMenuElement(menuElement);
+  // element.after(menuElement);
   const pollutionInput = document.getElementById("pollutionSlider");
   window.pollutionInput = pollutionInput;
   window.menu = menuElement;
@@ -372,7 +311,6 @@ let modeButtonElement;
 
 async function main() {
   await loadScentialScripts();
-  // setTimeout(() => loadExtraScripts(), 1000);
 
   mainLoadingScreenElement = document.getElementById('mainLoadingScreen');
 

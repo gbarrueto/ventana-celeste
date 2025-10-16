@@ -3,11 +3,8 @@ import { pauseCesium } from "./Location/globe.js";
 
 let listenerLoaded = false;
 
-export function createMenuElement() {
-  const menuElement = document.createElement('div');
-  menuElement.id = 'menuContainer';
-  menuElement.classList.add('main-container');
-  menuElement.innerHTML = `
+export function createMenuElement(menuElement) {
+  const content = `
     <section class="header">
       <button class="image-button close-image" onclick="closeMenu()"></button>
       <div class="header-container">
@@ -95,7 +92,9 @@ export function createMenuElement() {
     </section>
   `
 
-  return menuElement;
+  menuElement.insertAdjacentHTML('beforeend', content);
+
+  // return menuElement;
 }
 
 export function openMenu() {

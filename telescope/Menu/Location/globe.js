@@ -187,7 +187,7 @@ function startCesiumInterval() {
       lastSentCesiumCoords.lat !== latNum ||
       lastSentCesiumCoords.lon !== lonNum
     ) {
-      console.log("Centro del globo:", { lat: latNum, lon: lonNum });
+      // console.log("Centro del globo:", { lat: latNum, lon: lonNum });
 
       lastSentCesiumCoords = { lat: latNum, lon: lonNum };
       sendCoordinates({ lat: latNum, lon: lonNum });

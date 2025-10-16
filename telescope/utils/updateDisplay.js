@@ -35,17 +35,3 @@ export function updateDisplayBlur() {
   Protobject.Core.send({msg:"updateBlur", values: { blur: blurEffect } }).to("index.html");
   
 }
-
-export function toggleEyepieceOverlay(eyepieceSignal, event) {
-  const button = document.querySelector(
-    '#viewModeContainer .active'
-  );
-  if (button) {
-    button.classList.toggle('active')
-  }
-  event.target.classList.toggle('active');
-
-  eyepieceSignal ? disableFinderMode() : enableFinderMode();
-
-  Protobject.Core.send({ msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
-}
