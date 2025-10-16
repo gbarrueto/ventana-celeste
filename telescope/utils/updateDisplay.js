@@ -1,5 +1,8 @@
 
-function updateDisplayFov() {
+let oldFov = 3;
+let blurTarget = 5;
+
+export function updateDisplayFov() {
   const fov = logFov;
 
   if (oldFov !== fov) {
@@ -21,7 +24,7 @@ function updateDisplayFov() {
 }
 
 
-function updateDisplayBlur() {
+export function updateDisplayBlur() {
   const diff = Math.abs(currentBlur - blurTarget);
 
   const zoomLevel = (Math.log(MAX_FOV) - logFov) / (Math.log(MAX_FOV) - Math.log(MIN_FOV));
@@ -34,18 +37,4 @@ function updateDisplayBlur() {
 
   Protobject.Core.send({msg:"updateBlur", values: { blur: blurEffect } }).to("index.html");
   
-}
-
-function toggleEyepieceOverlay(eyepieceSignal, event) {
-  const button = document.querySelector(
-    '#viewModeContainer .active'
-  );
-  if (button) {
-    button.classList.toggle('active')
-  }
-  event.target.classList.toggle('active');
-
-  eyepieceSignal ? disableFinderMode() : enableFinderMode();
-
-  Protobject.Core.send({ msg:"toggleEyepiece", values: { signal: eyepieceSignal } }).to("index.html");
 }
