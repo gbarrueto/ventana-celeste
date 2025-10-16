@@ -1,19 +1,18 @@
-async function applyLocation({
-  cityName = "Custom",
-  lat = 0,
-  lon = 0,
-  elev = 0,
-  mag = null,
+import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
+import { updatePollutionOverlay } from "./overlay.js";
+
+export async function applyLocation({
+    cityName = "Custom",
+    lat = 0,
+    lon = 0,
+    elev = 0,
+    mag = null
 }) {
   if (!engine) return;
 
   engine.core.observer.latitude = lat * (Math.PI / 180);
   engine.core.observer.longitude = lon * (Math.PI / 180);
   engine.core.observer.elevation = elev;
-
-    currentLat = lat;
-    currentLon = lon;
-    currentElev = elev;
 
     // Set LP to new location
 
@@ -24,7 +23,7 @@ async function applyLocation({
   //console.log("Bortle index for", cityName, ":", bortle_index);
 }
 
-function applyPollution({ mag = 20 }) {
+export function applyPollution({ mag = 20 }) {
     if (!engine?.core) return;
 
     SQM_READING = mag;
@@ -47,7 +46,7 @@ function applyPollution({ mag = 20 }) {
 // Convertion src: https://www.handprint.com/ASTRO/bortle.html
 // Nota: LPMap asigna escala 8-9 en ciudades ya que no es claro diferenciar si se está en el centro o en las afueras.
 // Aqui dejamos un valor de 16.53 como limite de la escala 8 pues es cercano al brillo del cielo al alejarse del centro urbano, pero no es exacto.
-function magToBortle(magArcsec2) {
+export function magToBortle(magArcsec2) {
     if (magArcsec2 > 21.99) return 1; // Cielo prístino
     if (magArcsec2 > 21.89) return 2; // Cielo excelente
     if (magArcsec2 > 21.69) return 3; // Cielo rural

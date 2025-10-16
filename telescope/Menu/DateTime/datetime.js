@@ -1,13 +1,41 @@
-function displayDateTime(e) {
+import { updateDate } from "../../../util/time.js";
+import { luxon } from "../../utils/luxon.js";
+
+let datetimeLoaded = false;
+let timeSpeed = 0;
+let activeFlatpickr = null;
+let flatpickrSyncInterval = null; // Evita perder el intervalo
+let lastManualChange = 0;
+let isUserTouchingCalendar = false;
+
+export function displayDateTime(e) {
   if (optionSelection(e)) return;
+  
+  if (!datetimeLoaded) {
+    setLoading(true);
+    let section = `
+      <section id="datetimeSection">
+        <div id="datetime-picker" style="margin-bottom: 1rem; width: 100%; display: flex; justify-content: center;"></div>
+    
+        <div style="width: 90%;display: flex;flex-direction: column;align-self: center;">
+          <button class="control-button" onclick="applyCurrentDate()">Hora Actual</button>
+          <div class="grid-container" style="grid-template-columns: auto auto;">
+            <button class="control-button" onclick="setSpeed(0)">🟥 Stop</button>
+            <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
+          </div>
+          <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
+            <button class="control-button" onclick="setSpeed(10)">⏩ 10 segundos/s</button>
+            <button class="control-button" onclick="setSpeed(60)">⏩ 1 minuto/s</button>
+            <button class="control-button" onclick="setSpeed(3600)">⏩ 1 hora/s</button>
+          </div>
+        </div>
+      </section>
+    `;
+    interactionSection.insertAdjacentHTML("beforeend", section);
+    datetimeLoaded = true;
+  }
 
   let datetimeSection = document.getElementById("datetimeSection");
-
-  // let localTime = new Date();
-
-  // datetimeSection.style.display = 'flex';
-  // datetimeSection.style.transform = 'translateY(0)';
-
   datetimeSection.classList.add("active");
 
   updateSpeedButtons();
@@ -15,17 +43,18 @@ function displayDateTime(e) {
   setTimeout(() => {
     showTimeSelector();
     createInterval();
+    setLoading(false);
   }, 100);
+
 }
 
-function applyCurrentDate() {
+export function applyCurrentDate() {
   const dateTZ = getISOWithTZ(new Date());
   updateStelDate(dateTZ); // For guide scope and main scope
   setFlatpickrTime(activeFlatpickr, dateTZ);
 }
 
-function setSpeed(multiplier) {
-  // console.log("Set speed called with:", multiplier);
+export function setSpeed(multiplier) {
   Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
     "index.html"
   );
@@ -34,7 +63,7 @@ function setSpeed(multiplier) {
 }
 // Send time in MJD to engine
 // date is ISO String in UTC
-function updateStelDate(date) {
+export function updateStelDate(date) {
 
   const mjd = isoToMJD(date);
 
@@ -47,25 +76,25 @@ function updateStelDate(date) {
 
 }
 
-function createInterval() {
+export function createInterval() {
   Protobject.Core.send({
     msg: "setDatetimeInterval",
     values: { active: true },
   }).to("index.html");
 }
 
-function isoToMJD(isoString) {
+export function isoToMJD(isoString) {
   const date = new Date(isoString);
   const jd = date.getTime() / 86400000 + 2440587.5;
   return jd - 2400000.5;
 }
 
-function fromMJDToDate(mjd) {
+export function fromMJDToDate(mjd) {
   const jd = mjd + 2400000.5;
   return new Date((jd - 2440587.5) * 86400000);
 }
 
-function getISOWithTZ(date) {
+export function getISOWithTZ(date) {
   const offset = currentTZ;
   const localOffset = -new Date().getTimezoneOffset() / 60;
 
@@ -88,7 +117,7 @@ function getISOWithTZ(date) {
   );
   return dt.toUTC().toISO();
 }
-function fromMJDToLuxon(mjd, offsetHours = 0) {
+export function fromMJDToLuxon(mjd, offsetHours = 0) {
   const JD = mjd + 2400000.5;
   const unixMs = (JD - 2440587.5) * 86400000;
 
@@ -97,7 +126,7 @@ function fromMJDToLuxon(mjd, offsetHours = 0) {
   return luxon.DateTime.fromMillis(unixMs, { zone: "UTC" }).setZone(zone);
 }
 
-function updateSpeedButtons() {
+export function updateSpeedButtons() {
   document
     .querySelectorAll("#datetimeSection .control-button")
     .forEach((btn) => {
@@ -106,9 +135,9 @@ function updateSpeedButtons() {
       const match =
         (timeSpeed === 0 && text.startsWith("🟥")) ||
         (timeSpeed === 1 && text.startsWith("🕒")) ||
-        (timeSpeed === 10 && text.includes("10x")) ||
-        (timeSpeed === 60 && text.includes("60x")) ||
-        (timeSpeed === 3600 && text.includes("3600x"));
+        (timeSpeed === 10 && text.includes("seg")) ||
+        (timeSpeed === 60 && text.includes("minuto")) ||
+        (timeSpeed === 3600 && text.includes("hora"));
 
       btn.classList.toggle("active", match);
     });
@@ -120,7 +149,7 @@ function setFlatpickrTime(flatpickrInstance, date) {
 
 }
 
-function showTimeSelector() {
+export function showTimeSelector() {
   if (activeFlatpickr) return;
 
   activeFlatpickr = flatpickr("#datetime-picker", {

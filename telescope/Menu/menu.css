@@ -40,6 +40,7 @@
     pointer-events: none;
     display: grid;
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
     transition: 0.3s;
   }
 
@@ -68,3 +69,92 @@
 #menuContainer.active {
   transform: translateX(0);
 }
+
+
+
+/*** CALENDAR ***/
+
+.flatpickr-days {
+  height: 300px;
+}
+
+.dayContainer {
+  height: 100%;
+}
+
+.flatpickr-time {
+  height: 80px !important;
+  max-height: 80px;
+  align-items: center;
+
+  .flatpickr-time-separator {
+    height: fit-content;
+  }
+  
+  .numInputWrapper {
+    height: 100% !important;
+  
+    .arrowUp, .arrowDown {
+      opacity: 1;
+      width: 20%;
+      border: none;
+    }
+  
+    span.arrowUp::after, span.arrowDown::after {
+      right: 40%;
+    }
+  }
+}
+
+
+
+/*** SEEING ***/
+
+#seeingOptionSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  text-align: center;
+}
+
+#seeingOptionSection > div {
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 10%;
+}
+
+
+
+/*** DATETIME ***/
+
+#datetimeSection {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  .control-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+  }
+  
+  .control-button.active {
+    background-color: #4caf50;
+    font-weight: bold;
+    border-color: #4caf50;
+  }
+}
+
+
+
+/*** CALENDAR ***/
+/*** CALENDAR ***/
+/*** CALENDAR ***/

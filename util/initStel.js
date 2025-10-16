@@ -1,4 +1,7 @@
-function initializeStelEngine(isTelescope = false) {
+import { toJulianDateIso } from "./time.js";
+import { applyLocation } from "./location.js";
+
+export default function initializeStelEngine(isTelescope = false) {
     StelWebEngine({
         wasmFile:
             "stellarium-web-engine.wasm",

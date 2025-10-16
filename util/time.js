@@ -1,21 +1,21 @@
-function toJulianDateIso(iso) {
+export function toJulianDateIso(iso) {
   const now = new Date(iso);
   const jd = now.getTime() / 86400000 + 2440587.5; // Julian Date
   const mjd = jd - 2400000.5; // Modified Julian Date
   return mjd;
 }
 
-function setEngineSpeed({ speed: multiplier }) {
+export function setSpeed({ speed: multiplier }) {
   engine.core.time_speed = parseInt(multiplier);
 }
 
-function updateDate({ date }) {
+export function updateDate({ date }) {
   engine.core.observer.utc = date;
 }
 
 let datetimeInterval = null;
 
-function setDatetimeInterval() {
+export function setDatetimeInterval() {
   datetimeInterval = setInterval(() => {
     Protobject.Core.send({
       msg: "syncTime",
@@ -24,7 +24,7 @@ function setDatetimeInterval() {
   }, 300);
 }
 
-function clearDatetimeInterval() {
+export function clearDatetimeInterval() {
   clearInterval(datetimeInterval);
 }
 
