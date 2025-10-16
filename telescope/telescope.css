@@ -280,10 +280,12 @@ body {
 /* MODES IMAGES */
 
 .simple-mode-image {
-  background-image: url("../svg/simple-mode.svg");
+  /* background-image: url("../svg/simple-mode.svg"); */
+  background-image: url("../images/simple.png");
 }
 .advanced-mode-image {
-  background-image: url("../svg/advanced-mode.svg");
+  /* background-image: url("../svg/advanced-mode.svg"); */
+  background-image: url("../images/advanced.png");
 }
 
 /* SLIDER */
