@@ -1,3 +1,5 @@
+import { isNightime } from "../../../util/getObject.js";
+import { updatePollutionOverlay } from "../../../util/overlay.js";
 import { updateDate } from "../../../util/time.js";
 import { luxon } from "../../utils/luxon.js";
 

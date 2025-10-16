@@ -1,6 +1,6 @@
-import { clearDatetimeInterval, setDatetimeInterval, setSpeed, updateDate } from "./time.js";
+import { clearDatetimeInterval, setDatetimeInterval, setEngineSpeed, updateDate } from "./time.js";
 import { applyLocation, applyPollution } from "./location.js";
-import { toggleEyepieceOverlay, updateStellariumBlur } from "./overlay.js";
+import { toggleEyepieceOverlay, togglePollutionOverlay, updateStellariumBlur } from "./overlay.js";
 import { updateStellariumFov, updateStellariumView, stellariumOption, enableAdvancedModeSettings, enableSimpleModeSettings } from "./stel.js";
 
 const functionMap = {

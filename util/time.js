@@ -5,7 +5,7 @@ export function toJulianDateIso(iso) {
   return mjd;
 }
 
-export function setSpeed({ speed: multiplier }) {
+export function setEngineSpeed({ speed: multiplier }) {
   engine.core.time_speed = parseInt(multiplier);
 }
 

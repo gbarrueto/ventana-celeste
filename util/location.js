@@ -1,4 +1,5 @@
 import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
+import { isNightime } from "./getObject.js";
 import { updatePollutionOverlay } from "./overlay.js";
 
 export async function applyLocation({

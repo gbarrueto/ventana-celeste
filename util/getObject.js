@@ -25,7 +25,7 @@ function getObjAltAz(obj) {
 
 }
 
-function isNightime() {
+export function isNightime() {
     if (!engine) return;
     const sun = engine.getObj("NAME Sun");
     const sunPos = getObjAltAz(sun);

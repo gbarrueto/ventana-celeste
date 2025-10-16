@@ -39,6 +39,6 @@ export function toggleEyepieceOverlay( { signal } ) {
     signal ? disableFinderOverlay() : enableFinderOverlay();
 }
 
-function togglePollutionOverlay({ signal }) {
+export function togglePollutionOverlay({ signal }) {
   signal ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
 }

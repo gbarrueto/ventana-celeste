@@ -1,4 +1,5 @@
 import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
+import { applyPollution } from "./location.js";
 import { updateStellariumBlur } from "./overlay.js";
 
 export function updateStellariumView({ h, v }) {
