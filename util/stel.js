@@ -27,6 +27,23 @@ export function stellariumOption({ path, attr }) {
     if (obj) {
         obj[attr] = !obj[attr];
     }
+    // Atm OFF -> Disable atmospheric effects (pollution, seeing, etc)
+    if (path === "atmosphere" && attr === "visible") {
+
+        // console.log("Atmosphere toggled:", obj[attr]);
+        // console.log("Current SQM:", SQM_READING);
+        // obj[attr] ? applyPollution({ mag: CITY_SQM_READING }) : applyPollution({ mag: 22 });
+        // TODO: Disable seeing effects
+
+        if (!obj[attr]) { // Atmosphere turned OFF
+            // setSeeingOpacity(0); -> NOTE: we need to check simple/advanced mode first
+            applyPollution({ mag: 22 }); // Pristine sky
+        }
+        else { // Atmosphere turned ON
+            // setSeeingOpacity(1);
+            applyPollution({ mag: CITY_SQM_READING }); // Restore previous sky brightness
+        }
+    }
 }
 
 export function setEyepieceOverlayOpacity(opacity) {

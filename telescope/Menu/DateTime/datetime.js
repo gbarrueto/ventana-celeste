@@ -50,7 +50,8 @@ export function displayDateTime(e) {
 
 export function applyCurrentDate() {
   const dateTZ = getISOWithTZ(new Date());
-  updateDate(dateTZ);
+  updateStelDate(dateTZ); // For guide scope and main scope
+  setFlatpickrTime(activeFlatpickr, dateTZ);
 }
 
 export function setSpeed(multiplier) {
@@ -68,9 +69,11 @@ export function updateStelDate(date) {
 
   // console.log("Sending MJD to engine:", mjd);
 
-  Protobject.Core.send({ msg:"updateDate", values: { date: mjd } }).to("index.html");
+  Protobject.Core.send({ msg: "updateDate", values: { date: mjd } }).to("index.html");
   // change guidescope time
   engine.core.observer.utc = mjd;
+
+
 }
 
 export function createInterval() {
@@ -139,6 +142,12 @@ export function updateSpeedButtons() {
       btn.classList.toggle("active", match);
     });
 }
+// date is ISO String in UTC
+function setFlatpickrTime(flatpickrInstance, date) {
+  if (!flatpickrInstance) return;
+  flatpickrInstance.setDate(date, false);
+
+}
 
 export function showTimeSelector() {
   if (activeFlatpickr) return;
@@ -160,13 +169,17 @@ export function showTimeSelector() {
         const date = selectedDates[0];
         const dateTZ = getISOWithTZ(date);
         //console.log("Non ISO DATE onUpdate", selectedDates[0]);
-        
+
         lastManualChange = Date.now();
         // console.log("ToISO with TZ converted DATE onUpdate", dateTZ);
         updateStelDate(dateTZ);
         // updateDateTimeout = null;
+
+        isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
+        Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
+
       }
-    },
+    }
   });
 
   // Sincronización periódica con el engine
@@ -178,8 +191,8 @@ export function showTimeSelector() {
 
     if (!isUserTouchingCalendar && !recentlyChanged) {
       const dateTime = fromMJDToLuxon(engineUTC, currentTZ);
-      // const time = fromMJDToDate(engineUTC);
-      activeFlatpickr.setDate(dateTime.toISO(), false);
+
+      setFlatpickrTime(activeFlatpickr, dateTime.toISO());
     }
   }, 300);
 }

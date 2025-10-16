@@ -8,24 +8,28 @@ export async function applyLocation({
     elev = 0,
     mag = null
 }) {
-    if (!engine) return;
+  if (!engine) return;
 
-    engine.core.observer.latitude = lat * (Math.PI / 180);
-    engine.core.observer.longitude = lon * (Math.PI / 180);
-    engine.core.observer.elevation = elev;
+  engine.core.observer.latitude = lat * (Math.PI / 180);
+  engine.core.observer.longitude = lon * (Math.PI / 180);
+  engine.core.observer.elevation = elev;
 
     // Set LP to new location
 
+    CITY_SQM_READING = mag;
+
     applyPollution({ mag });
 
-    //console.log("Bortle index for", cityName, ":", bortle_index);
+  //console.log("Bortle index for", cityName, ":", bortle_index);
 }
 
 export function applyPollution({ mag = 20 }) {
+    if (!engine?.core) return;
 
     SQM_READING = mag;
 
     bortle = magToBortle(mag);
+
 
     if (engine.core) {
         engine.core.bortle_index = bortle; // de 1 a 9
@@ -35,7 +39,8 @@ export function applyPollution({ mag = 20 }) {
 
         engine.core.star_relative_scale = 0.6;
     }
-    updatePollutionOverlay({ bortle });
+
+    isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
 }
 
 // Convertion src: https://www.handprint.com/ASTRO/bortle.html

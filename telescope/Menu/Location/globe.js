@@ -81,6 +81,13 @@ export async function displayGlobe(e) {
     geocoder: true,
   });
 
+  setTimeout(() => {
+    const credits = document.querySelector(".cesium-viewer-bottom");
+    if (credits) {
+      credits.style.display = "none";
+    }
+  }, 200);
+
   const osm = new Cesium.OpenStreetMapImageryProvider({
     url: "https://tile.openstreetmap.org/", // tiles OSM oficiales
   });
@@ -124,7 +131,7 @@ export async function displayGlobe(e) {
       roll: 0.0,
     },
   });
-  // ⏱️ Iniciar intervalo de envío de coordenadas del centro cada 100ms
+  // Iniciar intervalo de envío de coordenadas del centro cada 100ms
   startCesiumInterval();
 }
 
@@ -192,5 +199,49 @@ function startCesiumInterval() {
       lastSentCesiumCoords = { lat: latNum, lon: lonNum };
       sendCoordinates({ lat: latNum, lon: lonNum });
     }
-  }, 100);
+  }, 50);
+}
+
+async function sendCoordinates({ lat, lon }) {
+  const pollution = await getMagFromLonLat({ lat, lon });
+
+  const elev = 0;
+  const tz = getUtcOffset(lat, lon);
+
+  updateTimeZone(tz);
+  updatePollution();
+
+  const data = {
+    cityName: "Custom",
+    lon,
+    lat,
+    elev,
+    mag: pollution,
+  };
+
+  // // Actualizar el punto en el globo
+  // if (globe) {
+  //   globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
+  //   globe.pointsData(globePoint);
+
+  //   // Mover la cámara al nuevo punto
+  //   globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
+  // }
+
+  Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
+}
+
+function getUtcOffset(lat, lon) {
+  const tz = tzlookup(lat, lon);
+  const now = new Date();
+  const options = { timeZone: tz, timeZoneName: "shortOffset" };
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const parts = formatter.formatToParts(now);
+  const offsetPart = parts.find((p) => p.type === "timeZoneName");
+  const match = offsetPart.value.match(/GMT([+-]\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function updateTimeZone(newTZ) {
+  currentTZ = newTZ;
 }

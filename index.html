@@ -10,7 +10,7 @@
   <body>
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
-    <script src="https://telescope.alessiobellino.com/stellarium-web-engine.js"></script>
+    <script src="stellarium-web-engine.js"></script>
 
     <div id="stel">
       <canvas id="stel-canvas"></canvas>
@@ -31,7 +31,9 @@
     <script type="module" src="limit_mag/limit_magnitude.js"></script>
 
     <script type="module" src="util/time.js"></script>
+    <script src="util/getObject.js"></script>
     <script src="seeing/seeing_sim.js"></script>
+
     <!-- Init stellarium web engine -->
     <script type="module">
       import initializeStelEngine from "./util/initStel.js";
