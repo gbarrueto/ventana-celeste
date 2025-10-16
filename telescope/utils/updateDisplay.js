@@ -1,4 +1,7 @@
 
+let oldFov = 3;
+let blurTarget = 5;
+
 export function updateDisplayFov() {
   const fov = logFov;
 

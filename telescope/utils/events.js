@@ -1,6 +1,5 @@
 import { applyPollution } from "../../util/location.js";
 import { sliderToFov } from "../Slider/slider.js";
-import { updateDisplayFov } from "./updateDisplay.js";
 
 function BlurSliderFunction(element) {
   currentBlur = parseFloat(element.value);
@@ -34,7 +33,6 @@ function PollutionSliderFunction(element) {
   applyPollution({ mag: skyMag });
   // To telescope
   Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to("index.html");
-  // Protobject.Core.send({msg:"updatePollution", values: { bortle: pollutionInput.value }}).to("Lamp.html");
 }
 export function addPollutionSliderEvent(element) {
   element.addEventListener("input", () => PollutionSliderFunction(element));

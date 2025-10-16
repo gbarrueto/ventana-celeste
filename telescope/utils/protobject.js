@@ -21,19 +21,6 @@ async function sendCoordinates({ lat, lon }) {
     mag: pollution,
   };
 
-  // // Actualizar el punto en el globo
-  // if (globe) {
-  //   globePoint = [{ lat, lng: lon, size: 1, color: "red" }];
-  //   globe.pointsData(globePoint);
-
-  //   // Mover la cámara al nuevo punto
-  //   globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
-  // }
-
-  // if (map) {
-  // map.flyTo([lat, lon], Math.max(map.getZoom(), 6)); // Zoom mínimo 6 para mejor enfoque
-  // }
-
   applyLocation(data); // Para guidescope
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }

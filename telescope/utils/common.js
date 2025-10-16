@@ -221,34 +221,21 @@ function setStellariumOptionButtons() {
 
 /**************************  CÓDIGO  *************************************/
 
-window.oldFov = 3;
 window.MIN_FOV = 0.000005;
 window.MAX_FOV = 3.228859;
 window.FOV_STEP = 0.000001;
-window.minLogFov = Math.log(MIN_FOV);
-window.maxLogFov = Math.log(MAX_FOV);
-window.logFov = maxLogFov;
+window.logFov = Math.log(MAX_FOV);
 window.current_fov = 3;
 
 window.currentBlur = 5;
-window.blurTarget = currentBlur;
+// window.blurTarget = currentBlur;
 
 window.engine = null;
 window.bortle = null;
 
-window.currentLat = null;
-window.currentLon = null;
-window.currentElev = null;
 window.currentTZ = -4;
-
-window.pollution = 9;
-
 window.engineUTC = null;
-window.timeSpeed = 0;
-window.activeFlatpickr = null;
-window.flatpickrSyncInterval = null;
-window.lastManualChange = 0;
-window.isUserTouchingCalendar = false;
+window.pollution = 9;
 
 const BUTTONS = {
   constellations: {
@@ -300,12 +287,10 @@ let modes = {
   advanced: false
 }
 
-let modeContainer;
 let blurSlider;
-let zoomSlider;
 let simpleModeElement = null;
 let advancedModeElement = null;
-window.mainLoadingScreenElement = null;
+let mainLoadingScreenElement = null;
 let modeTextElement;
 let modeButtonElement;
 
@@ -320,11 +305,10 @@ async function main() {
     
     addMenuElement();
 
-    modeContainer = document.getElementById('modeContent');
     modeButtonElement = document.getElementById('modeButton');
     
     // blurSlider = document.getElementById("focusSlider");
-    zoomSlider = document.getElementById("zoomSlider");
+    let zoomSlider = document.getElementById("zoomSlider");
     
     simpleModeElement = document.getElementById("simpleMode");
     // advancedModeElement = document.getElementById("advancedMode");

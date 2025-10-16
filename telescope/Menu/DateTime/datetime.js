@@ -2,6 +2,11 @@ import { updateDate } from "../../../util/time.js";
 import { luxon } from "../../utils/luxon.js";
 
 let datetimeLoaded = false;
+let timeSpeed = 0;
+let activeFlatpickr = null;
+let flatpickrSyncInterval = null; // Evita perder el intervalo
+let lastManualChange = 0;
+let isUserTouchingCalendar = false;
 
 export function displayDateTime(e) {
   if (optionSelection(e)) return;
@@ -19,9 +24,9 @@ export function displayDateTime(e) {
             <button class="control-button" onclick="setSpeed(1)">🕒 Realtime</button>
           </div>
           <div class="grid-container" style="grid-template-columns: 33% 33% 33%;justify-content: center;">
-            <button class="control-button" onclick="setSpeed(10)">⏩ 10x</button>
-            <button class="control-button" onclick="setSpeed(60)">⏩ 60x</button>
-            <button class="control-button" onclick="setSpeed(3600)">⏩ 3600x</button>
+            <button class="control-button" onclick="setSpeed(10)">⏩ 10 segundos/s</button>
+            <button class="control-button" onclick="setSpeed(60)">⏩ 1 minuto/s</button>
+            <button class="control-button" onclick="setSpeed(3600)">⏩ 1 hora/s</button>
           </div>
         </div>
       </section>
@@ -31,12 +36,6 @@ export function displayDateTime(e) {
   }
 
   let datetimeSection = document.getElementById("datetimeSection");
-
-  // let localTime = new Date();
-
-  // datetimeSection.style.display = 'flex';
-  // datetimeSection.style.transform = 'translateY(0)';
-
   datetimeSection.classList.add("active");
 
   updateSpeedButtons();
@@ -133,9 +132,9 @@ export function updateSpeedButtons() {
       const match =
         (timeSpeed === 0 && text.startsWith("🟥")) ||
         (timeSpeed === 1 && text.startsWith("🕒")) ||
-        (timeSpeed === 10 && text.includes("10x")) ||
-        (timeSpeed === 60 && text.includes("60x")) ||
-        (timeSpeed === 3600 && text.includes("3600x"));
+        (timeSpeed === 10 && text.includes("seg")) ||
+        (timeSpeed === 60 && text.includes("minuto")) ||
+        (timeSpeed === 3600 && text.includes("hora"));
 
       btn.classList.toggle("active", match);
     });

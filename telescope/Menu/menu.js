@@ -13,7 +13,7 @@ export function createMenuElement(menuElement) {
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button> -->
         <button class="button" onclick="displayGlobe(event)">
-          <p>Globo</p>
+          <p>Ubicacion</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button>
         <button class="button" onclick="displayDateTime(event)">
@@ -93,8 +93,6 @@ export function createMenuElement(menuElement) {
   `
 
   menuElement.insertAdjacentHTML('beforeend', content);
-
-  // return menuElement;
 }
 
 export function openMenu() {

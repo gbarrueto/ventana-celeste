@@ -14,10 +14,6 @@ export async function applyLocation({
     engine.core.observer.longitude = lon * (Math.PI / 180);
     engine.core.observer.elevation = elev;
 
-    currentLat = lat;
-    currentLon = lon;
-    currentElev = elev;
-
     // Set LP to new location
 
     applyPollution({ mag });
