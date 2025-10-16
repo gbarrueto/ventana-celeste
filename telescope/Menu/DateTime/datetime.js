@@ -24,6 +24,7 @@ function applyCurrentDate() {
 }
 
 function setSpeed(multiplier) {
+  console.log("Set speed called with:", multiplier);
   Protobject.Core.send({ msg: "setSpeed", values: { speed: multiplier } }).to(
     "index.html"
   );
