@@ -4,7 +4,7 @@ const functionMap = {
   "updateBlur": updateStellariumBlur,
   "updateView": updateStellariumView,
   "applyLocation": applyLocation,
-  "setSpeed": setSpeed,
+  "setSpeed": setEngineSpeed,
   "updateDate": updateDate,
   "setDatetimeInterval": () => setDatetimeInterval(),
   "clearDatetimeInterval": () => clearDatetimeInterval(),

@@ -30,7 +30,7 @@ let blurTarget = currentBlur;
 let currentLat = null;
 let currentLon = null;
 let currentElev = null;
-let currentTZ = -4;
+let currentTZ = -3;
 
 const fovDisplay = document.getElementById("fovDisplay");
 const touchArea = document.getElementById("touchArea");

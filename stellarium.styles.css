@@ -25,7 +25,7 @@ body {
   z-index: 4;
   opacity: 0;
 }
-#finder-overlay {
+/* #finder-overlay {
   position: absolute;
   top: 0px;
   left: 0px;
@@ -38,7 +38,7 @@ body {
   background-repeat: no-repeat;
   background-position: center center;
   filter: blur(1.2px);
-}
+} */
 
 #pollution-overlay {
   position: absolute;

@@ -17,7 +17,7 @@ async function applyLocation({
 
     // Set LP to new location
 
-    SQM_READING = mag;
+    CITY_SQM_READING = mag;
 
     applyPollution({ mag });
 
@@ -25,9 +25,12 @@ async function applyLocation({
 }
 
 function applyPollution({ mag = 20 }) {
-  SQM_READING = mag;
+    if (!engine?.core) return;
+
+    SQM_READING = mag;
 
     bortle = magToBortle(mag);
+
 
     if (engine.core) {
         engine.core.bortle_index = bortle; // de 1 a 9
