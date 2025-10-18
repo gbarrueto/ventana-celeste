@@ -37,7 +37,16 @@
     <script src="config.js"></script>
     <script src="https://unpkg.com/globe.gl"></script>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
-    <script src="https://unpkg.com/three"></script>
+    <!-- <script src="https://unpkg.com/three@0.174.0/build/three.module.min.js"></script> -->
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
+          }
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="limit_mag/params.js"></script>
     <script src="telescope/utils/lp/pako_inflate.min.js"></script>
@@ -87,7 +96,7 @@
           <section id="viewModeContainer" class="container">
             <div id="stel">
               <canvas id="stel-canvas"></canvas>
-              <div id="info-card"></div> <!-- no creo que sirva pero lo dejo ya que no estoy seguro -->
+              <!-- <div id="info-card"></div> no creo que sirva pero lo dejo ya que no estoy seguro NT: Efectivamente no sirve -->
               <div id="pollution-overlay"></div> <!-- no creo que sirva pero parece que busca este elemento -->
             </div>
           </section>
@@ -97,7 +106,7 @@
               <button class="button" onclick="applyZoom(40, event)">len 1</button>
               <button class="button" onclick="applyZoom(24, event)">len 2</button>
               <button class="button" onclick="applyZoom(10, event)">len 3</button>
-              <button class="button" onclick="applyZoom(2, event)">len 4</button>
+              <button class="button" onclick="applyZoom(4, event)">len 4</button>
             </div>
           </section>
       

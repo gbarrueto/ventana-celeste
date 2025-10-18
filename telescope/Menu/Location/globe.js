@@ -228,6 +228,7 @@ async function sendCoordinates({ lat, lon }) {
   //   globe.pointOfView({ lat, lng: lon, altitude: 3 }, 3000); // 3 puede ajustarse según zoom
   // }
 
+  applyLocation(data); // para guidescope
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 

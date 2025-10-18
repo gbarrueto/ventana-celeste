@@ -50,6 +50,30 @@ export default function initializeStelEngine(isTelescope = false) {
                 })
             );
 
+            [
+                "moon",
+                "sun",
+                "jupiter",
+                "mercury",
+                "venus",
+                "mars",
+                "saturn",
+                "uranus",
+                "neptune",
+                "io",
+                "europa",
+                "ganymede",
+                "callisto",
+                "moon-normal",
+            ].forEach((p) => {
+                dataSourcePromises.push(
+                    core.planets.addDataSource({
+                        url: baseUrl + `surveys/sso/${p}/v1`,
+                        key: p,
+                    })
+                );
+            });
+
             // Data sources adicionales solo para index (no telescope)
             if (!isTelescope) {
                 dataSourcePromises.push(
@@ -114,29 +138,7 @@ export default function initializeStelEngine(isTelescope = false) {
                 //     })
                 // );
 
-                [
-                    "moon",
-                    "sun",
-                    "jupiter",
-                    "mercury",
-                    "venus",
-                    "mars",
-                    "saturn",
-                    "uranus",
-                    "neptune",
-                    "io",
-                    "europa",
-                    "ganymede",
-                    "callisto",
-                    "moon-normal",
-                ].forEach((p) => {
-                    dataSourcePromises.push(
-                        core.planets.addDataSource({
-                            url: baseUrl + `surveys/sso/${p}/v1`,
-                            key: p,
-                        })
-                    );
-                });
+
             }
 
             // Esperar a que todas las fuentes de datos se carguen
