@@ -40,7 +40,7 @@ body {
   filter: blur(1.2px);
 } */
 
-#pollution-overlay {
+/* #pollution-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -50,7 +50,7 @@ body {
   z-index: 2;
   display: block;
   transition: opacity 1s;
-}
+} */
 
 #stel {
   position: fixed;

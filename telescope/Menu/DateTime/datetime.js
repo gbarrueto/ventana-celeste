@@ -1,5 +1,5 @@
 import { isNightime } from "../../../util/getObject.js";
-import { updatePollutionOverlay } from "../../../util/overlay.js";
+// import { updatePollutionOverlay } from "../../../util/overlay.js";
 import { updateDate } from "../../../util/time.js";
 import { luxon } from "../../utils/luxon.js";
 
@@ -177,7 +177,7 @@ export function showTimeSelector() {
         updateStelDate(dateTZ);
         // updateDateTimeout = null;
 
-        isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
+        // isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
         Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
 
       }
