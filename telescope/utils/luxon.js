@@ -1,4 +1,4 @@
-var luxon = (function (exports) {
+export var luxon = (function (exports) {
   'use strict';
 
   function _defineProperties(target, props) {

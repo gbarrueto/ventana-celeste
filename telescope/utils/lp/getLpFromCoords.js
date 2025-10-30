@@ -5,7 +5,7 @@
 //   return b;
 // }
 
-function getMagFromLonLat(elatlng) {
+export function getMagFromLonLat(elatlng) {
   return new Promise((resolve, reject) => {
     //console.log("LatLong: ", elatlng);
     var xhr;

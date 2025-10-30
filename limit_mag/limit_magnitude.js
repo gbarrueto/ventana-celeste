@@ -1,8 +1,8 @@
 
-function radioValue(e) {
+export function radioValue(e) {
     for (var i = 0; i < e.length; i++) if (e[i].checked) return e[i].value;
 }
-function computeEyePupil() {
+export function computeEyePupil() {
     var AG = parseInt(AGE);
     if (!isNaN(AG)) {
         var DE = 7 * Math.exp(-AG * AG / 20000);        // DIAM EYE PUPIL IN MM
@@ -10,7 +10,7 @@ function computeEyePupil() {
         document.forms[0].eyeexit.value = Math.round(DE * 10) / 10;
     }
 }
-function computeNELM() {
+export function computeNELM() {
     // var ff = document.forms[0];
     var SQ = parseFloat(SQM_READING);
 
@@ -22,7 +22,7 @@ function computeNELM() {
     }
 }
 
-function calculate_limit_mag() {
+export function calculate_limit_mag() {
     // var ff = document.forms[0];
     var UseInch = false; //ff.UNITS.selectedIndex == 1;
     var D = parseFloat(DIAMETER); // Telescope aperture in mm

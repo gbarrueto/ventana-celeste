@@ -1,3 +1,8 @@
+import { clearDatetimeInterval, setDatetimeInterval, setEngineSpeed, updateDate } from "./time.js";
+import { applyLocation, applyPollution } from "./location.js";
+import { toggleEyepieceOverlay, updateStellariumBlur } from "./overlay.js";
+import { updateStellariumFov, updateStellariumView, stellariumOption, enableAdvancedModeSettings, enableSimpleModeSettings } from "./stel.js";
+
 const functionMap = {
   "toggleEyepiece": toggleEyepieceOverlay,
   "updateFov": updateStellariumFov,
@@ -9,7 +14,6 @@ const functionMap = {
   "setDatetimeInterval": () => setDatetimeInterval(),
   "clearDatetimeInterval": () => clearDatetimeInterval(),
   "updatePollution": applyPollution,
-  "togglePollution": togglePollutionOverlay,
   "stellariumOption": stellariumOption,
   "arduinoCommand": arduinoCommand,
   "seeingOption": applySeeingOption,
