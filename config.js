@@ -16,10 +16,6 @@ Protobject.initialize([
     page: "Mapa.html",
     // debug: "local",
   },
-  // {
-  // name: "Lamp",
-  // page: "Lamp.html",
-  // },
   {
     name: "Pelota",
     page: "Pelota.html",
