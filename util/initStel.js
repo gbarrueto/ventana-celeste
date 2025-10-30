@@ -1,6 +1,6 @@
 import { toJulianDateIso } from "./time.js";
 import { applyLocation } from "./location.js";
-
+import { getObjAltAz } from "./getObject.js";
 export default function initializeStelEngine(isTelescope = false) {
     StelWebEngine({
         wasmFile:

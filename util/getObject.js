@@ -10,7 +10,7 @@
 //     return {alt, az};
 // }
 
-function getObjAltAz(obj) {
+export function getObjAltAz(obj) {
     if (!engine) return;
 
     const pvo = obj.getInfo('pvo', engine.observer);
