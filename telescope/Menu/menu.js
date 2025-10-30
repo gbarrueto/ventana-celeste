@@ -20,10 +20,10 @@ export function createMenuElement(menuElement) {
           <p>Fecha y Tiempo</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button>
-        <!-- <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
+        <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
           <p>Vista</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
-        </button> -->
+        </button>
       </div>
     </section>
   
