@@ -1,6 +1,6 @@
 import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
-import { isNightime } from "./getObject.js";
-import { updatePollutionOverlay } from "./overlay.js";
+// import { isNightime } from "./getObject.js";
+// import { updatePollutionOverlay } from "./overlay.js";
 
 export async function applyLocation({
     cityName = "Custom",
@@ -41,7 +41,7 @@ export function applyPollution({ mag = 20 }) {
         engine.core.star_relative_scale = 0.6;
     }
 
-    isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
+    // isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
 }
 
 // Convertion src: https://www.handprint.com/ASTRO/bortle.html
