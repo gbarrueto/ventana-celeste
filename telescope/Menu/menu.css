@@ -126,6 +126,11 @@
   height: 10%;
 }
 
+#viewControlsButton.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 
 
 /*** DATETIME ***/

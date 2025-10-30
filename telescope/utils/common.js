@@ -1,9 +1,10 @@
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
-import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu/menu.js';
+import { closeMenu, createMenuElement, openMenu, optionSelection, toggleViewButton } from '../Menu/menu.js';
 import { applyCurrentDate, displayDateTime, setSpeed } from '../Menu/DateTime/datetime.js';
 import { displayGlobe } from "../Menu/Location/globe.js";
+import { displaySeeingOptions } from "../Menu/Seeing/seeing.js";
 import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
 import { applyLocation } from "../../util/location.js";
 
@@ -59,6 +60,11 @@ function toggleMode() {
     advancedModeElement.classList.remove("active");
     modeButtonElement.classList.add("advanced-mode-image");
     modeButtonElement.classList.remove("simple-mode-image");
+  }
+
+  // Activar o desactivar boton View del menu
+  if (menu) {
+    toggleViewButton();
   }
 
   // Intercambiar modo activo
@@ -163,6 +169,12 @@ function updateTimeZone(newTZ) {
   currentTZ = newTZ;
 }
 
+function setAttributes(element, attributes) {
+  Object.keys(attributes).forEach(attr => {
+    element.setAttribute(attr, attributes[attr]);
+  });
+}
+
 function setWindowFunctions() {
   window.toggleMode = toggleMode;
   window.applyZoom = applyZoom;
@@ -173,6 +185,7 @@ function setWindowFunctions() {
   window.closeMenu = closeMenu;
   window.displayDateTime = displayDateTime;
   window.displayGlobe = displayGlobe;
+  window.displaySeeingOptions = displaySeeingOptions;
   window.optionSelection = optionSelection;
   window.bortleToMag = bortleToMag;
   window.getMagFromLonLat = getMagFromLonLat;
@@ -183,6 +196,7 @@ function setWindowFunctions() {
   window.setSpeed = setSpeed;
   window.applyCurrentDate = applyCurrentDate;
   window.unwrapAngle = unwrapAngle;
+  window.setAttributes = setAttributes;
 }
 
 function addMenuElement() {
