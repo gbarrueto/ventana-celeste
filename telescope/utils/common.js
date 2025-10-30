@@ -1,7 +1,7 @@
 import initializeStelEngine from "../../util/initStel.js";
 import { addZoomSliderEvent } from './events.js';
 import { updateDisplayFov } from './updateDisplay.js';
-import { closeMenu, createMenuElement, openMenu, optionSelection } from '../Menu/menu.js';
+import { closeMenu, createMenuElement, openMenu, optionSelection, toggleViewButton } from '../Menu/menu.js';
 import { applyCurrentDate, displayDateTime, setSpeed } from '../Menu/DateTime/datetime.js';
 import { displayGlobe } from "../Menu/Location/globe.js";
 import { displaySeeingOptions } from "../Menu/Seeing/seeing.js";
@@ -60,6 +60,11 @@ function toggleMode() {
     advancedModeElement.classList.remove("active");
     modeButtonElement.classList.add("advanced-mode-image");
     modeButtonElement.classList.remove("simple-mode-image");
+  }
+
+  // Activar o desactivar boton View del menu
+  if (menu) {
+    toggleViewButton();
   }
 
   // Intercambiar modo activo

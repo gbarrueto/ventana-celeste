@@ -20,7 +20,7 @@ export function createMenuElement(menuElement) {
           <p>Fecha y Tiempo</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button>
-        <button id="viewControlsButton" class="button" onclick="displaySeeingOptions(event)">
+        <button id="viewControlsButton" class="button hidden" onclick="displaySeeingOptions(event)">
           <p>Vista</p>
           <i class="fa fa-caret-down" aria-hidden="true"></i>
         </button>
@@ -181,4 +181,9 @@ export function displayMainMenu(e) {
 
   mainMenuSection.style.display = "grid";
   mainMenuSection.classList.add("active");
+}
+
+export function toggleViewButton() {
+  const elem = document.getElementById('viewControlsButton');
+  elem.classList.toggle('hidden');
 }
