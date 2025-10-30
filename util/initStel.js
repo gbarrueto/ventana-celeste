@@ -85,7 +85,7 @@ export default function initializeStelEngine(isTelescope = false) {
                     })
                 );
                 dataSourcePromises.push(
-                    core.stars.addDataSource({
+                    core.dss.addDataSource({
                         url: baseUrlBig + "surveys/gaia/v1",
                         key: "gaia",
                     })
