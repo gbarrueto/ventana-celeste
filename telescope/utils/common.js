@@ -1,50 +1,56 @@
 import initializeStelEngine from "../../util/initStel.js";
-import { addZoomSliderEvent } from './events.js';
-import { updateDisplayFov } from './updateDisplay.js';
-import { closeMenu, createMenuElement, openMenu, optionSelection, toggleViewButton } from '../Menu/menu.js';
-import { applyCurrentDate, displayDateTime, setSpeed } from '../Menu/DateTime/datetime.js';
+import { addZoomSliderEvent } from "./events.js";
+import { updateDisplayFov } from "./updateDisplay.js";
+import {
+  closeMenu,
+  createMenuElement,
+  openMenu,
+  optionSelection,
+  toggleViewButton,
+} from "../Menu/menu.js";
+import {
+  applyCurrentDate,
+  displayDateTime,
+  setSpeed,
+} from "../Menu/DateTime/datetime.js";
 import { displayGlobe } from "../Menu/Location/globe.js";
 import { displaySeeingOptions } from "../Menu/Seeing/seeing.js";
 import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
 import { applyLocation } from "../../util/location.js";
 
-function loadScript(url, type) {    
-    const head = document.getElementsByTagName('head')[0];
-    const script = document.createElement('script');
-    script.type = type;
-    script.src = url;
-    head.appendChild(script);
+function loadScript(url, type) {
+  const head = document.getElementsByTagName("head")[0];
+  const script = document.createElement("script");
+  script.type = type;
+  script.src = url;
+  head.appendChild(script);
 }
 
 async function loadScentialScripts() {
-  let paths = [
-    { path: "telescope/utils/stellarium.js", type: 'module'},
-  ]
+  let paths = [{ path: "telescope/utils/stellarium.js", type: "module" }];
 
   paths.forEach((content) => {
     loadScript(content.path, content.type);
-  })
+  });
 }
 
 function setLoading(state = true) {
-  if (state === true) mainLoadingScreenElement.style.display = 'block';
-  else mainLoadingScreenElement.style.display = 'none';
+  if (state === true) mainLoadingScreenElement.style.display = "block";
+  else mainLoadingScreenElement.style.display = "none";
 }
 
 function setModeSettings(mode) {
   // viewControlsButton.disabled = mode == 'simple';
-  Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to(
-    "index.html"
-  );
+  Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to("index.html");
 }
 
 function toggleMode() {
   // Cambiar a avanzado
   if (modes.simple === true) {
     if (!advancedModeElement) {
-      advancedModeElement = document.getElementById('advancedMode');
+      advancedModeElement = document.getElementById("advancedMode");
     }
-    modeTextElement.textContent = 'Simple';
+    modeTextElement.textContent = "Simple";
     advancedModeElement.classList.add("active");
     simpleModeElement.classList.remove("active");
     modeButtonElement.classList.add("simple-mode-image");
@@ -53,9 +59,9 @@ function toggleMode() {
   // Cambiar a simple
   else {
     if (!simpleModeElement) {
-      simpleModeElement = document.getElementById('simpleMode');
+      simpleModeElement = document.getElementById("simpleMode");
     }
-    modeTextElement.textContent = 'Avanzado';
+    modeTextElement.textContent = "Avanzado";
     simpleModeElement.classList.add("active");
     advancedModeElement.classList.remove("active");
     modeButtonElement.classList.add("advanced-mode-image");
@@ -74,7 +80,6 @@ function toggleMode() {
       setModeSettings(mode);
     }
   }
-
 }
 
 function autoPollution() {
@@ -95,35 +100,32 @@ function unwrapAngle(newAngle, prevAngle) {
 }
 
 function applyZoom(selected_eyepiece_fl, event) {
-  const button = document.querySelector(
-    '#lensContainer .active'
-  );
+  const button = document.querySelector("#lensContainer .active");
 
   if (button) {
-    button.classList.toggle('active')
+    button.classList.toggle("active");
   }
 
-  event.target.classList.toggle('active');
-  
+  event.target.classList.toggle("active");
+
   EYEPIECE_FL = selected_eyepiece_fl;
 
   // Calcular nuevo FOV
 
   const m = FOCAL_LENGTH / EYEPIECE_FL; // Magnification
   const proyection_const = 100; // Ni idea de porqué es 100, pero asi funciona
-  
+
   // new_fov es fov de stellarium, no fov aparente del ocular
-  
-  let new_fov = (proyection_const / m)
+
+  let new_fov = proyection_const / m;
   // Convertir a radianes
-  new_fov = new_fov * Math.PI / 180;
-  
-  logFov = new_fov;
+  new_fov = (new_fov * Math.PI) / 180;
+
+  logFov = Math.log(new_fov);
   updateDisplayFov();
 }
 
 function bortleToMag(bortle) {
-
   switch (bortle) {
     case 1:
       return (22.0 + 21.99) / 2 + Math.random() * 0.1; // Cielo prístino
@@ -170,7 +172,7 @@ function updateTimeZone(newTZ) {
 }
 
 function setAttributes(element, attributes) {
-  Object.keys(attributes).forEach(attr => {
+  Object.keys(attributes).forEach((attr) => {
     element.setAttribute(attr, attributes[attr]);
   });
 }
@@ -201,14 +203,14 @@ function setWindowFunctions() {
 
 function addMenuElement() {
   // const element = document.getElementById('startContainer');
-  const menuElement = document.getElementById('menuContainer');
+  const menuElement = document.getElementById("menuContainer");
   createMenuElement(menuElement);
   // element.after(menuElement);
   const pollutionInput = document.getElementById("pollutionSlider");
   window.pollutionInput = pollutionInput;
   window.menu = menuElement;
-  window.interactionSection = document.getElementById('interactionSection');
-  window.menuLoadingElement = document.getElementById('menuLoadingScreen');
+  window.interactionSection = document.getElementById("interactionSection");
+  window.menuLoadingElement = document.getElementById("menuLoadingScreen");
   setStellariumOptionButtons();
 }
 
@@ -216,7 +218,7 @@ function setStellariumOptionButtons() {
   const stellariumOptionButtons = document.querySelectorAll(
     "#stellariumOptionsContainer button"
   );
-  
+
   stellariumOptionButtons.forEach((btn) => {
     btn.onclick = () => {
       const info = BUTTONS[btn.name];
@@ -228,10 +230,6 @@ function setStellariumOptionButtons() {
     };
   });
 }
-
-
-
-
 
 /**************************  CÓDIGO  *************************************/
 
@@ -298,8 +296,8 @@ const BUTTONS = {
 
 let modes = {
   simple: true,
-  advanced: false
-}
+  advanced: false,
+};
 
 let blurSlider;
 let simpleModeElement = null;
@@ -311,37 +309,34 @@ let modeButtonElement;
 async function main() {
   await loadScentialScripts();
 
-  mainLoadingScreenElement = document.getElementById('mainLoadingScreen');
+  mainLoadingScreenElement = document.getElementById("mainLoadingScreen");
 
   // Esperar carga del DOM
   document.addEventListener("DOMContentLoaded", () => {
     // console.log("DOM is ready!");
-    
+
     addMenuElement();
 
-    modeButtonElement = document.getElementById('modeButton');
-    
+    modeButtonElement = document.getElementById("modeButton");
+
     // blurSlider = document.getElementById("focusSlider");
     let zoomSlider = document.getElementById("zoomSlider");
-    
+
     simpleModeElement = document.getElementById("simpleMode");
     // advancedModeElement = document.getElementById("advancedMode");
 
-    modeTextElement = document.getElementById('modeText');
+    modeTextElement = document.getElementById("modeText");
 
     simpleModeElement.classList.toggle("active");
     modeButtonElement.classList.toggle("simple-mode-image");
-    modeTextElement.textContent = 'Avanzado';
+    modeTextElement.textContent = "Avanzado";
 
     addZoomSliderEvent(zoomSlider);
     setWindowFunctions();
     initializeStelEngine(true);
     setLoading(false);
-    
   });
-  
-  
-  
+
   // blurSlider.value = currentBlur;
   // updateDisplayFov();
 }
