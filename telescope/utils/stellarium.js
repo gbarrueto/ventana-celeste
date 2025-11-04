@@ -25,10 +25,7 @@ const Orientation = {
   calculateOrientation(q) {
     if (!q) return;
     const [x, y, z, w] = q;
-    const pitch = Math.atan2(
-      2 * (w * x + y * z),
-      1 - 2 * (x * x + y * y)
-    );
+    const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
     const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
     const fov = Math.exp(logFov);
