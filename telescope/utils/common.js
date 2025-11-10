@@ -230,7 +230,6 @@ window.logFov = Math.log(MAX_FOV);
 window.current_fov = 3;
 
 window.currentBlur = 5;
-// window.blurTarget = currentBlur;
 
 window.engine = null;
 window.bortle = null;
