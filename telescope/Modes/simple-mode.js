@@ -1,22 +1,33 @@
-import { removeStelEngine } from "../../util/initStel.js";
+import { enableViewButton } from "../Menu/menu.js";
 import { addZoomSliderEvent } from "../utils/events.js";
+import { removeEvent } from "../utils/events.js";
+import { removeAdvancedMode } from "./advanced-mode.js";
+
+let simpleModeInitialized = false;
 
 export async function initSimpleMode() {
-  // Load only what's needed for simple mode
-  // const { addZoomSliderEvent } = await import('../utils/events.js');
-  // const { updateDisplayFov } = await import('../utils/updateDisplay.js');
-  
-  // Hide advanced features
-  // document.getElementById('advancedMode').style.display = 'none';
-  removeStelEngine();
+  removeAdvancedMode();
+  enableViewButton(false);
   let simpleModeElement = document.getElementById('simpleMode');
   let advancedModeElement = document.getElementById('advancedMode');
-  advancedModeElement.style.visible = 'hidden';
-  simpleModeElement.style.display = 'block';
   simpleModeElement.classList.add('active');
   advancedModeElement.classList.remove('active');
-
   
-  // Setup only simple slider
   addZoomSliderEvent(document.getElementById('zoomSlider'));
+
+  simpleModeInitialized = true;
+}
+
+export async function removeSimpleMode() {
+  if (!simpleModeInitialized) return;
+  removeEvent({
+    element: document.getElementById('zoomSlider'),
+    elementStr: 'zoomSlider-input',
+    eventType: 'input'
+  });
+
+  let simpleModeElement = document.getElementById('simpleMode');
+  simpleModeElement.classList.remove('active');
+
+  simpleModeInitialized = false;
 }

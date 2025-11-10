@@ -5,7 +5,7 @@ import { getObjAltAz } from "./getObject.js";
 // Llamar la función con el parámetro apropiado
 // Para index.html: initializeStelEngine(false);
 // Para telescope.html: initializeStelEngine(true);
-export default function initializeStelEngine(isTelescope = false) {
+export function initializeStelEngine(isTelescope = false) {
   StelWebEngine({
     wasmFile: "stellarium-web-engine.wasm",
     canvas: document.getElementById("stel-canvas"),
@@ -233,6 +233,4 @@ export function removeStelEngine() {
   oldCanvas.replaceWith(newCanvas);
 
   engine = null;
-
-  console.log("🧹 Stellarium engine removed successfully.");
 }
