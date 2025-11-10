@@ -1,6 +1,10 @@
 import { toJulianDateIso } from "./time.js";
 import { applyLocation } from "./location.js";
 import { getObjAltAz } from "./getObject.js";
+
+// Llamar la función con el parámetro apropiado
+// Para index.html: initializeStelEngine(false);
+// Para telescope.html: initializeStelEngine(true);
 export default function initializeStelEngine(isTelescope = false) {
   StelWebEngine({
     wasmFile: "stellarium-web-engine.wasm",
@@ -203,6 +207,32 @@ export default function initializeStelEngine(isTelescope = false) {
   });
 }
 
-// Llamar la función con el parámetro apropiado
-// Para index.html: initializeStelEngine(false);
-// Para telescope.html: initializeStelEngine(true);
+
+export function removeStelEngine() {
+  if (!engine) return;
+
+  // 1. Detener cualquier render loop o proceso activo
+  if (engine.stop) engine.stop();
+  if (engine.core && engine.core.clock) engine.core.clock.running = false;
+
+  // 2. Liberar referencias de observador y selección
+  engine.core.selection = null;
+  engine.core.observer = null;
+
+  // 3. Intentar limpiar el contexto WebGL
+  const oldCanvas = engine.canvas;
+  const gl = oldCanvas.getContext("webgl2") || oldCanvas.getContext("webgl");
+  if (gl && gl.getExtension("WEBGL_lose_context")) {
+    gl.getExtension("WEBGL_lose_context").loseContext();
+  }
+
+  // 4. Quitar el contenido del canvas
+  // Reemplazar el canvas por uno nuevo
+  const newCanvas = document.createElement("canvas");
+  newCanvas.id = "stel-canvas";
+  oldCanvas.replaceWith(newCanvas);
+
+  engine = null;
+
+  console.log("🧹 Stellarium engine removed successfully.");
+}
