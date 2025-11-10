@@ -1,12 +1,9 @@
-import initializeStelEngine from "../../util/initStel.js";
-import { addZoomSliderEvent } from "./events.js";
 import { updateDisplayFov } from "./updateDisplay.js";
 import {
   closeMenu,
   createMenuElement,
   openMenu,
   optionSelection,
-  toggleViewButton,
 } from "../Menu/menu.js";
 import {
   applyCurrentDate,
@@ -17,6 +14,8 @@ import { displayGlobe } from "../Menu/Location/globe.js";
 import { displaySeeingOptions } from "../Menu/Seeing/seeing.js";
 import { getMagFromLonLat } from "./lp/getLpFromCoords.js";
 import { applyLocation } from "../../util/location.js";
+import { initSimpleMode } from "../Modes/simple-mode.js";
+import { initAdvancedMode } from "../Modes/advanced-mode.js";
 
 function loadScript(url, type) {
   const head = document.getElementsByTagName("head")[0];
@@ -40,45 +39,36 @@ function setLoading(state = true) {
 }
 
 function setModeSettings(mode) {
-  // viewControlsButton.disabled = mode == 'simple';
   Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to("index.html");
 }
 
-function toggleMode() {
-  // Cambiar a avanzado
-  if (modes.simple === true) {
-    if (!advancedModeElement) {
-      advancedModeElement = document.getElementById("advancedMode");
+async function toggleMode() {
+  setLoading(true);
+
+  try {
+    if (modes.simple === true) {
+      // Switching to advanced mode
+      await initAdvancedMode();
+    } else {
+      // Switching to simple mode
+      await initSimpleMode();
     }
-    modeTextElement.textContent = "Simple";
-    advancedModeElement.classList.add("active");
-    simpleModeElement.classList.remove("active");
-    modeButtonElement.classList.add("simple-mode-image");
-    modeButtonElement.classList.remove("advanced-mode-image");
-  }
-  // Cambiar a simple
-  else {
-    if (!simpleModeElement) {
-      simpleModeElement = document.getElementById("simpleMode");
+    
+    // Toggle mode state
+    for (let mode in modes) {
+      modes[mode] = !modes[mode];
+      if (modes[mode] == true) {
+        setModeSettings(mode);
+      }
     }
-    modeTextElement.textContent = "Avanzado";
-    simpleModeElement.classList.add("active");
-    advancedModeElement.classList.remove("active");
-    modeButtonElement.classList.add("advanced-mode-image");
-    modeButtonElement.classList.remove("simple-mode-image");
   }
 
-  // Activar o desactivar boton View del menu
-  if (menu) {
-    toggleViewButton();
+  catch(error) {
+    console.error('Error toggling mode:', error);
   }
 
-  // Intercambiar modo activo
-  for (let mode in modes) {
-    modes[mode] = !modes[mode];
-    if (modes[mode] == true) {
-      setModeSettings(mode);
-    }
+  finally {
+    setLoading(false);
   }
 }
 
@@ -300,8 +290,6 @@ let modes = {
 };
 
 let blurSlider;
-let simpleModeElement = null;
-let advancedModeElement = null;
 let mainLoadingScreenElement = null;
 let modeTextElement;
 let modeButtonElement;
@@ -318,27 +306,14 @@ async function main() {
     addMenuElement();
 
     modeButtonElement = document.getElementById("modeButton");
-
-    // blurSlider = document.getElementById("focusSlider");
-    let zoomSlider = document.getElementById("zoomSlider");
-
-    simpleModeElement = document.getElementById("simpleMode");
-    // advancedModeElement = document.getElementById("advancedMode");
-
     modeTextElement = document.getElementById("modeText");
-
-    simpleModeElement.classList.toggle("active");
     modeButtonElement.classList.toggle("simple-mode-image");
     modeTextElement.textContent = "Avanzado";
 
-    addZoomSliderEvent(zoomSlider);
+    initSimpleMode();
     setWindowFunctions();
-    initializeStelEngine(true);
     setLoading(false);
   });
-
-  // blurSlider.value = currentBlur;
-  // updateDisplayFov();
 }
 
 main();

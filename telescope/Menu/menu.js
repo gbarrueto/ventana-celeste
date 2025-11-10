@@ -183,7 +183,9 @@ export function displayMainMenu(e) {
   mainMenuSection.classList.add("active");
 }
 
-export function toggleViewButton() {
+export function enableViewButton(enable) {
   const elem = document.getElementById('viewControlsButton');
-  elem.classList.toggle('hidden');
+  if (elem) {
+    enable == true ? elem.classList.remove('hidden') : elem.classList.add('hidden');
+  }
 }
