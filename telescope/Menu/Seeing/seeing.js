@@ -38,7 +38,7 @@ export function displaySeeingOptions(e) {
   }
 }
 
-function sendSeeingValue({ target, value }) {
+export function sendSeeingValue({ target, value }) {
   Protobject.Core.send({ msg: "seeingOption", values: { target, value } }).to(
     "index.html"
   );
