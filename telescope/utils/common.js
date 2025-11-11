@@ -91,12 +91,14 @@ function unwrapAngle(newAngle, prevAngle) {
 
 function applyZoom(selected_eyepiece_fl, event) {
   const button = document.querySelector("#lensContainer .active");
+  let buttonName = ''
 
   if (button) {
     button.classList.toggle("active");
   }
 
   event.target.classList.toggle("active");
+  buttonName = event.target.name;
 
   EYEPIECE_FL = selected_eyepiece_fl;
 
@@ -112,7 +114,7 @@ function applyZoom(selected_eyepiece_fl, event) {
   new_fov = (new_fov * Math.PI) / 180;
 
   logFov = Math.log(new_fov);
-  updateDisplayFov();
+  updateDisplayFov(buttonName);
 }
 
 function bortleToMag(bortle) {
@@ -238,6 +240,11 @@ window.currentTZ = -4;
 window.engineUTC = null;
 window.pollution = 9;
 
+window.modes = {
+  simple: true,
+  advanced: false,
+};
+
 const BUTTONS = {
   constellations: {
     label: "Constellations",
@@ -281,11 +288,6 @@ const BUTTONS = {
     path: "dss",
     attr: "visible",
   },
-};
-
-let modes = {
-  simple: true,
-  advanced: false,
 };
 
 let blurSlider;
