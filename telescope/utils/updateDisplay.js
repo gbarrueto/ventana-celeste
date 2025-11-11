@@ -1,14 +1,20 @@
 let oldFov = 3;
 let blurTarget = 5;
 
+import { eventManager } from "./eventManager.js";
+
 export function updateDisplayFov() {
   const fov = Math.exp(logFov);
 
   if (oldFov !== fov) {
-    Protobject.Core.send({ msg: "updateFov", values: { fov: fov } }).to(
-      "index.html"
+    // BEFORE: Protobject.Core.send({ msg: "updateFov", values: { fov } }).to("index.html");
+
+    // AFTER: Throttle to max 1 message per 50ms
+    eventManager.sendThrottledProtobject(
+      { msg: "updateFov", values: { fov } },
+      "index.html",
+      50 // milliseconds
     );
-    // console.log("Sent fov:", fov);
   }
   oldFov = fov;
 
@@ -37,7 +43,9 @@ export function updateDisplayBlur() {
   //blurSlider.value = currentBlur;
   // blurText.textContent = currentBlur;
 
-  Protobject.Core.send({ msg: "updateBlur", values: { blur: blurEffect } }).to(
-    "index.html"
+  eventManager.sendThrottledProtobject(
+    { msg: "updateBlur", values: { blur: blurEffect } },
+    "index.html",
+    50
   );
 }

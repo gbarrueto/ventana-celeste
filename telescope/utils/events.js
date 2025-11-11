@@ -1,54 +1,85 @@
 import { applyPollution } from "../../util/location.js";
 import { sliderToFov } from "../Slider/slider.js";
+import { eventManager } from "./eventManager.js";
+
+// --- Funciones de Lógica Pura ---
+// (Estas funciones no cambian, solo definen QUÉ hacer)
 
 function BlurSliderFunction(element) {
+  // Asumo que 'currentBlur' y 'updateDisplayBlur' están definidos
+  // en un alcance superior o global.
   currentBlur = parseFloat(element.value);
   updateDisplayBlur();
 }
-export function addBlurSliderEvent(element) {
-  element.addEventListener("input", () => BlurSliderFunction(element));
-}
 
 function ZoomSliderFunction(element) {
+  // Asumo que 'current_fov', 'logFov' y 'updateDisplayFov'
+  // están definidos en un alcance superior.
   const sliderValue = parseFloat(element.value);
   current_fov = sliderToFov(sliderValue);
-
   logFov = Math.log(current_fov);
-
-  // console.log("Slider:", sliderValue, "FOV:", current_fov);
-
   updateDisplayFov();
-}
-export function addZoomSliderEvent(element) {
-  element.addEventListener("input", () => ZoomSliderFunction(element));
 }
 
 function PollutionSliderFunction(element) {
-  // Bortle index 1-9
+  // Asumo que 'pollution' y 'bortleToMag' están definidos
+  // en un alcance superior.
   pollution = element.value;
-
   const skyMag = bortleToMag(parseInt(pollution));
 
   // To guidescope
   applyPollution({ mag: skyMag });
-  // To telescope
-  Protobject.Core.send({ msg: "updatePollution", values: { mag: skyMag } }).to(
-    "index.html"
-  );
-}
-export function addPollutionSliderEvent(element) {
-  element.addEventListener("input", () => PollutionSliderFunction(element));
+  // To telescope (throttled via eventManager)
+  try {
+    eventManager.sendThrottledProtobject(
+      { msg: "updatePollution", values: { mag: skyMag } },
+      "index.html",
+      200
+    );
+  } catch (e) {
+    Protobject.Core.send({
+      msg: "updatePollution",
+      values: { mag: skyMag },
+    }).to("index.html");
+  }
 }
 
-const eventsMap = {
-  /* "element-eventType": function */
-  "blurSlider-input": BlurSliderFunction,
-  "zoomSlider-input": ZoomSliderFunction,
-  "pollutionSlider-input": PollutionSliderFunction,
-};
+// --- Configuración y Limpieza de Eventos ---
+// (Exportamos solo las funciones que controlan el setup y cleanup)
 
-export function removeEvent({ element, elementStr, eventType }) {
-  element.removeEventListener(eventType, () =>
-    eventsMap[`${elementStr}-${eventType}`](element)
+/**
+ * Adjunta todos los listeners de los sliders usando el eventManager
+ * para aplicar debounce y optimizar el rendimiento.
+ */
+export function setupSliderListeners() {
+  eventManager.on(
+    "#zoomSlider",
+    "input",
+    (e) => ZoomSliderFunction(e.target),
+    { debounce: 50 } // Espera 50ms después de que el usuario deja de ajustar
   );
+
+  eventManager.on(
+    "#focusSlider", // Este ID debe corresponder al slider de blur
+    "input",
+    (e) => BlurSliderFunction(e.target),
+    { debounce: 100 }
+  );
+
+  eventManager.on(
+    "#pollutionSlider",
+    "input",
+    (e) => PollutionSliderFunction(e.target),
+    { debounce: 200 }
+  );
+}
+
+/**
+ * Limpia todos los listeners de los sliders que fueron
+ * adjuntados por el eventManager.
+ */
+export function cleanupSliderListeners() {
+  eventManager.off("#zoomSlider", "input");
+  eventManager.off("#focusSlider", "input");
+  eventManager.off("#pollutionSlider", "input");
 }

@@ -1,5 +1,5 @@
 import initializeStelEngine from "../../util/initStel.js";
-import { addZoomSliderEvent } from "./events.js";
+import { setupSliderListeners } from "./events.js";
 import { updateDisplayFov } from "./updateDisplay.js";
 import {
   closeMenu,
@@ -331,7 +331,7 @@ async function main() {
     modeButtonElement.classList.toggle("simple-mode-image");
     modeTextElement.textContent = "Avanzado";
 
-    addZoomSliderEvent(zoomSlider);
+    setupSliderListeners();
     setWindowFunctions();
     initializeStelEngine(true);
     setLoading(false);
