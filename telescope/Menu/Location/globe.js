@@ -1,17 +1,19 @@
-function initializeGlobe() {
-  // Inicializar globo
-  let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
-  let globe = Globe()(globeDiv)
-    .globeImageUrl("//unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
-    .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
-    .pointAltitude("size")
-    .pointColor("color")
-    .pointsData(globePoint);
+import { lazyLoader } from "../../utils/lazyLoad.js";
 
-  // Mover la cámara al punto inicial
-  const { lat, lng } = globePoint[0];
-  globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
-}
+// function initializeGlobe() {
+//   // Inicializar globo
+//   let globePoint = [{ lat: -33.4489, lng: -70.6693, size: 1.5, color: "red" }];
+//   let globe = Globe()(globeDiv)
+//     .globeImageUrl("//unpkg.com/three-globe/example/img/earth-blue-marble.jpg")
+//     .backgroundImageUrl("//unpkg.com/three-globe/example/img/night-sky.png")
+//     .pointAltitude("size")
+//     .pointColor("color")
+//     .pointsData(globePoint);
+
+//   // Mover la cámara al punto inicial
+//   const { lat, lng } = globePoint[0];
+//   globe.pointOfView({ lat, lng, altitude: 3 }, 1000); // 3 puede ajustarse según zoom
+// }
 
 // Variable global para evitar múltiples inicializaciones
 let cesiumViewer = null;
@@ -36,6 +38,37 @@ export async function displayGlobe(e) {
     document.body.appendChild(container);
   } else {
     container.classList.add("active");
+  }
+
+  // Load Cesium on demand
+  if (!window.Cesium) {
+    try {
+      setLoading(true); // Mostrar spinner
+
+      // Load both Cesium AND CSS
+      const cesiumCssPromise = new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css';
+        link.onload = resolve;
+        document.head.appendChild(link);
+      });
+
+      const cesiumJsPromise = lazyLoader.loadCdnScript(
+        'Cesium',
+        'https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js'
+      );
+
+      await Promise.all([cesiumCssPromise, cesiumJsPromise]);
+
+    } catch (error) {
+      console.error('Failed to load Cesium:', error);
+      alert('Error al cargar mapa 3D. Por favor intenta de nuevo.');
+      setLoading(false);
+      return;
+    } finally {
+      setLoading(false);
+    }
   }
 
   // No inicializar Cesium de nuevo si ya está
