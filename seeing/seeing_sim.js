@@ -53,6 +53,8 @@ function initializeSeeingOverlay() {
         <div>
             <label for="disturbance" class="text-sm font-medium">Perturbación Atmosférica: <span id="disturbanceValue">10</span>%</label>
             <input id="disturbance" type="range" min="0" max="100" value="10" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+            <label for="focus" class="text-sm font-medium">Enfoque: <span id="focusValue">10</span>%</label>
+            <input id="focus" type="range" min="0" max="10" value="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
         </div>
     `;
   document.body.appendChild(controlsPanel);
@@ -71,9 +73,10 @@ function initializeSeeingOverlay() {
   const copyCanvas = document.createElement("canvas");
   const copyCtx = copyCanvas.getContext("2d", { willReadFrequently: true });
 
-  // --- Referencia al nuevo y único control ---
   const disturbanceSlider = document.getElementById("disturbance");
   const disturbanceValueSpan = document.getElementById("disturbanceValue");
+  const focusSlider = document.getElementById("focus");
+  const focusValueSpan = document.getElementById("focusValue");
 
   const vertexShaderSource = `
         attribute vec2 a_position; attribute vec2 a_texCoord;
@@ -265,14 +268,22 @@ function initializeSeeingOverlay() {
     requestAnimationFrame(animate);
   }
 
-  // --- Event Listener para el único slider ---
+  function updateCssFilters() {
+    const blur = parseFloat(focusSlider.value).toFixed(1);
+    effectCanvas.style.filter = `blur(${blur}px)`;
+    focusValueSpan.textContent = blur;
+    // requestAnimationFrame(animate);
+  }
+
   disturbanceSlider.addEventListener("input", (e) => {
     disturbanceValueSpan.textContent = e.target.value;
   });
+  focusSlider.addEventListener("input", updateCssFilters);
 
   // --- Mapeo de controles simplificado ---
   seeingTargets = {
     disturbance: disturbanceSlider,
+    focus: focusSlider,
   };
 
   animate(0);

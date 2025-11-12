@@ -1,4 +1,5 @@
 import { updateStellariumView } from "../../util/stel.js";
+import { eventManager } from "./eventManager.js";
 
 
 (() => {
@@ -251,14 +252,28 @@ window.Orientation = {
     this.oldX += (adjustedYaw - this.oldX) * sensitivity;
     this.oldY += (pitch - this.oldY) * sensitivity;
 
-    if (typeof Protobject !== 'undefined' && Protobject.Core) {
+    // Throttle outgoing messages to index.html to avoid flooding
+    try {
+      eventManager.sendThrottledProtobject(
+        { msg: "updateView", values: { h: this.oldX, v: this.oldY } },
+        "index.html",
+        ORIENTATION_SEND_MS
+      );
+    } catch (e) {
       Protobject.Core.send({
         msg: "updateView",
         values: { h: this.oldX, v: this.oldY },
       }).to("index.html");
     }
-    
-    updateStellariumView({ h: this.oldX, v: this.oldY });
+
+    // Locally update the guide/view at most once per animation frame
+    if (!this._pendingRAF) {
+      this._pendingRAF = true;
+      requestAnimationFrame(() => {
+        updateStellariumView({ h: this.oldX, v: this.oldY }); // para guia
+        this._pendingRAF = false;
+      });
+    }
   },
 
   transitionToMode(newMode) {
