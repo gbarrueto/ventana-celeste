@@ -27,12 +27,21 @@ export async function displayDateTime(e) {
         document.head.appendChild(link);
       });
 
+      const flatpickrThemeCssPromise = new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'https://npmcdn.com/flatpickr/dist/themes/dark.css';
+        link.onload = resolve;
+        document.head.appendChild(link);
+      });
+
       const flatpickrJsPromise = lazyLoader.loadCdnScript(
         'flatpickr',
         'https://cdn.jsdelivr.net/npm/flatpickr'
       );
 
-      await Promise.all([flatpickrCssPromise, flatpickrJsPromise]);
+      await Promise.all([flatpickrCssPromise, flatpickrThemeCssPromise, flatpickrJsPromise]);
 
     } catch (error) {
       console.error('Failed to load Flatpickr:', error);
