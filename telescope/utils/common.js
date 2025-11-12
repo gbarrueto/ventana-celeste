@@ -1,3 +1,5 @@
+import initializeStelEngine from "../../util/initStel.js";
+import { setupSliderListeners } from "./events.js";
 import { updateDisplayFov } from "./updateDisplay.js";
 import {
   closeMenu,
@@ -311,6 +313,7 @@ async function main() {
     modeButtonElement.classList.toggle("simple-mode-image");
     modeTextElement.textContent = "Avanzado";
 
+    setupSliderListeners();
     initSimpleMode();
     setWindowFunctions();
     setLoading(false);

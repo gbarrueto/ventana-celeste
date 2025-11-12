@@ -9,6 +9,20 @@
   </head>
 
   <body>
+    <style>
+      #protobject-hud {
+        position: fixed;
+        right: 8px;
+        top: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        font-family: monospace;
+        padding: 6px 8px;
+        border-radius: 6px;
+        z-index: 9999;
+        font-size: 12px;
+      }
+    </style>
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
     <script src="stellarium-web-engine.js"></script>
@@ -24,6 +38,9 @@
     <!-- <div id="finder-overlay"></div> -->
     <div id="eyepiece-overlay"></div>
 
+    <div id="protobject-hud">
+      <div id="protobject-hud-content">loading...</div>
+    </div>
     <script>
       let engine;
       let bortle;
@@ -51,5 +68,31 @@
     </script>
 
     <script type="module" src="util/protobject.js"></script>
+
+    <script>
+      (function () {
+        const el = document.getElementById("protobject-hud-content");
+        function render() {
+          const recv =
+            (window.ProtobjectStats && window.ProtobjectStats.get()) || {};
+          const sendStats = (window.eventManager &&
+            window.eventManager.getStats &&
+            window.eventManager.getStats()) || { protobjectSent: {} };
+          const recvKeys = Object.entries(recv)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+          const sendKeys = Object.entries(sendStats.protobjectSent || {})
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+          let s = "<strong>Recv (top)</strong><br/>";
+          recvKeys.forEach(([k, v]) => (s += `${k}: ${v}<br/>`));
+          s += "<hr/>";
+          s += "<strong>Sent (top)</strong><br/>";
+          sendKeys.forEach(([k, v]) => (s += `${k}: ${v}<br/>`));
+          el.innerHTML = s;
+        }
+        setInterval(render, 1000);
+      })();
+    </script>
   </body>
 </html>
