@@ -1,9 +1,19 @@
-let oldFov = 3;
-let blurTarget = 5;
+import { sendSeeingValue } from "../Menu/Seeing/seeing.js";
 
 import { eventManager } from "./eventManager.js";
 
 export function updateDisplayFov() {
+let oldFov = 3;
+let blurTarget = 0;
+let blurTargets = {
+  '': 0,
+  'len1': 2,
+  'len2': 4,
+  'len3': 6,
+  'len4': 8,
+};
+
+export function updateDisplayFov(len='') {
   const fov = Math.exp(logFov);
 
   if (oldFov !== fov) {
@@ -17,34 +27,31 @@ export function updateDisplayFov() {
   }
   oldFov = fov;
 
-  // Aplicar desenfoque
-  const zoomLevel =
-    (Math.log(MAX_FOV) - logFov) / (Math.log(MAX_FOV) - Math.log(MIN_FOV));
-  const blurVariation = 1 + zoomLevel * 4;
-
-  blurTarget = 5 + (Math.random() - 0.5) * blurVariation;
-  blurTarget = Math.max(0, Math.min(10, blurTarget));
-
-  // Desenfoque desactivado momentaneamente
-
-  //updateDisplayBlur();
+  // Aplicar desenfoque solo en modo avanzado
+  if (modes.advanced == true) {
+    blurTarget = blurTargets[len];
+    updateDisplayBlur();
+  }
 }
 
 export function updateDisplayBlur() {
   const diff = Math.abs(currentBlur - blurTarget);
 
+  // Simula la sensibilidad del desenfoque según el nivel de zoom
   const zoomLevel =
     (Math.log(MAX_FOV) - logFov) / (Math.log(MAX_FOV) - Math.log(MIN_FOV));
-  const sensitivity = 0.4 + zoomLevel * 1.6;
+  const sensitivity = 0.4 + zoomLevel * 2.0;
 
-  const blurEffect = Math.min(diff * sensitivity, 1) * 10;
+  // Simula el desenfoque como una función no lineal del error de enfoque
+  const blurIntensity = Math.pow(diff * sensitivity, 1.5);
 
-  //blurSlider.value = currentBlur;
-  // blurText.textContent = currentBlur;
+  // Limita el desenfoque a un rango razonable (0 a 100)
+  const blurEffect = Math.min(blurIntensity, 100);
 
-  eventManager.sendThrottledProtobject(
-    { msg: "updateBlur", values: { blur: blurEffect } },
-    "index.html",
-    BLUR_SEND_MS
-  );
+//   eventManager.sendThrottledProtobject(
+//     { msg: "updateBlur", values: { blur: blurEffect } },
+//     "index.html",
+//     BLUR_SEND_MS
+//   );
+  sendSeeingValue({ target: "focus", value: blurEffect }) // hay que implementar throttle a esta request
 }

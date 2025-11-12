@@ -1,6 +1,7 @@
 import { applyPollution } from "../../util/location.js";
 import { sliderToFov } from "../Slider/slider.js";
 import { eventManager } from "./eventManager.js";
+import { updateDisplayBlur } from "./updateDisplay.js";
 
 function BlurSliderFunction(element) {
   currentBlur = parseFloat(element.value);
