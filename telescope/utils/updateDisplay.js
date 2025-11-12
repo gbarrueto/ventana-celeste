@@ -7,13 +7,12 @@ export function updateDisplayFov() {
   const fov = Math.exp(logFov);
 
   if (oldFov !== fov) {
-    // BEFORE: Protobject.Core.send({ msg: "updateFov", values: { fov } }).to("index.html");
+    // Protobject.Core.send({ msg: "updateFov", values: { fov } }).to("index.html");
 
-    // AFTER: Throttle to max 1 message per 50ms
     eventManager.sendThrottledProtobject(
       { msg: "updateFov", values: { fov } },
       "index.html",
-      50 // milliseconds
+      FOV_SEND_MS
     );
   }
   oldFov = fov;
@@ -46,6 +45,6 @@ export function updateDisplayBlur() {
   eventManager.sendThrottledProtobject(
     { msg: "updateBlur", values: { blur: blurEffect } },
     "index.html",
-    50
+    BLUR_SEND_MS
   );
 }

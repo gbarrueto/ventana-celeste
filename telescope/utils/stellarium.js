@@ -47,8 +47,8 @@ const Orientation = {
       eventManager.sendThrottledProtobject(
         { msg: "updateView", values: { h: this.oldX, v: this.oldY } },
         "index.html",
-        50
-      ); // ~30fps
+        ORIENTATION_SEND_MS
+      );
     } catch (e) {
       Protobject.Core.send({
         msg: "updateView",
