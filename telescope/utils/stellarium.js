@@ -1,44 +1,254 @@
 import { updateStellariumView } from "../../util/stel.js";
 import { eventManager } from "./eventManager.js";
 
-const Orientation = {
+
+(() => {
+  const ID = 'dbg-pitch-yaw';
+  let el = document.getElementById(ID);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = ID;
+    Object.assign(el.style, {
+      position: 'fixed',
+      left: '8px',
+      bottom: '108px',
+      zIndex: '214793647',
+      background: 'rgba(0,0,0,0.75)',
+      color: '#0f0',
+      padding: '8px 10px',
+      borderRadius: '6px',
+      fontFamily: 'monospace, monospace',
+      fontSize: '13px',
+      lineHeight: '1.2',
+      pointerEvents: 'auto',
+      whiteSpace: 'pre',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      cursor: 'pointer'
+    });
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+
+  window.updatePitchYaw = window.updatePitchYaw || function (pitch, yaw, status = null) {
+    const p = (typeof pitch === 'number') ? pitch : Number(pitch) || 0;
+    const y = (typeof yaw === 'number') ? yaw : Number(yaw) || 0;
+    
+    let statusText = '';
+    if (status) {
+      statusText = `\nstatus: ${status}`;
+    } else if (window.Orientation && window.Orientation.calibrating) {
+      const progress = Math.round((window.Orientation.biasSamples.length / window.Orientation.calibSamplesNeeded) * 100);
+      statusText = `\nstatus: Calibrating... ${progress}%`;
+    }
+    // Aggiunge la modalità corrente al display di debug
+    const mode = (window.Orientation) ? window.Orientation.currentMode : '...';
+    statusText += `\nmode: ${mode}`;
+    
+    el.textContent = `pitch: ${p.toFixed(5)} (rad)\nyaw:   ${y.toFixed(5)} (rad)${statusText}`;
+  };
+
+  let calibTimeout = null;
+  el.addEventListener('click', () => {
+    if (calibTimeout) clearTimeout(calibTimeout);
+    if (window.Orientation && typeof window.Orientation.startCalibration === 'function') {
+      window.updatePitchYaw(0,0, "Recalibrating...");
+      calibTimeout = setTimeout(() => {
+        window.Orientation.startCalibration();
+      }, 1000);
+    }
+  });
+
+  if (!el.textContent) el.textContent = 'pitch: 0.00000 (rad)\nyaw:   0.00000 (rad)\nstatus: idle\nmode: none';
+})();
+
+
+window.Orientation = {
+  // --- config ---
+  gyroFreq: 100, 
+  absFreq: 30,  
+  gyroDeadzone: 0.003, 
+  calibDuration: 3, 
+  fovThreshold: 0.8,  
+
+  // --- status ---
+  gyroSensor: null,
+  absSensor: null,
+  running: false,
+  calibrating: false,
+  gyroBias: { x: 0, y: 0, z: 0 },
+  biasSamples: [],
+  calibSamplesNeeded: 300,
+  orient: { pitch: 0, yaw: 0 },
+  absOrientLast: null, 
+  currentMode: 'absolute', 
+  lastTime: null,
   oldX: null,
   oldY: null,
-  start(freq = 200) {
-    this.freq = freq;
-    this.initSensors();
-  },
-  initSensors() {
-    if ("AbsoluteOrientationSensor" in window) {
-      try {
-        const sensor = new AbsoluteOrientationSensor({ frequency: 60 });
-        sensor.addEventListener("reading", () =>
-          this.calculateOrientation(sensor.quaternion)
-        );
-        sensor.start();
-      } catch (error) {
-        console.error("Sensor error:", error);
-      }
-    } else {
-      console.error("AbsoluteOrientationSensor non supportato.");
-    }
-  },
-  calculateOrientation(q) {
-    if (!q) return;
-    const [x, y, z, w] = q;
+
+  quaternionToEuler(q) {
+    if (!q) return { yaw: 0, pitch: 0 };
+    const x = q[0], y = q[1], z = q[2], w = q[3];
     const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
     const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+    return { yaw, pitch };
+  },
+  
+  start(config = {}) {
+    this.fovThreshold = config.fovThreshold || this.fovThreshold;
+    this.onCalibReading = this.onCalibReading.bind(this);
+    this.onSensorReading = this.onSensorReading.bind(this);
+    this.onAbsReading = this.onAbsReading.bind(this);
+    this.startSensors();
+  },
 
+  stop() {
+    this.running = false;
+    this.calibrating = false;
+    try {
+      if (this.gyroSensor) this.gyroSensor.stop();
+      if (this.absSensor) this.absSensor.stop();
+      this.gyroSensor = null;
+      this.absSensor = null;
+    } catch (e) {
+      console.warn("Errore durante lo stop dei sensori:", e);
+    }
+  },
+
+  async requestIOSPermissionIfNeeded() {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const resp = await DeviceOrientationEvent.requestPermission();
+        if (resp !== 'granted') throw new Error('Permesso "DeviceOrientationEvent" negato');
+      } catch (e) {
+        console.error('Permesso sensori iOS negato:', e);
+        throw e;
+      }
+    }
+  },
+
+  async startSensors() {
+    try {
+      await this.requestIOSPermissionIfNeeded();
+    } catch (e) {
+      window.updatePitchYaw(0, 0, "Permesso negato");
+      return;
+    }
+    this.stop();
+    try {
+      if (!('Gyroscope' in window) || !('AbsoluteOrientationSensor' in window)) {
+        throw new Error('Sensori necessari non disponibili');
+      }
+      this.gyroSensor = new Gyroscope({ frequency: this.gyroFreq });
+      this.absSensor = new AbsoluteOrientationSensor({ frequency: this.absFreq });
+      this.gyroSensor.addEventListener('error', (e) => console.error('Errore Gyro:', e.error.name));
+      this.absSensor.addEventListener('error', (e) => console.error('Errore AbsSensor:', e.error.name));
+      this.startCalibration();
+    } catch (err) {
+      console.error("Errore avvio sensori:", err);
+      window.updatePitchYaw(0, 0, "Error: " + err.message);
+    }
+  },
+
+  startCalibration() {
+    if (!this.gyroSensor || !this.absSensor) return;
+    if (this.calibrating) return;
+
+    this.calibrating = true;
+    this.running = false;
+    this.biasSamples = [];
+    this.calibSamplesNeeded = this.gyroFreq * this.calibDuration;
+    this.currentMode = 'absolute';
+    
+    window.updatePitchYaw(0, 0, "Calibrating... 0%");
+    
+    this.gyroSensor.addEventListener('reading', this.onCalibReading);
+    this.absSensor.addEventListener('reading', this.onAbsReading);
+
+    try {
+      this.gyroSensor.start();
+      this.absSensor.start();
+    } catch (e) {
+      console.error("Errore start calibrazione:", e);
+    }
+  },
+
+  onCalibReading() {
+    if (this.biasSamples.length < this.calibSamplesNeeded) {
+      this.biasSamples.push({ x: this.gyroSensor.x, y: this.gyroSensor.y, z: this.gyroSensor.z });
+      window.updatePitchYaw(0, 0); 
+    } else {
+      this.finishCalibration();
+    }
+  },
+
+  finishCalibration() {
+    if (!this.calibrating) return;
+    this.calibrating = false;
+    this.gyroSensor.removeEventListener('reading', this.onCalibReading);
+
+    const avg = this.biasSamples.reduce((acc, r) => ({ x: acc.x + r.x, y: acc.y + r.y, z: acc.z + r.z }), { x: 0, y: 0, z: 0 });
+    const len = this.biasSamples.length > 0 ? this.biasSamples.length : 1;
+    this.gyroBias = { x: avg.x / len, y: avg.y / len, z: avg.z / len };
+    console.log('Calibrazione giroscopio completata. Bias:', this.gyroBias);
+
+    this.lastTime = performance.now();
+    this.gyroSensor.addEventListener('reading', this.onSensorReading);
+    this.running = true;
+  },
+  
+  onAbsReading() {
+    if (!this.absSensor) return;
+    this.absOrientLast = this.absSensor.quaternion;
+  },
+
+  onSensorReading() {
+    if (this.calibrating || !this.absOrientLast) {
+      this.lastTime = performance.now();
+      return;
+    }
+
+    const now = performance.now();
+    const dt = Math.max(1e-6, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+
+    if (this.currentMode === 'absolute') {
+        const euler = this.quaternionToEuler(this.absOrientLast);
+        this.orient.pitch = euler.pitch;
+        this.orient.yaw = euler.yaw;
+    } else { // 'gyro' mode
+        let wx = this.gyroSensor.x - this.gyroBias.x;
+        let wz = this.gyroSensor.z - this.gyroBias.z;
+
+        if (Math.abs(wx) < this.gyroDeadzone) wx = 0;
+        if (Math.abs(wz) < this.gyroDeadzone) wz = 0;
+
+        this.orient.pitch += wx * dt;
+        this.orient.yaw += wz * dt;
+    }
+    
+    window.updatePitchYaw(this.orient.pitch, this.orient.yaw, "Running");
+    this.runApplicationLogic(this.orient.pitch, this.orient.yaw);
+  },
+
+  runApplicationLogic(pitch, yaw) {
     const fov = Math.exp(logFov);
-    const sensitivity = Math.min(1, fov / 20);
+    const requiredMode = (fov < this.fovThreshold) ? 'gyro' : 'absolute';
+
+    if (requiredMode !== this.currentMode) {
+        this.transitionToMode(requiredMode);
+    }
+    
+    const sensitivity = (this.currentMode === 'gyro') ? 0.1 : 0.5;
 
     if (this.oldX === null || this.oldY === null) {
       this.oldX = yaw;
       this.oldY = pitch;
+      return;
     }
 
     const adjustedYaw = unwrapAngle(yaw, this.oldX);
-
+    
     this.oldX += (adjustedYaw - this.oldX) * sensitivity;
     this.oldY += (pitch - this.oldY) * sensitivity;
 
@@ -65,6 +275,24 @@ const Orientation = {
       });
     }
   },
+
+  transitionToMode(newMode) {
+    console.log(`Transizione richiesta a: ${newMode}`);
+    if (newMode === 'gyro' && this.currentMode === 'absolute') {
+        console.log("-> Attivazione modalità GYRO");
+        const euler = this.quaternionToEuler(this.absOrientLast);
+        this.orient.pitch = euler.pitch;
+        this.orient.yaw = euler.yaw;
+        this.oldX = euler.yaw;
+        this.oldY = euler.pitch;
+    } else if (newMode === 'absolute' && this.currentMode === 'gyro') {
+        console.log("-> Attivazione modalità ABSOLUTE");
+        const euler = this.quaternionToEuler(this.absOrientLast);
+        this.oldX = unwrapAngle(euler.yaw, this.oldX);
+        this.oldY = euler.pitch;
+    }
+    this.currentMode = newMode;
+  }
 };
 
-Orientation.start();
+window.Orientation.start();
