@@ -1,4 +1,4 @@
-import initializeStelEngine from "../../util/initStel.js";
+import { initializeStelEngine } from "../../util/initStel.js";
 import { setupSliderListeners } from "./events.js";
 import { updateDisplayFov } from "./updateDisplay.js";
 import {
@@ -55,7 +55,7 @@ async function toggleMode() {
       // Switching to simple mode
       await initSimpleMode();
     }
-    
+
     // Toggle mode state
     for (let mode in modes) {
       modes[mode] = !modes[mode];
@@ -63,13 +63,9 @@ async function toggleMode() {
         setModeSettings(mode);
       }
     }
-  }
-
-  catch(error) {
-    console.error('Error toggling mode:', error);
-  }
-
-  finally {
+  } catch (error) {
+    console.error("Error toggling mode:", error);
+  } finally {
     setLoading(false);
   }
 }
@@ -93,7 +89,7 @@ function unwrapAngle(newAngle, prevAngle) {
 
 function applyZoom(selected_eyepiece_fl, event) {
   const button = document.querySelector("#lensContainer .active");
-  let buttonName = ''
+  let buttonName = "";
 
   if (button) {
     button.classList.toggle("active");

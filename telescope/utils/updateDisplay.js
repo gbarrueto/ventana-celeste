@@ -2,18 +2,17 @@ import { sendSeeingValue } from "../Menu/Seeing/seeing.js";
 
 import { eventManager } from "./eventManager.js";
 
-export function updateDisplayFov() {
 let oldFov = 3;
 let blurTarget = 0;
 let blurTargets = {
-  '': 0,
-  'len1': 2,
-  'len2': 4,
-  'len3': 6,
-  'len4': 8,
+  "": 0,
+  len1: 2,
+  len2: 4,
+  len3: 6,
+  len4: 8,
 };
 
-export function updateDisplayFov(len='') {
+export function updateDisplayFov(len = "") {
   const fov = Math.exp(logFov);
 
   if (oldFov !== fov) {
@@ -48,10 +47,10 @@ export function updateDisplayBlur() {
   // Limita el desenfoque a un rango razonable (0 a 100)
   const blurEffect = Math.min(blurIntensity, 100);
 
-//   eventManager.sendThrottledProtobject(
-//     { msg: "updateBlur", values: { blur: blurEffect } },
-//     "index.html",
-//     BLUR_SEND_MS
-//   );
-  sendSeeingValue({ target: "focus", value: blurEffect }) // hay que implementar throttle a esta request
+  //   eventManager.sendThrottledProtobject(
+  //     { msg: "updateBlur", values: { blur: blurEffect } },
+  //     "index.html",
+  //     BLUR_SEND_MS
+  //   );
+  sendSeeingValue({ target: "focus", value: blurEffect }); // hay que implementar throttle a esta request
 }

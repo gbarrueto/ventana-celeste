@@ -39,7 +39,7 @@ export function displaySeeingOptions(e) {
   }
 }
 
-function sendSeeingValue({ target, value }) {
+export function sendSeeingValue({ target, value }) {
   try {
     eventManager.sendThrottledProtobject(
       { msg: "seeingOption", values: { target, value } },

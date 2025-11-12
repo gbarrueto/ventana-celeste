@@ -35,28 +35,56 @@ function PollutionSliderFunction(element) {
   }
 }
 
-export function setupSliderListeners() {
-  eventManager.on("#zoomSlider", "input", (e) => ZoomSliderFunction(e.target), {
+export function addBlurSliderEvent() {
+  // Backwards-compatible wrapper: attach all three sliders if present
+  addZoomSliderEvent();
+  addBlurSliderEventFocused();
+  addPollutionSliderEvent();
+}
+
+// Attach zoom slider listener. Accepts an Element or will use '#zoomSlider'
+export function addZoomSliderEvent(element) {
+  const selector = element && element.id ? `#${element.id}` : "#zoomSlider";
+  eventManager.on(selector, "input", (e) => ZoomSliderFunction(e.target), {
     throttle: ZOOM_THROTTLE_MS,
   });
+}
 
-  eventManager.on(
-    "#focusSlider",
-    "input",
-    (e) => BlurSliderFunction(e.target),
-    { throttle: 100 }
-  );
+// Internal name to avoid clashing with original API name
+export function addBlurSliderEventFocused(element) {
+  const selector = element && element.id ? `#${element.id}` : "#focusSlider";
+  eventManager.on(selector, "input", (e) => BlurSliderFunction(e.target), {
+    throttle: 100,
+  });
+}
 
-  eventManager.on(
-    "#pollutionSlider",
-    "input",
-    (e) => PollutionSliderFunction(e.target),
-    { throttle: POLLUTION_THROTTLE_MS }
-  );
+export function addPollutionSliderEvent(element) {
+  const selector =
+    element && element.id ? `#${element.id}` : "#pollutionSlider";
+  eventManager.on(selector, "input", (e) => PollutionSliderFunction(e.target), {
+    throttle: POLLUTION_THROTTLE_MS,
+  });
 }
 
 export function cleanupSliderListeners() {
   eventManager.off("#zoomSlider", "input");
   eventManager.off("#focusSlider", "input");
   eventManager.off("#pollutionSlider", "input");
+}
+
+// Remove an attached listener. Accepts either an element or a selector string.
+export function removeEvent({ element, elementStr, eventType }) {
+  let selector = null;
+  if (element && element.id) selector = `#${element.id}`;
+  else if (elementStr)
+    selector = elementStr.startsWith("#") ? elementStr : `#${elementStr}`;
+
+  if (!selector) return;
+  eventManager.off(selector, eventType || "input");
+}
+
+export function setupSliderListeners() {
+  addZoomSliderEvent();
+  addBlurSliderEventFocused();
+  addPollutionSliderEvent();
 }

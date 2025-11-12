@@ -8,12 +8,12 @@ let advancedModeInitialized = false;
 export async function initAdvancedMode() {
   removeSimpleMode();
   enableViewButton(true);
-  let advancedModeElement = document.getElementById('advancedMode');
-  let simpleModeElement = document.getElementById('simpleMode');
-  advancedModeElement.classList.add('active');
-  simpleModeElement.classList.remove('active');
+  let advancedModeElement = document.getElementById("advancedMode");
+  let simpleModeElement = document.getElementById("simpleMode");
+  advancedModeElement.classList.add("active");
+  simpleModeElement.classList.remove("active");
   initializeStelEngine(true);
-  addBlurSliderEvent(document.getElementById('focusSlider'));
+  addBlurSliderEvent(document.getElementById("focusSlider"));
 
   advancedModeInitialized = true;
 }
@@ -22,9 +22,9 @@ export async function removeAdvancedMode() {
   if (!advancedModeInitialized) return;
   removeStelEngine();
   removeEvent({
-    element: document.getElementById('focusSlider'),
-    elementStr: 'focusSlider-input',
-    eventType: 'input'
+    element: document.getElementById("focusSlider"),
+    elementStr: "focusSlider-input",
+    eventType: "input",
   });
 
   advancedModeInitialized = true;
