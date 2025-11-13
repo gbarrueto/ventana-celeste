@@ -57,6 +57,13 @@ export function setSeeingOpacity(opacity) {
     seeing.style.opacity = opacity;
 }
 
+function enableSeeingEffect(enable) {
+    const seeingElement = document.getElementById('effect-canvas');
+    if (!seeingElement) return;
+
+    seeingElement.style.visibility = enable ? 'visible' : 'hidden';
+}
+
 export function enableSimpleModeSettings() {
     engine.core.planets.hints_visible = true;
     engine.core.minor_planets.hints_visible = true;
@@ -65,6 +72,7 @@ export function enableSimpleModeSettings() {
     setEyepieceOverlayOpacity(0);
     setSeeingOpacity(0);
     updateStellariumBlur({ blur: 0 })
+    enableSeeingEffect(false);
 }
 
 export function enableAdvancedModeSettings() {
@@ -74,4 +82,5 @@ export function enableAdvancedModeSettings() {
     engine.core.cardinals.visible = false;
     setEyepieceOverlayOpacity(1);
     setSeeingOpacity(1);
+    enableSeeingEffect(true);
 }

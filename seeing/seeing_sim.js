@@ -18,6 +18,7 @@ function initializeSeeingOverlay() {
             z-index: 1;
             pointer-events: none;
             background: transparent;
+            visibility: hidden;
         }
         #controls-panel {
             position: fixed;
