@@ -1,4 +1,4 @@
-import { addPollutionSliderEvent } from "../utils/events.js";
+import { setupSliderListeners } from "../utils/events.js";
 import { pauseCesium } from "./Location/globe.js";
 
 let listenerLoaded = false;
@@ -90,16 +90,17 @@ export function createMenuElement(menuElement) {
         <div id="cesiumContainer" class="tab"></div>
       </section>
     </section>
-  `
+  `;
 
-  menuElement.insertAdjacentHTML('beforeend', content);
+  menuElement.insertAdjacentHTML("beforeend", content);
 }
 
 export function openMenu() {
   menu.classList.add("active");
   if (!listenerLoaded) {
     setLoading(true);
-    addPollutionSliderEvent(pollutionInput);
+    setupSliderListeners();
+    listenerLoaded = true;
     setLoading(false);
   }
 }
@@ -183,7 +184,9 @@ export function displayMainMenu(e) {
   mainMenuSection.classList.add("active");
 }
 
-export function toggleViewButton() {
+export function enableViewButton(enable) {
   const elem = document.getElementById('viewControlsButton');
-  elem.classList.toggle('hidden');
+  if (elem) {
+    enable == true ? elem.classList.remove('hidden') : elem.classList.add('hidden');
+  }
 }

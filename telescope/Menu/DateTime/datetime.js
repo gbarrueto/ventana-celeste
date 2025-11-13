@@ -1,7 +1,9 @@
 import { isNightime } from "../../../util/getObject.js";
 // import { updatePollutionOverlay } from "../../../util/overlay.js";
-import { updateDate } from "../../../util/time.js";
+// import { updateDate } from "../../../util/time.js";
 import { luxon } from "../../utils/luxon.js";
+import { lazyLoader } from "../../utils/lazyLoad.js";
+
 
 let datetimeLoaded = false;
 let timeSpeed = 0;
@@ -10,9 +12,47 @@ let flatpickrSyncInterval = null; // Evita perder el intervalo
 let lastManualChange = 0;
 let isUserTouchingCalendar = false;
 
-export function displayDateTime(e) {
+export async function displayDateTime(e) {
   if (optionSelection(e)) return;
   
+  if (!window.flatpickr) {
+    try {
+      setLoading(true);
+      
+      const flatpickrCssPromise = new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        link.onload = resolve;
+        document.head.appendChild(link);
+      });
+
+      const flatpickrThemeCssPromise = new Promise((resolve) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'https://npmcdn.com/flatpickr/dist/themes/dark.css';
+        link.onload = resolve;
+        document.head.appendChild(link);
+      });
+
+      const flatpickrJsPromise = lazyLoader.loadCdnScript(
+        'flatpickr',
+        'https://cdn.jsdelivr.net/npm/flatpickr'
+      );
+
+      await Promise.all([flatpickrCssPromise, flatpickrThemeCssPromise, flatpickrJsPromise]);
+
+    } catch (error) {
+      console.error('Failed to load Flatpickr:', error);
+      alert('Error al cargar calendario.');
+      setLoading(false);
+      return;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!datetimeLoaded) {
     setLoading(true);
     let section = `
