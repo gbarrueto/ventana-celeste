@@ -2,7 +2,7 @@ let FO,FD,FT,FS,K,MZZ,XX,BS,FB,DP,FP,FA,FM,FC,B,CC,KK,FE, TH,FR,I,IS,M;
 
 // Telescope parameters
 let DIAMETER = 100; 
-let FOCAL_LENGTH = 1000;
+let FOCAL_LENGTH = 1200;
 let EYEPIECE_FL = 25;
 let EYEPIECE_AFOV = 50; // degrees
 let CLEANLINESS = 0; // Clean: 0, Average: 0.15, Dirty: 0.3
