@@ -30,6 +30,30 @@ export function updateDisplayFov(len = "") {
   if (modes.advanced == true) {
     blurTarget = blurTargets[len];
     updateDisplayBlur();
+
+    // Actualizar intensidad maxima de turbulencia. Menor distancia focal -> Mayor turbulencia
+    // Rango de turbulencia: 1 a 10
+    // Esperado: un poco mayor a fov Luna (0.05 RAD) -> min turbulence (1)
+    // Esperado: fov muy pequeño (0.005 rad) -> max turbulence (10)
+
+    const minFov = 0.005; // Radianes
+    const maxFov = 0.05; // Radianes
+
+    let maxTurbulence =
+      ((maxFov - Math.min(Math.max(fov, minFov), maxFov)) / (maxFov - minFov)) * 9 + 1;
+
+    console.log("Sending Max Turbulence:", maxTurbulence.toFixed(1));
+    // esperar un poco antes de enviar este valor para evitar saturar el canal
+    setTimeout(() => {
+      sendSeeingValue({ target: "turbulenceMax", value: maxTurbulence.toFixed(1) });
+    }, 100);
+
+    // enviar un valor de turbulencia de un 20% del maximo
+    const turbulenceValue = (maxTurbulence * 20) / 100;
+    setTimeout(() => {
+      sendSeeingValue({ target: "turbulence", value: turbulenceValue.toFixed(1) });
+    }, 200);
+
   }
 }
 

@@ -1,6 +1,7 @@
 let seeingTargets;
 
 function applySeeingOption({ target, value }) {
+  console.log("Applying Seeing Option:", target, value);
   const option = seeingTargets[target];
   if (option) {
     option.value = value;
@@ -49,13 +50,19 @@ function initializeSeeingOverlay() {
   // --- Panel de Controles simplificado con un único slider ---
   const controlsPanel = document.createElement("div");
   controlsPanel.id = "controls-panel";
-  controlsPanel.innerHTML = `
+    controlsPanel.innerHTML = `
         <h3 class="text-lg font-bold text-white mb-3">Simulador de Seeing</h3>
         <div>
-            <label for="disturbance" class="text-sm font-medium">Perturbación Atmosférica: <span id="disturbanceValue">10</span>%</label>
-            <input id="disturbance" type="range" min="0" max="100" value="10" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+          <label for="turbulence" class="text-sm font-medium">Intensidad de Turbulencia: <span id="turbulenceValue">5.0</span></label>
+          <input id="turbulence" type="range" min="0" max="10" step="0.1" value="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+          <label for="turbulenceMax" class="text-sm font-medium"">Máximo de Turbulencia: <span id="turbulenceMaxValue">10</span></label>
+          <input id="turbulenceMax" type="range" min="1" max="10" step="0.5" value="10" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+          <label for="speed" class="text-sm font-medium">Velocidad de Turbulencia: <span id="speedValue">5</span></label>
+          <input id="speed" type="range" min="1" max="5" step="0.1" value="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
             <label for="focus" class="text-sm font-medium">Enfoque: <span id="focusValue">10</span>%</label>
             <input id="focus" type="range" min="0" max="10" value="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+        <label for="saturation" class="text-sm font-medium">Saturación: <span id="saturationValue">50</span>%</label>
+        <input id="saturation" type="range" min="50" max="150" value="50" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
         </div>
     `;
   document.body.appendChild(controlsPanel);
@@ -74,10 +81,18 @@ function initializeSeeingOverlay() {
   const copyCanvas = document.createElement("canvas");
   const copyCtx = copyCanvas.getContext("2d", { willReadFrequently: true });
 
-  const disturbanceSlider = document.getElementById("disturbance");
-  const disturbanceValueSpan = document.getElementById("disturbanceValue");
+  // const disturbanceSlider = document.getElementById("disturbance");
+  // const disturbanceValueSpan = document.getElementById("disturbanceValue");
+  const turbulenceSlider = document.getElementById("turbulence");
+  const turbulenceMaxSlider = document.getElementById("turbulenceMax");
+  const turbulenceMaxValueSpan = document.getElementById("turbulenceMaxValue");
+  const turbulenceValueSpan = document.getElementById("turbulenceValue");
+  const speedSlider = document.getElementById("speed");
+  const speedValueSpan = document.getElementById("speedValue");
   const focusSlider = document.getElementById("focus");
   const focusValueSpan = document.getElementById("focusValue");
+  const saturationSlider = document.getElementById("saturation");
+  const saturationValueSpan = document.getElementById("saturationValue");
 
   const vertexShaderSource = `
         attribute vec2 a_position; attribute vec2 a_texCoord;
@@ -199,38 +214,17 @@ function initializeSeeingOverlay() {
   const resizeObserver = new ResizeObserver(syncCanvasSize);
   resizeObserver.observe(stelCanvas);
 
+  // const MIN_TURBULENCE_SPEED = 1;
+  // const MAX_TURBULENCE_SPEED = 5;
+  const DEFAULT_TURBULENCE_MAX = 10;
+
   let time = 0;
-  let totalTime = 0;
 
   function animate(now) {
-    totalTime = now;
-    const noiseTimeOffset = Math.random() * 10000;
-
-    // --- LÓGICA CENTRAL UNIFICADA ---
-    // 1. Normalizar el valor del slider (de 0-100 a 0.0-1.0)
-    const disturbanceFactor = parseFloat(disturbanceSlider.value) / 100.0;
-
-    // 2. Mapear el factor a cada parámetro del efecto con una curva de respuesta adecuada
-    // La intensidad de la turbulencia crece exponencialmente para un efecto más dramático
-    const baseAmount = 1 + Math.pow(disturbanceFactor, 2) * 19; // Mapea de 1 a 20
-    // La velocidad crece linealmente
-    const baseSpeed = 5 + disturbanceFactor * 295; // Mapea de 5 a 300
-    // El ruido crece linealmente desde un mínimo casi imperceptible
-    const noiseValue = 0.01 + disturbanceFactor * 0.1;
-    // El caos siempre activo para evitar patrones repetitivos
-    const chaosFactor = 1;
-
-    // 3. Aplicar el caos para modular la velocidad e intensidad
-    const chaosSpeedFluctuation =
-      (Math.sin(totalTime * 0.0003) + Math.cos(totalTime * 0.0007)) * 0.5;
-    const chaosAmountFluctuation =
-      (Math.sin(totalTime * 0.0005) + Math.cos(totalTime * 0.0002)) * 0.5;
-    const chaoticSpeed =
-      baseSpeed + baseSpeed * chaosSpeedFluctuation * chaosFactor;
-    const chaoticAmount =
-      baseAmount + baseAmount * chaosAmountFluctuation * chaosFactor * 0.5;
-
-    time += chaoticSpeed * 0.05;
+    // --- LÓGICA CENTRAL UNIFICADA (Determinista) ---
+    // El slider "disturbance" solo controla la velocidad de la turbulencia.
+    // const disturbanceFactor = parseFloat(disturbanceSlider.value) / 100;
+    time += parseFloat(speedSlider.value) * 0.05;
 
     copyCtx.drawImage(stelCanvas, 0, 0, copyCanvas.width, copyCanvas.height);
 
@@ -254,11 +248,11 @@ function initializeSeeingOverlay() {
     );
     gl.uniform1i(imageLocation, 0);
 
-    // 4. Pasar los valores finales calculados a los shaders
+    // 4. Pasar valores deterministas a los shaders
     gl.uniform1f(timeLocation, time);
-    gl.uniform1f(amountLocation, chaoticAmount);
-    gl.uniform1f(noiseLocation, noiseValue);
-    gl.uniform1f(noiseOffsetLocation, noiseTimeOffset);
+    gl.uniform1f(amountLocation, parseFloat(turbulenceSlider.value));
+    gl.uniform1f(noiseLocation, 0.0);
+    gl.uniform1f(noiseOffsetLocation, 0.0);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -269,24 +263,74 @@ function initializeSeeingOverlay() {
     requestAnimationFrame(animate);
   }
 
-  function updateCssFilters() {
-    const blur = parseFloat(focusSlider.value).toFixed(1);
-    effectCanvas.style.filter = `blur(${blur}px)`;
-    focusValueSpan.textContent = blur;
-    // requestAnimationFrame(animate);
+  function setTurbulenceMax(rawValue) {
+    const parsedMax = parseFloat(rawValue);
+    const normalizedMax = Number.isFinite(parsedMax)
+      ? Math.max(parsedMax, parseFloat(turbulenceSlider.min))
+      : DEFAULT_TURBULENCE_MAX;
+
+    turbulenceMaxSlider.value = normalizedMax;
+    turbulenceSlider.max = normalizedMax;
+
+    const currentValue = parseFloat(turbulenceSlider.value);
+    if (currentValue > normalizedMax) {
+      turbulenceSlider.value = normalizedMax.toFixed(1);
+      turbulenceValueSpan.textContent = turbulenceSlider.value;
+      turbulenceSlider.dispatchEvent(new Event("input"));
+    }
   }
 
-  disturbanceSlider.addEventListener("input", (e) => {
-    disturbanceValueSpan.textContent = e.target.value;
+  function updateCssFilters() {
+    const blur = parseFloat(focusSlider.value).toFixed(1);
+    const saturation = parseFloat(saturationSlider.value) / 100;
+
+    effectCanvas.style.filter = `blur(${blur}px) saturate(${saturation.toFixed(2)})`;
+    focusValueSpan.textContent = blur;
+    saturationValueSpan.textContent = Math.round(saturation * 100);
+  }
+
+  // disturbanceSlider.addEventListener("input", (e) => {
+  //   const value = e.target.value;
+  //   disturbanceValueSpan.textContent = value;
+// 
+  //   const factor = parseFloat(value) / 100;
+  //   const mappedTurbulence = (factor * 10).toFixed(1);
+  //   turbulenceSlider.value = mappedTurbulence;
+  //   turbulenceValueSpan.textContent = mappedTurbulence;
+// 
+  //   const mappedSpeed = (
+  //     MIN_TURBULENCE_SPEED +
+  //     (MAX_TURBULENCE_SPEED - MIN_TURBULENCE_SPEED) * factor
+  //   ).toFixed(1);
+  //   speedSlider.value = mappedSpeed;
+  //   speedValueSpan.textContent = mappedSpeed;
+  // });
+  turbulenceSlider.addEventListener("input", (e) => {
+    turbulenceValueSpan.textContent = e.target.value;
+  });
+  turbulenceMaxSlider.addEventListener("input", (e) => {
+    setTurbulenceMax(e.target.value);
+    turbulenceMaxValueSpan.textContent = e.target.value;
+  });
+  speedSlider.addEventListener("input", (e) => {
+    speedValueSpan.textContent = parseFloat(e.target.value).toFixed(1);
   });
   focusSlider.addEventListener("input", updateCssFilters);
+  saturationSlider.addEventListener("input", updateCssFilters);
 
   // --- Mapeo de controles simplificado ---
   seeingTargets = {
-    disturbance: disturbanceSlider,
+    // disturbance: disturbanceSlider,
+    turbulence: turbulenceSlider,
+    turbulenceMax: turbulenceMaxSlider,
+    speed: speedSlider,
     focus: focusSlider,
+    saturation: saturationSlider,
   };
 
+  // disturbanceSlider.dispatchEvent(new Event("input"));
+  setTurbulenceMax(turbulenceMaxSlider.value || DEFAULT_TURBULENCE_MAX);
+  updateCssFilters();
   animate(0);
   console.log("Overlay WebGL con efecto de 'Perturbación' unificado activado.");
 }
