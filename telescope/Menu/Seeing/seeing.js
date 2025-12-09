@@ -10,15 +10,15 @@ export function displaySeeingOptions(e) {
     let sliderAttr = {
       type: "range",
       min: 0,
-      max: 100,
-      value: 0,
-      step: 1,
+      max: 10,
+      value: 5,
+      step: 0.1,
       class: "slider h-slider",
     };
     let slider = document.createElement("input");
     setAttributes(slider, sliderAttr);
     slider.addEventListener("input", (e) =>
-      sendSeeingValue({ target: "disturbance", value: e.target.value })
+      sendSeeingValue({ target: "turbulence", value: e.target.value })
     );
     const label = document.createElement("label");
     label.textContent = "Intensidad turbulencia";
@@ -40,6 +40,7 @@ export function displaySeeingOptions(e) {
 }
 
 export function sendSeeingValue({ target, value }) {
+  console.log("Sending Seeing Option:", target, value);
   try {
     eventManager.sendThrottledProtobject(
       { msg: "seeingOption", values: { target, value } },

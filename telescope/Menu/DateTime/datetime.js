@@ -218,7 +218,7 @@ export function showTimeSelector() {
         // updateDateTimeout = null;
 
         // isNightime() ? updatePollutionOverlay({ bortle }) : updatePollutionOverlay({ bortle: 1 });
-        Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
+        // Protobject.Core.send({ msg: "togglePollution", values: { signal: isNightime() } }).to("index.html");
 
       }
     }
