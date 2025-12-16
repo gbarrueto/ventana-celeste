@@ -44,12 +44,39 @@
     <script type="module" src="util/overlay.js"></script>
     <script type="module" src="util/location.js"></script>
 
-    <script>
-      function arduinoCommand(data) {
-        console.log(data);
-      }
-    </script>
+<style>
+#nolens {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display:none;
 
+  backdrop-filter: blur(90px);
+  -webkit-backdrop-filter: blur(90px);
+
+}
+</style>
+    <div id="nolens">
+
+
+    </div>
+
+        <script>
+    
+
+
+    function noLenBlurry(){
+      document.getElementById("nolens").style.display = "block";
+      console.log("nolen")
+    }
+
+    function yesLenNormal(){
+      document.getElementById("nolens").style.display = "none";
+      console.log("len")
+    }
+    </script>
     <script type="module" src="util/protobject.js"></script>
+
+
   </body>
 </html>
