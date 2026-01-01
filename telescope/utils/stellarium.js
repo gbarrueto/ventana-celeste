@@ -1,6 +1,383 @@
 import { updateStellariumView } from "../../util/stel.js";
 import { eventManager } from "./eventManager.js";
 
+function unwrapAngle(angle, reference) {
+  while (angle - reference > Math.PI) angle -= 2 * Math.PI;
+  while (angle - reference < -Math.PI) angle += 2 * Math.PI;
+  return angle;
+}
+
+(() => {
+  const ID = 'dbg-pitch-yaw';
+  let el = document.getElementById(ID);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = ID;
+    Object.assign(el.style, {
+      position: 'fixed',
+      left: '8px',
+      bottom: '108px',
+      zIndex: '214793647',
+      background: 'rgba(0,0,0,0.85)',
+      color: '#0f0',
+      padding: '8px 10px',
+      borderRadius: '6px',
+      fontFamily: 'monospace, monospace',
+      fontSize: '12px',
+      lineHeight: '1.3',
+      pointerEvents: 'auto',
+      whiteSpace: 'pre',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      cursor: 'pointer',
+      borderLeft: '3px solid #0f0'
+    });
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+
+  window.updatePitchYaw = window.updatePitchYaw || function (pitch, yaw, info = {}) {
+    const p = (typeof pitch === 'number') ? pitch : 0;
+    const y = (typeof yaw === 'number') ? yaw : 0;
+    const vVal = info.vVal !== undefined ? info.vVal.toFixed(4) : '-';
+    const mode = info.mode || '-'; 
+    const status = info.status || '';
+
+    el.textContent = 
+      `V (exp): ${vVal} [${mode.toUpperCase()}]\n` +
+      `Pitch:   ${p.toFixed(5)}\n` +
+      `Yaw:     ${y.toFixed(5)}\n` +
+      `Status:  ${status}`;
+      
+    el.style.borderLeftColor = (mode === 'DYNAMIC') ? '#ff0' : '#0f0';
+  };
+
+  let calibTimeout = null;
+  el.addEventListener('click', () => {
+    if (calibTimeout) clearTimeout(calibTimeout);
+    if (window.Orientation && typeof window.Orientation.startCalibration === 'function') {
+      window.Orientation.startCalibration();
+    }
+  });
+})();
+
+window.Orientation = {
+  // --- Configurazione Generale ---
+  gyroFreq: 100, 
+  absFreq: 30,  
+  calibDuration: 3, 
+  
+  // --- Configurazione Zona Reale (Originale) ---
+  fovThreshold: 0.8,    
+  gyroDeadzone: 0.003,  
+
+  // --- Configurazione Zona Dinamica (Chirurgica + Smoothing) ---
+  dynamicThreshold: 0.02, 
+  
+  // Moltiplicatore di precisione (come richiesto prima)
+  dynamicGainMultiplier: 10.0, 
+
+// Fattore di smoothing per la zona dinamica.
+  dynamicSmoothingFactor: 0.15, 
+
+  // --- Status ---
+  gyroSensor: null,
+  absSensor: null,
+  running: false,
+  calibrating: false,
+  gyroBias: { x: 0, y: 0, z: 0 },
+  biasSamples: [],
+  calibSamplesNeeded: 300,
+  
+  orient: { pitch: 0, yaw: 0 },
+  absOrientLast: null, 
+  currentMode: 'absolute', 
+  
+  oldX: null,
+  oldY: null,
+  
+  // Variabili per il target "Raw" nella zona dinamica (per il filtro)
+  rawDynamicX: null,
+  rawDynamicY: null,
+
+  lastTime: null,
+  _pendingRAF: false,
+
+  quaternionToEuler(q) {
+    if (!q) return { yaw: 0, pitch: 0 };
+    const x = q[0], y = q[1], z = q[2], w = q[3];
+    const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+    const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+    return { yaw, pitch };
+  },
+  
+  start() {
+    this.onCalibReading = this.onCalibReading.bind(this);
+    this.onSensorReading = this.onSensorReading.bind(this);
+    this.onAbsReading = this.onAbsReading.bind(this);
+    this.startSensors();
+  },
+
+  stop() {
+    this.running = false;
+    this.calibrating = false;
+    if (this.gyroSensor) { try { this.gyroSensor.stop(); } catch(e){} }
+    if (this.absSensor) { try { this.absSensor.stop(); } catch(e){} }
+  },
+
+  async requestIOSPermissionIfNeeded() {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      await DeviceOrientationEvent.requestPermission();
+    }
+  },
+
+  async startSensors() {
+    try {
+      await this.requestIOSPermissionIfNeeded();
+      if (!('Gyroscope' in window) || !('AbsoluteOrientationSensor' in window)) {
+        throw new Error('Sensori necessari non disponibili');
+      }
+      this.gyroSensor = new Gyroscope({ frequency: this.gyroFreq });
+      this.absSensor = new AbsoluteOrientationSensor({ frequency: this.absFreq });
+      
+      this.gyroSensor.addEventListener('error', (e) => console.error('Error Gyro:', e));
+      this.absSensor.addEventListener('error', (e) => console.error('Error Abs:', e));
+      
+      this.startCalibration();
+    } catch (err) {
+      console.error("Errore avvio sensori:", err);
+      window.updatePitchYaw(0, 0, { status: "Error: " + err.message });
+    }
+  },
+
+  startCalibration() {
+    if (!this.gyroSensor || !this.absSensor) return;
+    this.calibrating = true;
+    this.running = false;
+    this.biasSamples = [];
+    this.calibSamplesNeeded = this.gyroFreq * this.calibDuration;
+    this.currentMode = 'absolute';
+    
+    window.updatePitchYaw(0, 0, { status: "Calibrating..." });
+    
+    this.gyroSensor.addEventListener('reading', this.onCalibReading);
+    this.absSensor.addEventListener('reading', this.onAbsReading);
+
+    this.gyroSensor.start();
+    this.absSensor.start();
+  },
+
+  onCalibReading() {
+    if (this.biasSamples.length < this.calibSamplesNeeded) {
+      this.biasSamples.push({ x: this.gyroSensor.x, y: this.gyroSensor.y, z: this.gyroSensor.z });
+    } else {
+      this.finishCalibration();
+    }
+  },
+
+  finishCalibration() {
+    this.calibrating = false;
+    this.gyroSensor.removeEventListener('reading', this.onCalibReading);
+
+    const avg = this.biasSamples.reduce((acc, r) => ({ x: acc.x + r.x, y: acc.y + r.y, z: acc.z + r.z }), { x: 0, y: 0, z: 0 });
+    const len = this.biasSamples.length || 1;
+    this.gyroBias = { x: avg.x / len, y: avg.y / len, z: avg.z / len };
+    
+    console.log('Calibrazione completata. Bias:', this.gyroBias);
+
+    if (this.absOrientLast) {
+        const euler = this.quaternionToEuler(this.absOrientLast);
+        this.oldX = euler.yaw;
+        this.oldY = euler.pitch;
+    }
+
+    this.lastTime = performance.now();
+    this.gyroSensor.addEventListener('reading', this.onSensorReading);
+    this.running = true;
+  },
+  
+  onAbsReading() {
+    if (!this.absSensor) return;
+    this.absOrientLast = this.absSensor.quaternion;
+  },
+
+  onSensorReading() {
+    if (this.calibrating) {
+      this.lastTime = performance.now();
+      return;
+    }
+
+    const now = performance.now();
+    const dt = Math.max(1e-6, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+
+    let currentV = 0.05; 
+    try { if (typeof logFov !== 'undefined') currentV = Math.exp(logFov); } catch(e){}
+
+    const inDynamicZone = currentV < this.dynamicThreshold;
+
+    if (inDynamicZone) {
+        // =========================================================
+        // ZONA DINAMICA (< 0.02) - LOGICA CHIRURGICA + SMOOTHING
+        // =========================================================
+        
+        let wx = this.gyroSensor.x - this.gyroBias.x;
+        let wz = this.gyroSensor.z - this.gyroBias.z;
+        
+        let rawDeltaYaw = wz * dt;
+        let rawDeltaPitch = wx * dt;
+
+        // Calcolo Guadagni
+        const zoomRatio = currentV / this.dynamicThreshold; 
+        const speed = Math.hypot(rawDeltaYaw, rawDeltaPitch);
+        const noiseFloor = 0.002;
+        
+        let precisionGain;
+        if (speed < noiseFloor) {
+            precisionGain = 0.05; 
+        } else {
+            precisionGain = Math.min(1.0, Math.pow(speed * 100, 2)); 
+        }
+
+        const totalFactor = zoomRatio * precisionGain * this.dynamicGainMultiplier;
+
+        // Passo 1: Aggiorno il Target "Raw" (Ideale)
+        // Se è la prima volta che entriamo in dynamic, inizializziamo raw con la posizione attuale
+        if (this.rawDynamicX === null) {
+            this.rawDynamicX = this.oldX;
+            this.rawDynamicY = this.oldY;
+        }
+
+        this.rawDynamicX += rawDeltaYaw * totalFactor;
+        this.rawDynamicY += rawDeltaPitch * totalFactor;
+
+        // Passo 2: Applico il Filtro (Smoothing/Inerzia)
+        // Sposto fluidamente oldX verso rawDynamicX
+        const k = this.dynamicSmoothingFactor;
+        
+        this.oldX += (this.rawDynamicX - this.oldX) * k;
+        this.oldY += (this.rawDynamicY - this.oldY) * k;
+
+        // Sync orient per evitare salti al ritorno in zona reale
+        this.orient.yaw = this.oldX;
+        this.orient.pitch = this.oldY;
+
+        this.updateView(currentV, 'DYNAMIC');
+
+    } else {
+        // =========================================================
+        // ZONA REALE (>= 0.02) - LOGICA ORIGINALE INTATTA
+        // =========================================================
+        
+        // Reset delle variabili raw della zona dinamica per quando ci torneremo
+        this.rawDynamicX = null;
+        this.rawDynamicY = null;
+        
+        if (this.currentMode === 'absolute' && this.absOrientLast) {
+            const euler = this.quaternionToEuler(this.absOrientLast);
+            this.orient.pitch = euler.pitch;
+            this.orient.yaw = euler.yaw;
+        } else { 
+            let wx = this.gyroSensor.x - this.gyroBias.x;
+            let wz = this.gyroSensor.z - this.gyroBias.z;
+            if (Math.abs(wx) < this.gyroDeadzone) wx = 0;
+            if (Math.abs(wz) < this.gyroDeadzone) wz = 0;
+            this.orient.pitch += wx * dt;
+            this.orient.yaw += wz * dt;
+        }
+        
+        this.runApplicationLogic(this.orient.pitch, this.orient.yaw, currentV);
+    }
+  },
+
+  // --- Funzioni Originali ---
+  runApplicationLogic(pitch, yaw, fov) {
+    const requiredMode = (fov < this.fovThreshold) ? 'gyro' : 'absolute';
+
+    if (requiredMode !== this.currentMode) {
+        this.transitionToMode(requiredMode);
+    }
+    
+    const sensitivity = (this.currentMode === 'gyro') ? 0.1 : 0.5;
+
+    if (this.oldX === null || this.oldY === null) {
+      this.oldX = yaw;
+      this.oldY = pitch;
+      return;
+    }
+
+    const adjustedYaw = unwrapAngle(yaw, this.oldX);
+    
+    this.oldX += (adjustedYaw - this.oldX) * sensitivity;
+    this.oldY += (pitch - this.oldY) * sensitivity;
+
+    this.updateView(fov, this.currentMode);
+  },
+
+  transitionToMode(newMode) {
+    if (newMode === 'gyro' && this.currentMode === 'absolute') {
+        if (this.absOrientLast) {
+            const euler = this.quaternionToEuler(this.absOrientLast);
+            this.orient.pitch = euler.pitch;
+            this.orient.yaw = euler.yaw;
+            this.oldX = euler.yaw;
+            this.oldY = euler.pitch;
+        }
+    } else if (newMode === 'absolute' && this.currentMode === 'gyro') {
+        if (this.absOrientLast) {
+            const euler = this.quaternionToEuler(this.absOrientLast);
+            this.oldX = unwrapAngle(euler.yaw, this.oldX);
+            this.oldY = euler.pitch;
+        }
+    }
+    this.currentMode = newMode;
+  },
+
+  updateView(vVal, modeName) {
+    const h = this.oldX;
+    const v = this.oldY;
+
+    window.updatePitchYaw(v, h, { 
+        vVal: vVal, 
+        mode: modeName,
+        status: 'Running'
+    });
+
+    try {
+      eventManager.sendThrottledProtobject(
+        { msg: "updateView", values: { h, v } },
+        "index.html",
+        20
+      );
+    } catch (e) {
+      if (typeof Protobject !== 'undefined') {
+        Protobject.Core.send({
+            msg: "updateView",
+            values: { h, v },
+        }).to("index.html");
+      }
+    }
+
+    if (!this._pendingRAF) {
+      this._pendingRAF = true;
+      requestAnimationFrame(() => {
+        updateStellariumView({ h, v }); 
+        this._pendingRAF = false;
+      });
+    }
+  }
+};
+
+window.Orientation.start();
+
+
+
+
+/*
+
+import { updateStellariumView } from "../../util/stel.js";
+import { eventManager } from "./eventManager.js";
+
 
 (() => {
   const ID = 'dbg-pitch-yaw';
@@ -43,6 +420,7 @@ import { eventManager } from "./eventManager.js";
     // Aggiunge la modalità corrente al display di debug
     const mode = (window.Orientation) ? window.Orientation.currentMode : '...';
     statusText += `\nmode: ${mode}`;
+    statusText += `\nfov: ${Math.exp(logFov)}`;
     
     el.textContent = `pitch: ${p.toFixed(5)} (rad)\nyaw:   ${y.toFixed(5)} (rad)${statusText}`;
   };
@@ -296,3 +674,5 @@ window.Orientation = {
 };
 
 window.Orientation.start();
+
+*/
