@@ -156,7 +156,10 @@ export function initializeStelEngine(isTelescope = false) {
         core.comets.hints_visible = false;
         core.cardinals.visible = false;
 
-        core.exposure_scale = 0.8;
+        // EDIT: en la modalidad simple se deberia ver como stellarium, y ahora no se ve asi. exposure_scale = 2 mejora (por lo menos se ven colores, y cosas mas lindas en vez que solo luntos), pero no es igual a stellarium
+        // en la modalidad avanzada tal vez uno podria seleccionar el tipo de telescopio ej., economico, profesional, y cientifico, y ver las diferencias.
+        
+        core.exposure_scale = 2;
       } catch (error) {
         console.error("Error loading data sources:", error);
       }
