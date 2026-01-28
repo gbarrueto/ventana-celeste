@@ -23,8 +23,8 @@ export function initializeStelEngine(isTelescope = false) {
         mag: 17.13,
       };
 
-      const baseUrl = "https://vtdata-telescope.alessiobellino.com/";
-      const baseUrlBig = "https://vtdatabig-telescope.alessiobellino.com/";
+      const baseUrl = "https://smalldata.ventanaceleste.com/";
+      const baseUrlBig = "https://bigdata.ventanaceleste.com/";
 
       // Array para almacenar todas las promesas de carga de datos
       const dataSourcePromises = [];
