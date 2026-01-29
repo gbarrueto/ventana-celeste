@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Monitor input HID Arduino</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #0f0;
+      padding: 20px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      background: #000;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 10px;
+      resize: none;
+    }
+    h3 {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Monitor HID (Keyboard / Mouse Wheel)</h2>
+<p>La pagina deve avere il focus per ricevere gli eventi.</p>
+
+<div class="container">
+  <div>
+    <h3>Lettere ricevute (Keyboard)</h3>
+    <textarea id="keys" readonly></textarea>
+  </div>
+  <div>
+    <h3>Valori Mouse Wheel</h3>
+    <textarea id="wheel" readonly></textarea>
+  </div>
+</div>
+
+<script>
+const keysArea = document.getElementById('keys');
+const wheelArea = document.getElementById('wheel');
+
+function timestamp() {
+  return new Date().toLocaleTimeString();
+}
+
+// --- Keyboard ---
+window.addEventListener('keydown', (e) => {
+  if (e.key.length === 1 && e.key >= 'a' && e.key <= 'z') {
+    keysArea.value += `[${timestamp()}] ${e.key}\n`;
+    keysArea.scrollTop = keysArea.scrollHeight;
+  }
+});
+
+// --- Mouse wheel ---
+window.addEventListener('wheel', (e) => {
+  wheelArea.value += `[${timestamp()}] deltaY=${e.deltaY}\n`;
+  wheelArea.scrollTop = wheelArea.scrollHeight;
+});
+</script>
+
+</body>
+</html>
