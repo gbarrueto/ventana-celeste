@@ -2,71 +2,51 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>Monitor input HID Arduino</title>
+  <title>HID Mouse Move / Keyboard Log</title>
   <style>
     body {
       font-family: monospace;
-      background: #111;
-      color: #0f0;
+      display: flex;
+      gap: 20px;
       padding: 20px;
     }
-    .container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
     textarea {
-      width: 100%;
-      height: 300px;
-      background: #000;
-      color: #0f0;
-      border: 1px solid #0f0;
-      padding: 10px;
+      width: 45%;
+      height: 90vh;
       resize: none;
-    }
-    h3 {
-      margin-top: 0;
     }
   </style>
 </head>
-<body>
+<body tabindex="0">
 
-<h2>Monitor HID (Keyboard / Mouse Wheel)</h2>
-<p>La pagina deve avere il focus per ricevere gli eventi.</p>
+  <textarea id="letters" placeholder="Lettere (Keyboard HID)"></textarea>
+  <textarea id="moves" placeholder="Mouse move (delta 1–127)"></textarea>
 
-<div class="container">
-  <div>
-    <h3>Lettere ricevute (Keyboard)</h3>
-    <textarea id="keys" readonly></textarea>
-  </div>
-  <div>
-    <h3>Valori Mouse Wheel</h3>
-    <textarea id="wheel" readonly></textarea>
-  </div>
-</div>
+  <script>
+    const letters = document.getElementById('letters');
+    const moves   = document.getElementById('moves');
 
-<script>
-const keysArea = document.getElementById('keys');
-const wheelArea = document.getElementById('wheel');
+    function ts() {
+      return new Date().toISOString().split('T')[1].slice(0, 12);
+    }
 
-function timestamp() {
-  return new Date().toLocaleTimeString();
-}
+    // LETTERE a–z
+    window.addEventListener('keydown', e => {
+      if (e.key.length === 1 && e.key >= 'a' && e.key <= 'z') {
+        letters.value += `[${ts()}] ${e.key}\n`;
+        letters.scrollTop = letters.scrollHeight;
+      }
+    });
 
-// --- Keyboard ---
-window.addEventListener('keydown', (e) => {
-  if (e.key.length === 1 && e.key >= 'a' && e.key <= 'z') {
-    keysArea.value += `[${timestamp()}] ${e.key}\n`;
-    keysArea.scrollTop = keysArea.scrollHeight;
-  }
-});
-
-// --- Mouse wheel ---
-window.addEventListener('wheel', (e) => {
-  wheelArea.value += `[${timestamp()}] deltaY=${e.deltaY}\n`;
-  wheelArea.scrollTop = wheelArea.scrollHeight;
-});
-</script>
+    // MOUSE MOVE (solo sinistra, valore = magnitudine)
+    window.addEventListener('mousemove', e => {
+      if (e.movementX !== 0) {
+        const v = Math.abs(e.movementX);
+        moves.value += `[${ts()}] ${v}\n`;
+        moves.scrollTop = moves.scrollHeight;
+      }
+    });
+  </script>
 
 </body>
 </html>
