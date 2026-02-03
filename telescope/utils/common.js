@@ -44,6 +44,12 @@ function setModeSettings(mode) {
   Protobject.Core.send({ msg: `${mode}Settings`, values: {} }).to("index.html");
 }
 
+function updateModeButton(mode) {
+  modeButtonElement.classList.toggle("advanced-mode-image");
+  modeButtonElement.classList.toggle("simple-mode-image");
+  modeTextElement.textContent = mode;
+}
+
 async function toggleMode() {
   setLoading(true);
 
@@ -51,9 +57,11 @@ async function toggleMode() {
     if (modes.simple === true) {
       // Switching to advanced mode
       await initAdvancedMode();
+      updateModeButton('Simple');
     } else {
       // Switching to simple mode
       await initSimpleMode();
+      updateModeButton('Avanzado');
     }
 
     // Toggle mode state
