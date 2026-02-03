@@ -2,6 +2,38 @@ import { calculate_limit_mag } from "../limit_mag/limit_magnitude.js";
 import { applyPollution } from "./location.js";
 import { updateStellariumBlur } from "./overlay.js";
 
+// Enviar datos a telescope para sincronizar
+export function getSynchronizeData() {
+    if (!engine?.core?.observer) return;
+    // 1. Obtener el tiempo actual del motor principal
+    // engine.core.observer.utc devuelve el tiempo en MJD
+    const time = engine.core.observer.utc;
+
+    // 2. Obtener la ubicación actual
+    // Asumiendo que guardas la ubicación en una variable global o puedes extraerla del motor
+    const location =  {
+        cityName: "Custom",
+        lat: engine.core.observer.latitude,
+        lon: engine.core.observer.longitude,
+        elev: engine.core.observer.elevation,
+        mag: null
+    };
+
+    const angle = {
+        yaw: engine.core.observer.yaw,
+        pitch: engine.core.observer.pitch,
+    }
+
+    Protobject.Core.send({
+        msg: "setSynchronizedData",
+        values: { data: {
+            time,
+            location,
+            angle,
+        } },
+    }).to("telescope.html");
+}
+
 export function updateStellariumView({ h, v }) {
     if (!engine?.core?.observer) return;
     engine.core.observer.yaw = -h;

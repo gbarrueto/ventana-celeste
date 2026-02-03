@@ -25,9 +25,26 @@ async function sendCoordinates({ lat, lon }) {
   Protobject.Core.send({ msg: "applyLocation", values: data }).to("index.html");
 }
 
+function setSynchronizedData(values) {
+  const { data } = values;
+  console.log('SynchronizingData, uncoming data:', data)
+  if (!engine?.core?.observer) {
+      console.warn("Motor no listo, reintentando sincronización en 500ms...");
+      setTimeout(() => setSynchronizedData(values), 500);
+      return;
+  }
+  engine.core.observer.utc = data.time;
+  engine.core.observer.latitude = data.location.lat;
+  engine.core.observer.longitude = data.location.lon;
+  engine.core.observer.elevation = data.location.elev;
+  engine.core.observer.yaw = data.angle.yaw;
+  engine.core.observer.pitch = data.angle.pitch;
+}
+
 const functionMap = {
   sendCoordinates: sendCoordinates,
   syncTime: syncTime,
+  setSynchronizedData: setSynchronizedData,
 };
 
 Protobject.Core.onReceived((data) => {
