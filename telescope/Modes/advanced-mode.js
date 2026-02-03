@@ -15,6 +15,13 @@ export async function initAdvancedMode() {
   initializeStelEngine(true);
   addBlurSliderEvent(document.getElementById("focusSlider"));
 
+  // setTimeout(() => {
+  // }, 300)
+  Protobject.Core.send({
+    msg: "requestSynchronizeData",
+    values: {},
+  }).to("index.html");
+
   advancedModeInitialized = true;
 }
 

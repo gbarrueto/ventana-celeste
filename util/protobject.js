@@ -12,6 +12,7 @@ import {
   stellariumOption,
   enableAdvancedModeSettings,
   enableSimpleModeSettings,
+  getSynchronizeData,
 } from "./stel.js";
 
 const functionMap = {
@@ -31,6 +32,7 @@ const functionMap = {
   seeingOption: applySeeingOption,
   simpleSettings: () => enableSimpleModeSettings(),
   advancedSettings: () => enableAdvancedModeSettings(),
+  requestSynchronizeData: getSynchronizeData,
 };
 
 // Simple stats collector for incoming Protobject messages
