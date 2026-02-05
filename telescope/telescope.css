@@ -37,7 +37,7 @@ body {
 
 .header {
   display: grid;
-  grid-template-columns: 10% 85%;
+  grid-template-columns: auto auto;
   grid-template-rows: 100%;
   padding: 5px 10px;
   height: 100%;
