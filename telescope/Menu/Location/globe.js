@@ -131,7 +131,7 @@ export async function displayGlobe(e) {
 
   // tu proveedor de contaminación lumínica (ya lo tienes)
   const lightPollutionProvider = new Cesium.UrlTemplateImageryProvider({
-    url: "https://telescope.alessiobellino.com/data/tiles2024/tile_{z}_{x}_{y}.png",
+    url: "https://app.ventanaceleste.com/data/tiles2024/tile_{z}_{x}_{y}.png",
     minimumLevel: 2,
     maximumLevel: 8,
     tileWidth: 1024,
