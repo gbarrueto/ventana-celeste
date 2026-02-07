@@ -20,6 +20,13 @@ export async function initAdvancedMode() {
     values: {},
   }).to("index.html");
 
+  // Aplicar zoom correspondiente si hay lente seleccionado
+  const activeButton = document.querySelector("#lensContainer .active");
+  if (activeButton) {
+    const fl = parseFloat(activeButton.getAttribute("data-fl"));
+    applyZoom(fl, { target: activeButton });
+  }
+
   advancedModeInitialized = true;
 }
 

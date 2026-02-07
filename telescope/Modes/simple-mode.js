@@ -39,13 +39,11 @@ export async function removeSimpleMode() {
 
 export function setSynchronizedSimpleZoom(values) {
   const { data } = values;
-  console.log('SynchronizingSimpleZoom, uncoming data:', data);
   let slider = document.getElementById('zoomSlider');
   if (!slider) {
     console.log('Slider not loaded, leaving...');
     return;
   }
   const newFov = fovToSlider(data.fov);
-  console.log('FOV to Slider:', newFov);
   slider.value = newFov;
 }
