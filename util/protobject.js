@@ -13,6 +13,7 @@ import {
   enableAdvancedModeSettings,
   enableSimpleModeSettings,
   getSynchronizeData,
+  getFov,
 } from "./stel.js";
 
 const functionMap = {
@@ -33,6 +34,7 @@ const functionMap = {
   simpleSettings: () => enableSimpleModeSettings(),
   advancedSettings: () => enableAdvancedModeSettings(),
   requestSynchronizeData: getSynchronizeData,
+  requestSynchronizeSimpleZoom: getFov,
 };
 
 // Simple stats collector for incoming Protobject messages
