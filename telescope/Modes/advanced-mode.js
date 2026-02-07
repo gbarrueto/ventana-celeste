@@ -15,12 +15,17 @@ export async function initAdvancedMode() {
   initializeStelEngine(true);
   addBlurSliderEvent(document.getElementById("focusSlider"));
 
-  // setTimeout(() => {
-  // }, 300)
   Protobject.Core.send({
     msg: "requestSynchronizeData",
     values: {},
   }).to("index.html");
+
+  // Aplicar zoom correspondiente si hay lente seleccionado
+  const activeButton = document.querySelector("#lensContainer .active");
+  if (activeButton) {
+    const fl = parseFloat(activeButton.getAttribute("data-fl"));
+    applyZoom(fl, { target: activeButton });
+  }
 
   advancedModeInitialized = true;
 }

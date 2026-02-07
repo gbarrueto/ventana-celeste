@@ -34,6 +34,17 @@ export function getSynchronizeData() {
     }).to("telescope.html");
 }
 
+export function getFov() {
+    console.log('Getting FOV');
+    if (!engine?.core) return;
+    const fov = engine.core.fov;
+    console.log('FOV:', fov);
+    Protobject.Core.send({
+        msg: "setSynchronizedSimpleZoom",
+        values: { data: { fov } },
+    }).to("telescope.html");
+}
+
 export function updateStellariumView({ h, v }) {
     if (!engine?.core?.observer) return;
     engine.core.observer.yaw = -h;

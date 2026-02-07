@@ -24,7 +24,7 @@ export function getMagFromLonLat(elatlng) {
 
     if (tiley >= 1 && tiley <= 28) {
       var url =
-        "https://telescope.alessiobellino.com/data/binary_tiles/" +
+        "https://app.ventanaceleste.com/data/binary_tiles/" +
         "binary_tile_" +
         tilex +
         "_" +

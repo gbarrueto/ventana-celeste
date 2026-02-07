@@ -1,3 +1,5 @@
+import { setSynchronizedSimpleZoom } from "../Modes/simple-mode.js";
+
 function syncTime(values) {
   engineUTC = values.engineUTC;
 }
@@ -45,6 +47,7 @@ const functionMap = {
   sendCoordinates: sendCoordinates,
   syncTime: syncTime,
   setSynchronizedData: setSynchronizedData,
+  setSynchronizedSimpleZoom: setSynchronizedSimpleZoom,
 };
 
 Protobject.Core.onReceived((data) => {

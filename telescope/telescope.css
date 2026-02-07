@@ -37,7 +37,7 @@ body {
 
 .header {
   display: grid;
-  grid-template-columns: 10% 85%;
+  grid-template-columns: auto auto;
   grid-template-rows: 100%;
   padding: 5px 10px;
   height: 100%;
@@ -58,18 +58,26 @@ body {
 
 .menu-image {
   background-image: url("../images/menu.png");
-  width: 3em;
+  width: 5em;
   height: 3em;
-  transition: .3s;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: left;
 }
 .menu-image:active {
-  transform: scale(0.8);
+  border-bottom: 3px solid white;
 }
 
 .close-image {
   background-image: url("../images/close.png");
-  width: 3em;
+  width: 5em;
   height: 3em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: left;
+}
+.close-image:active {
+  border-bottom: 3px solid white;
 }
 
 #startContainer .header-container {
@@ -136,6 +144,12 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: fit-content;
+  width: 10em;
+  justify-content: end;
+}
+#modeButtonContainer:active {
+  border-bottom: 3px solid white;
 }
 
 #modeText {

@@ -104,10 +104,10 @@
       
           <section class="container">
             <div id="lensContainer" class="grid-container">
-              <button name="len1" class="button" onclick="applyZoom(40, event)">len 1</button>
-              <button name="len2" class="button" onclick="applyZoom(24, event)">len 2</button>
-              <button name="len3" class="button" onclick="applyZoom(10, event)">len 3</button>
-              <button name="len4" class="button" onclick="applyZoom(4, event)">len 4</button>
+              <button name="len1" data-fl="40" class="button" onclick="applyZoom(40, event)">len 1</button>
+              <button name="len2" data-fl="24" class="button" onclick="applyZoom(24, event)">len 2</button>
+              <button name="len3" data-fl="10" class="button" onclick="applyZoom(10, event)">len 3</button>
+              <button name="len4" data-fl="4" class="button" onclick="applyZoom(4, event)">len 4</button>
             </div>
           </section>
       
@@ -134,7 +134,7 @@
 
     <!-- SCRIPTS -->
     <script type="module" src="telescope/utils/common.js"></script>
-    <script src="telescope/utils/protobject.js"></script>
+    <script type="module" src="telescope/utils/protobject.js"></script>
     <script type="module" src="telescope/utils/arduino.js"></script>
 
 
