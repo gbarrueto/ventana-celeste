@@ -3,17 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mapa Estático Rectangular</title>
+    <title>Mapa</title>
 
-    <!-- MapLibre GL CSS -->
     <link
       href="https://unpkg.com/maplibre-gl@^5.7.1/dist/maplibre-gl.css"
       rel="stylesheet"
     />
 
     <style>
-      html,
-      body {
+      html, body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -25,71 +23,134 @@
         height: 100vh;
         touch-action: none;
       }
+
+      #crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 10;
+      }
+      #crosshair::before, #crosshair::after {
+        content: '';
+        position: absolute;
+        background: red;
+      }
+      #crosshair::before {
+        top: 0; left: 50%;
+        width: 2px; height: 100%;
+        transform: translateX(-50%);
+      }
+      #crosshair::after {
+        top: 50%; left: 0;
+        width: 100%; height: 2px;
+        transform: translateY(-50%);
+      }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    <div id="crosshair"></div>
 
-    <!-- Protobject framework -->
     <script src="https://app.protobject.com/framework/p.js"></script>
     <script src="config.js"></script>
-
     <script src="https://unpkg.com/maplibre-gl@^5.7.1/dist/maplibre-gl.js"></script>
-    <!-- MapLibre GL JS -->
 
     <script>
       const map = new maplibregl.Map({
-        container: "map",
-        style:
-          "https://api.maptiler.com/maps/dataviz/style.json?key=XKnr8aclyURxGiARsA8J",
+        container: 'map',
+        style: 'https://api.maptiler.com/maps/dataviz/style.json?key=XKnr8aclyURxGiARsA8J',
         center: [0, 0],
         zoom: 1.5,
-        projection: "equirectangular",
-        interactive: false,
+        projection: 'equirectangular',
       });
 
-      let sendingInterval = null;
-      let lastSent = { lat: null, lon: null };
+      // Minimum pixel distance between sends
+      const MIN_PX = 5;
+      const MIN_PX_SQ = MIN_PX * MIN_PX;
 
-      map.once("load", () => {
-        map.getCanvas().style.cursor = "pointer";
+      let dragging = false;
+      let lastScreenX = null;
+      let lastScreenY = null;
 
-        const mapElement = document.getElementById("map");
+      function sendFromScreen(screenX, screenY) {
+        // Check pixel distance from last send
+        if (lastScreenX !== null) {
+          const dx = screenX - lastScreenX;
+          const dy = screenY - lastScreenY;
+          if (dx * dx + dy * dy < MIN_PX_SQ) return;
+        }
 
-        mapElement.addEventListener("touchstart", () => {
-          if (sendingInterval) return;
+        lastScreenX = screenX;
+        lastScreenY = screenY;
 
-          sendingInterval = setInterval(() => {
-            const center = map.getCenter();
-            const lat = parseFloat(center.lat.toFixed(6));
-            const lon = parseFloat(center.lng.toFixed(6));
+        const lngLat = map.unproject([screenX, screenY]);
+        const lat = parseFloat(lngLat.lat.toFixed(6));
+        const lon = parseFloat(lngLat.lng.toFixed(6));
 
-            if (lastSent.lat !== lat || lastSent.lon !== lon) {
-              lastSent = { lat, lon };
+        console.log('sendCoordinates', { lat, lon });
 
-              Protobject.Core.send({
-                msg: "sendCoordinates",
-                values: { lat, lon },
-              }).to("telescope.html");
-            }
-          }, 100);
-        });
+        Protobject.Core.send({
+          msg: 'sendCoordinates',
+          values: { lat, lon },
+        }).to('telescope.html');
+      }
 
-        mapElement.addEventListener("touchend", () => {
-          if (sendingInterval) {
-            clearInterval(sendingInterval);
-            sendingInterval = null;
-          }
-        });
+      // Disable all map interaction so dragging only sends coords
+      map.dragPan.disable();
+      map.scrollZoom.disable();
+      map.boxZoom.disable();
+      map.dragRotate.disable();
+      map.keyboard.disable();
+      map.doubleClickZoom.disable();
+      map.touchZoomRotate.disable();
+      map.touchPitch.disable();
 
-        // Previene el zoom doble toque o scroll táctil
-        mapElement.addEventListener(
-          "touchmove",
-          (e) => {
-            e.preventDefault();
-          },
-          { passive: false }
-        );
+      // --- Touch ---
+      const mapEl = document.getElementById('map');
+
+      mapEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        dragging = true;
+        lastScreenX = null;
+        lastScreenY = null;
+        const t = e.touches[0];
+        sendFromScreen(t.clientX, t.clientY);
+      }, { passive: false });
+
+      mapEl.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!dragging) return;
+        const t = e.touches[0];
+        sendFromScreen(t.clientX, t.clientY);
+      }, { passive: false });
+
+      mapEl.addEventListener('touchend', () => {
+        dragging = false;
+      });
+
+      mapEl.addEventListener('touchcancel', () => {
+        dragging = false;
+      });
+
+      // --- Mouse (for desktop testing) ---
+      mapEl.addEventListener('mousedown', (e) => {
+        dragging = true;
+        lastScreenX = null;
+        lastScreenY = null;
+        sendFromScreen(e.clientX, e.clientY);
+      });
+
+      mapEl.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        sendFromScreen(e.clientX, e.clientY);
+      });
+
+      mapEl.addEventListener('mouseup', () => {
+        dragging = false;
       });
     </script>
   </body>

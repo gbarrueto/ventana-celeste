@@ -4,146 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Controllo Telescopio</title>
-    <script src="stellarium-web-engine.js"></script>
-
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
     />
-    <!-- <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-    /> -->
-    <!-- <link
-      rel="stylesheet"
-      type="text/css"
-      href="https://npmcdn.com/flatpickr/dist/themes/dark.css"
-    /> -->
-
-    <link rel="stylesheet" href="telescope/telescope.css" />
-    <link rel="stylesheet" href="telescope/Menu/menu.css" />
-    <!-- <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    /> -->
-    <!-- <link rel="stylesheet" href="util/Control.Geocoder.css" />
-    <link rel="stylesheet" href="util/L.Control.Range.css" /> -->
-    <!-- <link
-      href="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css"
-      rel="stylesheet"
-    /> -->
-
-    <script src="https://app.protobject.com/framework/p.js"></script>
-    <script src="config.js"></script>
-    <script src="/util/throttleConfig.js"></script>
-    <!-- <script src="https://unpkg.com/globe.gl"></script> -->
-    <!-- <script src="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script> -->
-    <!-- <script src="https://unpkg.com/three@0.174.0/build/three.module.min.js"></script> -->
-
-    <!-- <script type="importmap">
-        {
-          "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js"
-          }
-        }
-    </script> -->
-
-    <!-- <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> -->
-    <script src="limit_mag/params.js"></script>
-    <script src="telescope/utils/lp/pako_inflate.min.js"></script>
-    <script src="telescope/utils/tz.js"></script>
+    <script type="module" crossorigin src="/assets/telescope-C3xyYVHs.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/lazy-load-Aj7JkVAd.js">
+    <link rel="stylesheet" crossorigin href="/assets/telescope-B9UnB7xr.css">
   </head>
-
   <body>
-    <div id="mainLoadingScreen" class="loading-screen">
-      <div class="loader"></div>
-    </div>
+    <!-- External globals: loaded before app -->
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="/config.js"></script>
+    <script src="/stellarium-web-engine.js"></script>
+    <script src="/telescope/utils/lp/pako_inflate.min.js"></script>
+    <script src="/telescope/utils/tz.js"></script>
 
-    <!-- Start screen -->
-    <div id="startContainer" class="main-container">
-      <!-- Header -->
-      <section class="header">
-        <button class="image-button menu-image" onclick="openMenu()"></button>
-        <div class="header-container">
-          <div id="modeButtonContainer" onclick="toggleMode()">
-            <p id="modeText"></p>
-            <button
-              id="modeButton"
-              class="image-button simple-mode-image advanced-mode-image"
-            ></button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Sección de Modos -->
-      <section id="modeContent" class="container">
-
-        <!-- Simple -->
-        <div id="simpleMode" class="container">
-          <p>Zoom</p>
-      
-          <div class="slider-container">
-            <input 
-            id="zoomSlider"
-            class="slider v-slider"
-            type="range" 
-            min="0" max="150" value="100" step="0.01"
-            orient="vertical">
-          </div>
-        </div>
-
-        <!-- Avanzado -->
-        <div id="advancedMode" class="grid-container">
-          <section id="viewModeContainer" class="container">
-            <div id="stel">
-              <canvas id="stel-canvas"></canvas>
-              <!-- <div id="info-card"></div> no creo que sirva pero lo dejo ya que no estoy seguro NT: Efectivamente no sirve -->
-              <!-- <div id="pollution-overlay"></div> no creo que sirva pero parece que busca este elemento -->
-            </div>
-          </section>
-      
-          <section class="container">
-            <div id="lensContainer" class="grid-container">
-              <button name="len1" data-fl="40" class="button" onclick="applyZoom(40, event)">len 1</button>
-              <button name="len2" data-fl="24" class="button" onclick="applyZoom(24, event)">len 2</button>
-              <button name="len3" data-fl="10" class="button" onclick="applyZoom(10, event)">len 3</button>
-              <button name="len4" data-fl="4" class="button" onclick="applyZoom(4, event)">len 4</button>
-            </div>
-          </section>
-      
-          <section class="container">
-            <p>Enfocador</p>
-            <div class="slider-container">
-              <input 
-                id="focusSlider"
-                class="slider h-slider"
-                type="range" 
-                min=0 max=10 value=0 step=0.01>
-              </input>
-            </div>
-          </section>
-        </div>
-
-      </section>
-    </div>
-
-    
-    <div id="menuContainer" class="main-container"></div>
-
-    
-
-    <!-- SCRIPTS -->
-    <script type="module" src="telescope/utils/common.js"></script>
-    <script type="module" src="telescope/utils/protobject.js"></script>
-    <script type="module" src="telescope/utils/arduino.js"></script>
-
-
-
+    <div id="app"></div>
   </body>
-
-
-  <p style="position: absolute; top:60px; left:0; color: #fff" id="focusval">
-
-    hola
-  </p>
 </html>

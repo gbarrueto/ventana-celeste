@@ -2,81 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Stellarium Web Engine</title>
+    <title>Ventana Celeste - App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="stellarium.styles.css" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <script type="module" crossorigin src="/assets/main-DZqhlYz1.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/lazy-load-Aj7JkVAd.js">
+    <link rel="stylesheet" crossorigin href="/assets/main-Cx0lqsuV.css">
   </head>
-
   <body>
+    <!-- External globals: loaded before app -->
     <script src="https://app.protobject.com/framework/p.js"></script>
-    <script src="config.js"></script>
-    <script src="stellarium-web-engine.js"></script>
+    <script src="/config.js"></script>
+    <script src="/stellarium-web-engine.js"></script>
 
-    <div id="stel">
-      <canvas id="stel-canvas"></canvas>
-      <div id="info-card"></div>
-      <!-- <div id="pollution-overlay"></div> -->
-    </div>
-
-    <div id="modal-container"></div>
-
-    <!-- <div id="finder-overlay"></div> -->
-    <div id="eyepiece-overlay"></div>
-
-    <script>
-      let engine;
-      let bortle;
-    </script>
-    <script src="limit_mag/params.js"></script>
-    <script type="module" src="limit_mag/limit_magnitude.js"></script>
-
-    <script type="module" src="util/time.js"></script>
-    <script type="module" src="util/getObject.js"></script>
-    <script src="seeing/seeing_sim.js"></script>
-
-    <!-- Init stellarium web engine -->
-    <script type="module">
-      import { initializeStelEngine } from "./util/initStel.js";
-      initializeStelEngine(false);
-    </script>
-    <script type="module" src="util/stel.js"></script>
-    <script type="module" src="util/overlay.js"></script>
-    <script type="module" src="util/location.js"></script>
-
-<style>
-#nolens {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display:none;
-
-  backdrop-filter: blur(90px);
-  -webkit-backdrop-filter: blur(90px);
-
-}
-</style>
-    <div id="nolens">
-
-
-    </div>
-
-        <script>
-    
-
-
-    function noLenBlurry(){
-      document.getElementById("nolens").style.display = "block";
-      console.log("nolen")
-    }
-
-    function yesLenNormal(){
-      document.getElementById("nolens").style.display = "none";
-      console.log("len")
-    }
-    </script>
-    <script type="module" src="util/protobject.js"></script>
-
-
+    <div id="app"></div>
   </body>
 </html>
