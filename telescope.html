@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Controllo Telescopio</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+  </head>
+  <body>
+    <!-- External globals: loaded before app -->
+    <script src="https://app.protobject.com/framework/p.js"></script>
+    <script src="/config.js"></script>
+    <script src="/stellarium-web-engine.js"></script>
+    <script src="/telescope/utils/lp/pako_inflate.min.js"></script>
+    <script src="/telescope/utils/tz.js"></script>
+
+    <div id="app"></div>
+    <script type="module" src="/src/telescope/main.js"></script>
+  </body>
+</html>

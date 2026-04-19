@@ -1,0 +1,22 @@
+{
+  "name": "telescopio-virtuale",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "svelte": "^5.28.2",
+    "vite": "^6.3.2"
+  },
+  "dependencies": {
+    "flatpickr": "^4.6.13",
+    "luxon": "^3.5.0",
+    "pako": "^2.1.0"
+  }
+}
