@@ -29,48 +29,139 @@ function createCalibOverlay() {
     position: 'fixed',
     inset: '0',
     zIndex: '999999',
-    background: 'rgba(6, 8, 15, 0.95)',
+    background: 'rgba(6, 8, 15, 0.97)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '16px',
+    gap: '20px',
+    padding: '32px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     color: '#e8ecf5',
     transition: 'opacity 0.4s',
+    boxSizing: 'border-box',
   });
 
   const icon = document.createElement('div');
-  Object.assign(icon.style, {
-    fontSize: '40px',
-    marginBottom: '8px',
-  });
-  icon.textContent = '\u{1F4F1}';
+  Object.assign(icon.style, { fontSize: '48px', lineHeight: '1' });
+  icon.textContent = '📱';
 
   const msg = document.createElement('div');
-  msg.id = 'calib-msg';
   Object.assign(msg.style, {
-    fontSize: '18px',
-    fontWeight: '600',
+    fontSize: '20px',
+    fontWeight: '700',
     textAlign: 'center',
-    lineHeight: '1.4',
+    lineHeight: '1.3',
+    color: '#ffffff',
   });
 
   const sub = document.createElement('div');
-  sub.id = 'calib-sub';
   Object.assign(sub.style, {
-    fontSize: '14px',
-    opacity: '0.5',
+    fontSize: '15px',
+    color: 'rgba(232,236,245,0.6)',
     textAlign: 'center',
+    lineHeight: '1.5',
+    maxWidth: '300px',
   });
+
+  // Calibrate button (only shown in instruction phase)
+  const btn = document.createElement('button');
+  btn.textContent = 'Calibrar';
+  Object.assign(btn.style, {
+    marginTop: '12px',
+    padding: '14px 48px',
+    fontSize: '16px',
+    fontWeight: '700',
+    background: 'linear-gradient(135deg, #ff7a0d, #ff5500)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '50px',
+    cursor: 'pointer',
+    letterSpacing: '0.04em',
+    boxShadow: '0 4px 20px rgba(255,122,13,0.4)',
+    display: 'none',
+  });
+
+  // Progress dots (shown during calibration)
+  const dots = document.createElement('div');
+  Object.assign(dots.style, {
+    display: 'none',
+    gap: '8px',
+    alignItems: 'center',
+    justifyContent: 'center',
+  });
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement('div');
+    Object.assign(d.style, {
+      width: '8px', height: '8px',
+      borderRadius: '50%',
+      background: 'rgba(255,255,255,0.25)',
+      transition: 'background 0.3s',
+    });
+    dots.appendChild(d);
+  }
 
   el.appendChild(icon);
   el.appendChild(msg);
   el.appendChild(sub);
+  el.appendChild(btn);
+  el.appendChild(dots);
   document.body.appendChild(el);
+
+  let dotsInterval = null;
+  let dotIdx = 0;
+
+  function startDots() {
+    dots.style.display = 'flex';
+    const dotEls = dots.querySelectorAll('div');
+    dotsInterval = setInterval(() => {
+      dotEls.forEach((d, i) => {
+        d.style.background = i === dotIdx % 3 ? '#ff7a0d' : 'rgba(255,255,255,0.25)';
+      });
+      dotIdx++;
+    }, 300);
+  }
+
+  function stopDots() {
+    clearInterval(dotsInterval);
+    dots.style.display = 'none';
+  }
 
   return {
     el,
+    // Phase: 'instruction' | 'countdown' | 'calibrating' | 'done'
+    setPhase(phase, extra = '') {
+      btn.style.display = 'none';
+      stopDots();
+      switch (phase) {
+        case 'instruction':
+          icon.textContent = '📱';
+          msg.textContent = 'Calibración necesaria';
+          sub.textContent = 'Apoya el teléfono sobre una superficie plana y, sin moverlo, pulsa el botón para calibrar.';
+          btn.style.display = 'block';
+          break;
+        case 'countdown':
+          icon.textContent = '⏱';
+          msg.textContent = 'Mantén el teléfono completamente inmóvil';
+          sub.textContent = extra || 'Comenzando...';
+          break;
+        case 'calibrating':
+          icon.textContent = '⚙️';
+          msg.textContent = 'Calibrando sensores';
+          sub.textContent = 'No muevas el teléfono...';
+          startDots();
+          break;
+        case 'done':
+          icon.textContent = '✅';
+          msg.textContent = '¡Listo!';
+          sub.textContent = 'Ya puedes apuntar el telescopio hacia el cielo.';
+          break;
+      }
+    },
+    onCalibrate(callback) {
+      btn.addEventListener('click', callback, { once: true });
+    },
+    // Legacy compat
     setMessage(text, subtext = '') {
       msg.textContent = text;
       sub.textContent = subtext;
@@ -262,30 +353,29 @@ export const Orientation = {
 
     if (this._isFirstCalibration) {
       this._calibOverlay = createCalibOverlay();
-      this._startCountdown();
+      this._calibOverlay.setPhase('instruction');
+      this._calibOverlay.onCalibrate(() => this._startCountdown());
     } else {
-      this._updateDebug?.(0, 0, { status: 'Calibrating...' });
-      this._beginSensorCalibration();
+      // Subsequent calibrations (via debug overlay): skip instructions, go straight
+      this._updateDebug?.(0, 0, { status: 'Recalibrando...' });
+      this._startCountdown();
     }
   },
 
   _startCountdown() {
     let remaining = this.calibDuration;
-    this._calibOverlay.setMessage(
-      'Mantén el teléfono quieto',
-      `Calibración en ${remaining}...`,
-    );
+
+    if (this._calibOverlay) {
+      this._calibOverlay.setPhase('countdown', `Comenzando en ${remaining}...`);
+    }
 
     const countdownTimer = setInterval(() => {
       remaining--;
       if (remaining > 0) {
-        this._calibOverlay.setMessage(
-          'Mantén el teléfono quieto',
-          `Calibración en ${remaining}...`,
-        );
+        this._calibOverlay?.setPhase('countdown', `Comenzando en ${remaining}...`);
       } else {
         clearInterval(countdownTimer);
-        this._calibOverlay.setMessage('Calibrando...', 'No muevas el teléfono');
+        this._calibOverlay?.setPhase('calibrating');
         this._beginSensorCalibration();
       }
     }, 1000);
@@ -335,11 +425,11 @@ export const Orientation = {
     this.running = true;
 
     if (this._isFirstCalibration && this._calibOverlay) {
-      this._calibOverlay.setMessage('Calibración completada');
+      this._calibOverlay.setPhase('done');
       setTimeout(() => {
         this._calibOverlay.dismiss();
         this._calibOverlay = null;
-      }, 2000);
+      }, 1800);
       this._isFirstCalibration = false;
     }
   },
