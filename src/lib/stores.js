@@ -67,7 +67,7 @@ export function setCurrentFov(v) { currentFov = v; }
 export let currentBlur = 5;
 export function setCurrentBlur(v) { currentBlur = v; }
 
-export let currentTZ = -4;
+export let currentTZ = -3;
 export function setCurrentTZ(v) { currentTZ = v; }
 
 export let engineUTC = null;
@@ -76,10 +76,10 @@ export function setEngineUTC(v) { engineUTC = v; }
 export let pollution = 9;
 export function setPollution(v) { pollution = v; }
 
-export let observerLat = -33.4489;
+export let observerLat = -24.6272;
 export function setObserverLat(v) { observerLat = v; }
 
-export let observerLon = -70.6693;
+export let observerLon = -70.4042;
 export function setObserverLon(v) { observerLon = v; }
 
 // ── Svelte stores (UI-reactive) ────────────────────────────

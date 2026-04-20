@@ -99,7 +99,7 @@
     cesiumViewer.scene.maximumRenderTimeChange = Infinity;
 
     cesiumViewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(-71, -35, 10000000),
+      destination: Cesium.Cartesian3.fromDegrees(-70.4042, -24.6272, 3000000),
       orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 },
     });
 

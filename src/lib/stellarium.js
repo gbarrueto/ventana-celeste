@@ -20,10 +20,10 @@ export function initializeStelEngine(isTelescope = false) {
         setEngine(stel);
         const core = stel.core;
 
-        core.observer.utc = toJulianDateIso(new Date().toISOString());
+        core.observer.utc = toJulianDateIso(getParanalMidnightISO());
 
         const defaultLocation = {
-          cityName: 'Santiago', lat: -33.4489, lon: -70.6693, elev: 570, mag: 17.13,
+          cityName: 'Paranal', lat: -24.6272, lon: -70.4042, elev: 2635, mag: 21.8,
         };
 
         const baseUrl = 'https://smalldata.ventanaceleste.com/';
@@ -236,6 +236,18 @@ export function applyPollution({ mag = 20 }) {
 }
 
 // ── Time ───────────────────────────────────────────────────
+
+// Returns ISO string for midnight local time at Paranal (Chile, UTC-3)
+function getParanalMidnightISO() {
+  const OFFSET_MS = 3 * 3600 * 1000; // UTC-3: Chile is 3h behind UTC
+  const now = new Date();
+  const local = new Date(now.getTime() - OFFSET_MS); // shift to local time
+  const midnight = new Date(Date.UTC(
+    local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(),
+    3, 0, 0, 0, // 03:00 UTC = 00:00 UTC-3
+  ));
+  return midnight.toISOString();
+}
 
 export function toJulianDateIso(iso) {
   const now = new Date(iso);
