@@ -467,7 +467,7 @@ export function createOrientationController({
   }
 
   function cancelCalibration() {
-    if (!state.calibrating) return;
+    if (!state.calibrating && !state.preCalibrating) return;
 
     state.calibrating = false;
     state.preCalibrating = false;
@@ -490,7 +490,7 @@ export function createOrientationController({
     }
 
     state.lastTime = performance.now();
-    emitDebug({ calibrating: false, activeSource: "calibration-cancelled" });
+    emitDebug({ calibrating: false, preCalibrating: false, activeSource: "calibration-cancelled" });
   }
 
   function start( calibrateOnStart = true ) {
