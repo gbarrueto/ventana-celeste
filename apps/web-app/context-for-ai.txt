@@ -1,0 +1,295 @@
+VIRTUAL TELESCOPE PROJECT — CONTEXT FOR AI
+============================================
+
+Interactive virtual telescope. A desktop viewer (index.html) renders the sky
+with Stellarium Web Engine. A smartphone (telescope.html) acts as the physical
+telescope — you point it and see the result on the viewer. Communication is
+via WebRTC through the Protobject framework.
+
+Two extra pages can connect: Mapa.html (2D map, touch to send coordinates)
+and Pelota.html (3D globe with physical sensors), both send coordinates to
+telescope.html.
+
+
+TECH STACK
+----------
+- Svelte 5 (runes: $state, $derived) + Vite 6 (multi-page build)
+- Stellarium Web Engine (WASM, loaded as global script)
+- Protobject (WebRTC framework, loaded as global script)
+- Cesium.js (3D globe, CDN lazy-loaded)
+- Flatpickr (date picker, CDN lazy-loaded)
+- luxon (date/time), pako (decompression), Three.js/Globe.gl (Pelota only)
+- Language: all UI text is in SPANISH
+
+
+FILE STRUCTURE
+--------------
+index.html              → Viewer entry point (loads Protobject, config.js, stellarium-web-engine.js)
+telescope.html          → Telescope entry point (same + pako, tz.js)
+vite.config.js          → Multi-page: input { main: index.html, telescope: telescope.html }
+svelte.config.js        → vitePreprocess
+
+src/
+  viewer/
+    main.js             → Mounts Viewer.svelte on #app
+    Viewer.svelte       → Sky canvas + info card + eyepiece overlay + nolens blur + seeing overlay
+                          Calls enableSimpleModeSettings() at startup (shows star/planet names)
+                          Has global CSS for Protobject's .dropdown-menu (black background)
+                          Shows QR code overlay until first real updateView message is received
+                          QR dismissal has 2s gate + h/v numeric validation to ignore buffered messages
+
+  telescope/
+    main.js             → Mounts Telescope.svelte on #app
+    Telescope.svelte    → Root: header (menu btn + mode toggle) + loads SimpleMode or AdvancedMode
+                          Starts Orientation sensors here (always active, never stops on mode switch)
+    SimpleMode.svelte   → Vertical zoom slider (0-150), sends FOV to viewer
+    AdvancedMode.svelte → Stellarium preview canvas + 4 lens buttons (40mm/24mm/10mm/4mm) + focus slider
+                          Long-press finder (5s) toggles debug overlay visibility
+    Menu.svelte         → Full-screen overlay with navigation hierarchy:
+                          Main view: [X close] [Ubicacion] [Fecha y Tiempo] tabs
+                            + Stellarium option grid (6 buttons)
+                            + Contaminacion Luminica slider (with Auto toggle)
+                            + Turbulencia slider (only in advanced mode)
+                          Sub-page view: [X back to menu] + page title
+                            Location tab → GlobePicker
+                            DateTime tab → DateTimePicker
+                          Content distributes evenly across full screen (space-evenly)
+    GlobePicker.svelte  → Cesium 3D globe, sends lat/lon + pollution to viewer
+                          Updates observerLat/observerLon in stores
+                          Camera starts over Paranal Observatory on open
+    DateTimePicker.svelte → Flatpickr calendar + time speed controls
+                          Uses onChange (not onValueUpdate) for user date selection
+                          onMonthChange/onYearChange also update the sky
+                          Sync pauses 3s after any user interaction to avoid overwriting
+
+  lib/
+    stores.js           → All shared state (constants, mutable vars, Svelte stores)
+    stellarium.js       → Stellarium engine init/control/sync/overlays/location/time
+                          applyLocation() stores observerLat/observerLon
+                          Default location: Paranal Observatory
+                          Default time: midnight Chile time (UTC-3) via getParanalMidnightISO()
+    protobject.js       → EventManager + viewer/telescope message routing
+                          Handles sendCoordinates from Mapa/Pelota (stores observer position)
+                          connectionHandler fires only on first updateView with valid h/v values
+                          connectionHandlerReadyAt: 2s gate after setConnectionHandler() call
+    orientation.js      → Device sensors: Gyroscope + RelativeOrientationSensor
+                          3 modes based on FOV, manual-trigger calibration flow
+                          Debug overlay hidden by default (toggle via long-press on finder)
+    fov.js              → Slider↔FOV conversion, limiting magnitude, Bortle scale
+    seeing-overlay.js   → WebGL atmospheric turbulence simulation (shader-based)
+    light-pollution.js  → Fetch binary tile data, decompress with pako
+    lazy-load.js        → CDN script/CSS loader with caching
+
+public/
+  config.js             → Protobject page registration (4 pages)
+  Mapa.html             → MapLibre 2D map, touch/drag sends coordinates to telescope.html
+                          Map interactions disabled, finger position → lat/lon directly
+                          Pixel threshold (5px) to avoid redundant sends
+                          Console.log on every send for debugging
+  Pelota.html           → Three.js globe + physical sensors, sends coordinates
+  stellarium-web-engine.js / .wasm
+  images/, svg/          → UI assets
+  telescope/utils/lp/pako_inflate.min.js
+  telescope/utils/tz.js  → Timezone lookup (global tzlookup function)
+
+
+ARCHITECTURE — HOW PAGES CONNECT
+---------------------------------
+All pages are registered in public/config.js as Protobject peers.
+Messages use: Protobject.Core.send({ msg, values }).to('target.html')
+
+  Mapa.html ──sendCoordinates──→ telescope.html ──applyLocation──→ index.html
+  Pelota.html ─sendCoordinates─→ telescope.html ──applyLocation──→ index.html
+  telescope.html ──updateView──→ index.html  (orientation pitch/yaw)
+  telescope.html ──updateFov───→ index.html  (zoom/lens changes)
+  telescope.html ──updateBlur──→ index.html  (focus effect)
+  telescope.html ──seeingOption→ index.html  (turbulence/focus/saturation)
+  telescope.html ──updateDate──→ index.html  (time changes)
+  telescope.html ──setSpeed────→ index.html  (time speed)
+  telescope.html ──stellariumOption→ index.html (toggle constellations, etc)
+  index.html ──setSynchronizedData──→ telescope.html (full state sync on connect)
+  index.html ──syncTime────────→ telescope.html (periodic time broadcast)
+
+
+KEY DATA FLOWS
+--------------
+
+1. ORIENTATION (smartphone → viewer)
+   Gyroscope + RelativeOrientationSensor → manual calibration trigger
+   Startup: full-screen overlay "Calibración necesaria" with instruction text
+     and a "Calibrar" button. User places phone flat and taps button.
+     → 3s countdown "Mantén el teléfono completamente inmóvil / Comenzando en 3/2/1..."
+     → "Calibrando sensores..." with animated dots
+     → "¡Listo! Ya puedes apuntar el telescopio hacia el cielo." (auto-dismiss 1.8s)
+   Subsequent recalibrations (via debug overlay click): skip instruction screen,
+     go straight to countdown.
+   Three modes based on FOV:
+     - relative (FOV > 0.8 rad): RelativeOrientationSensor quaternion → Euler
+     - gyro (FOV < 0.8 rad): Gyroscope integration with deadzone
+     - dynamic (FOV < 0.02 rad): Precision gain + smoothing filter
+   Sends updateView { h, v } throttled at 20ms
+   Started in Telescope.svelte, active in BOTH simple and advanced modes.
+   Debug overlay hidden by default. Long-press finder-frame 5s to show/hide.
+   Click debug overlay to recalibrate.
+
+2. ZOOM — Simple Mode
+   Slider (0-150) → sliderToFov() exponential mapping → sendThrottled updateFov
+
+3. ZOOM — Advanced Mode
+   Lens buttons (fl: 40, 24, 10, 4) → magnification = FOCAL_LENGTH/fl
+   FOV = (100/magnification) * PI/180 → sendThrottled updateFov
+   Also computes blur target and turbulence max based on magnification.
+
+4. FOCUS (Advanced Mode)
+   Focus slider (0-10) → blur = f(|currentBlur - blurTarget|, zoomLevel)
+   Sends via seeingOption { target: 'focus', value }
+
+5. LOCATION
+   GlobePicker (Cesium) or Mapa.html or Pelota.html → { lat, lon }
+   → getMagFromLonLat (light pollution) → tzlookup (timezone)
+   → stores observerLat/observerLon → applyLocation locally + send to viewer
+   Auto pollution in menu: fetches pollution from current observerLat/observerLon
+   Default: Paranal Observatory (-24.6272, -70.4042, 2635m, SQM 21.8)
+
+6. TIME
+   DateTimePicker: Flatpickr → ISO → MJD → updateDate to viewer
+   onChange fires on day/time selection; onMonthChange/onYearChange also update sky
+   Sync interval (500ms) pauses for 3s after any user interaction
+   Speed controls: 0x, 1x, 10x, 60x, 3600x
+   Viewer broadcasts syncTime every 300ms back to telescope.
+   Default time: midnight Chile time (UTC-3) of the current date,
+     computed by getParanalMidnightISO() in stellarium.js.
+     Formula: shift now by -3h to get local date, then UTC = local date + 03:00
+
+7. SEEING OVERLAY (viewer side)
+   WebGL shader simulating atmospheric turbulence.
+   Controls: turbulence (0-10), turbulenceMax (1-10), speed (1-5),
+   focus (0-100), saturation (50-150).
+   Telescope sends seeingOption messages to adjust these.
+   Turbulencia slider in menu (advanced mode only).
+
+8. QR CODE (viewer side)
+   Shown on index.html until a real telescope connects and sends gyroscope data.
+   setConnectionHandler(fn) registers the dismiss callback.
+   connectionHandlerReadyAt = Date.now() + 2000 at registration time.
+   Dismissed only when updateView arrives with typeof v.h === 'number' &&
+   typeof v.v === 'number' AND Date.now() >= connectionHandlerReadyAt.
+   This prevents buffered/queued Protobject messages from hiding the QR at startup.
+
+
+STORES.JS — STATE REFERENCE
+----------------------------
+Constants:
+  MIN_FOV = 0.000005, MAX_FOV = 3.228859, FOCAL_LENGTH = 1200
+  DIAMETER = 100, TELESCOPE_TYPE = 2 (refractor)
+  Throttle rates: FOV_SEND_MS=50, ZOOM_THROTTLE_MS=100, etc.
+  STEL_BUTTONS = { constellations, atmosphere, landscape, azimuthal, equatorial, dss }
+
+Mutable state (module vars with get/set exports):
+  engine, bortle, eyepieceFl(25), sqmReading(20), citySqmReading(20),
+  logFov, currentFov(3), currentBlur(5), currentTZ(-3), engineUTC, pollution(9),
+  observerLat(-24.6272), observerLon(-70.4042)
+
+Svelte writable stores:
+  modes { simple: true, advanced: false }
+  isLoading (boolean)
+  isMenuOpen (boolean)
+
+
+PROTOBJECT MESSAGE HANDLERS
+-----------------------------
+
+Viewer (index.html) handles:
+  toggleEyepiece, updateFov, updateBlur, updateView, applyLocation,
+  setSpeed, updateDate, setDatetimeInterval, clearDatetimeInterval,
+  updatePollution, stellariumOption, noLenBlurry, yesLenNormal,
+  seeingOption, simpleSettings, advancedSettings,
+  requestSynchronizeData, requestSynchronizeSimpleZoom
+
+Telescope (telescope.html) handles:
+  syncTime, setSynchronizedData (registered by AdvancedMode),
+  setSynchronizedSimpleZoom (registered by SimpleMode),
+  sendCoordinates (from Mapa/Pelota, applies location + pollution + timezone)
+
+
+STELLARIUM ENGINE
+-----------------
+Global: StelWebEngine (loaded from stellarium-web-engine.js + WASM)
+Initialized via initializeStelEngine(isTelescope).
+  isTelescope=false: loads extended catalogs (DSO, stars, solar system)
+  isTelescope=true:  minimal catalogs for guidescope preview
+Canvas: #stel-canvas (must exist in DOM before init)
+Access: engine.core.observer (lat, lon, elevation, utc, yaw, pitch)
+         engine.core.fov (field of view in radians)
+At startup, viewer calls enableSimpleModeSettings() to show star/planet names.
+Default location: Paranal Observatory, Chile (lat -24.6272, lon -70.4042, elev 2635m)
+Default time: midnight local Chile time (UTC-3) of the current date.
+
+
+ORIENTATION SENSOR CONFIG
+--------------------------
+Located in src/lib/orientation.js, exported as Orientation object.
+  gyroFreq: 100 Hz, relFreq: 30 Hz, calibDuration: 3s
+  fovThreshold: 0.8 (relative↔gyro switch)
+  dynamicThreshold: 0.02 (gyro↔dynamic switch)
+  dynamicGainMultiplier: 10.0
+  dynamicSmoothingFactor: 0.15
+  gyroDeadzone: 0.003
+
+Uses RelativeOrientationSensor (not Absolute — no magnetometer needed,
+works indoors, no compass issues).
+
+Calibration flow (first time):
+  1. Overlay shows "Calibración necesaria" + instruction text + "Calibrar" button
+  2. User taps button → 3s countdown ("Mantén el teléfono completamente inmóvil")
+  3. Sensor reads 300 samples → computes gyro bias
+  4. Overlay shows "¡Listo!" then auto-dismisses after 1.8s
+Subsequent recalibrations (debug overlay click): skip step 1, go to step 2 directly.
+
+Debug overlay: hidden by default. Toggle with 5-second long-press on
+finder-frame in AdvancedMode. Shows FOV, pitch, yaw, mode, status.
+
+
+GLOBAL SCRIPTS (available on window)
+--------------------------------------
+- Protobject (WebRTC framework)  — loaded in both HTML pages
+- StelWebEngine                  — loaded in both HTML pages
+- pako (inflate)                 — loaded in telescope.html only
+- tzlookup                       — loaded in telescope.html only (from tz.js)
+- Cesium                         — lazy-loaded in GlobePicker
+- flatpickr                      — lazy-loaded in DateTimePicker
+- luxon (DateTime)               — imported as ES module from node_modules
+
+
+MENU UX HIERARCHY
+------------------
+Menu is a full-screen overlay (z-index 50).
+
+Level 0 — Main menu:
+  Header: [X close menu] [Ubicacion btn] [Fecha y Tiempo btn]
+  Body (space-evenly distributed):
+    - 3x2 grid of Stellarium options (toggle on/off, visual opacity feedback)
+    - Contaminacion Luminica: slider (1-9 Bortle) + Auto toggle
+      Auto: fetches pollution from observerLat/observerLon, updates slider, then disables it
+    - Turbulencia: slider (0-10), only visible in advanced mode
+
+Level 1 — Sub-page (Ubicacion or Fecha y Tiempo):
+  Header: [X back to menu] + page title text (other tab disappears completely)
+  Body: GlobePicker or DateTimePicker fills the space
+
+
+COMMON MODIFICATIONS
+---------------------
+To add a new lens:         Edit LENSES array in AdvancedMode.svelte
+To add a new stel option:  Add to STEL_BUTTONS in stores.js + add button in Menu.svelte
+To change default location: Edit defaultLocation in initializeStelEngine() in stellarium.js
+                            + update observerLat/observerLon defaults in stores.js
+                            + update camera flyTo in GlobePicker.svelte
+To change default time:    Edit getParanalMidnightISO() in stellarium.js
+To add a new message:      Add handler in protobject.js (viewer or telescope side)
+To change orientation:     Edit orientation.js (thresholds, gains, smoothing)
+To change zoom range:      Edit MIN_FOV/MAX_FOV in stores.js + sliderToFov in fov.js
+To add a new page:         Add to config.js + register handler for its messages in protobject.js
+To change seeing shader:   Edit seeing-overlay.js (WebGL fragment shader)
+To change throttle rates:  Edit constants in stores.js
+To add keyboard shortcuts: Create new handler in Telescope.svelte (arduino removed, HID planned)
