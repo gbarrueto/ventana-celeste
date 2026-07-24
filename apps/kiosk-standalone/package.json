@@ -1,0 +1,17 @@
+{
+  "name": "astrovis-migrated",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--max-old-space-size=1536 vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "svelte": "^4.2.18",
+    "vite": "^5.4.0"
+  }
+}
