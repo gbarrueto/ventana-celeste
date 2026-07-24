@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import fs from 'fs'
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), basicSsl()],
   build: {
     rollupOptions: {
       input: {
@@ -14,9 +14,5 @@ export default defineConfig({
   },
   server: {
     host: true,
-    https: {
-      key: fs.readFileSync('192.168.1.100-key.pem'),
-      cert: fs.readFileSync('192.168.1.100.pem')
-    }
   },
 });
