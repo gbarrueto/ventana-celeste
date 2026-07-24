@@ -1,5 +1,5 @@
 {
-  "name": "astrovis-migrated",
+  "name": "@ventanaceleste/kiosk-standalone",
   "private": true,
   "version": "0.1.0",
   "type": "module",
