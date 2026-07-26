@@ -1,0 +1,10 @@
+{
+  "name": "@ventanaceleste/core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1"
+  }
+}
