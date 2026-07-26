@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { DateTime } from 'luxon';
+  import { wallClockToMJD, mjdToWallClockISO, setEngineTime } from '@ventanaceleste/core';
   import { loadCdnScript, loadCss } from '../lib/lazy-load.js';
   import { isLoading, currentTZ, engineUTC } from '../lib/stores.js';
   import { engine } from '../lib/stores.js';
@@ -16,37 +16,9 @@
     lastInteraction = Date.now();
   }
 
-  function isoToMJD(isoString) {
-    const date = new Date(isoString);
-    const jd = date.getTime() / 86400000 + 2440587.5;
-    return jd - 2400000.5;
-  }
-
-  function fromMJDToLuxon(mjd, offsetHours = 0) {
-    const JD = mjd + 2400000.5;
-    const unixMs = (JD - 2440587.5) * 86400000;
-    const zone = `UTC${offsetHours >= 0 ? '+' : ''}${offsetHours}`;
-    return DateTime.fromMillis(unixMs, { zone: 'UTC' }).setZone(zone);
-  }
-
-  function getISOWithTZ(date) {
-    const offset = currentTZ;
-    const localOffset = -new Date().getTimezoneOffset() / 60;
-    if (localOffset === offset) return date.toISOString();
-
-    const zone = `UTC${offset >= 0 ? '+' : ''}${offset}`;
-    const dt = DateTime.fromObject(
-      { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate(),
-        hour: date.getHours(), minute: date.getMinutes(), second: date.getSeconds() },
-      { zone },
-    );
-    return dt.toUTC().toISO();
-  }
-
-  function updateStelDate(dateISO) {
-    const mjd = isoToMJD(dateISO);
+  function updateStelDate(mjd) {
     Protobject.Core.send({ msg: 'updateDate', values: { date: mjd } }).to('index.html');
-    if (engine?.core?.observer) engine.core.observer.utc = mjd;
+    setEngineTime(engine, mjd);
   }
 
   function setSpeed(multiplier) {
@@ -55,9 +27,9 @@
   }
 
   function applyCurrentDate() {
-    const dateISO = getISOWithTZ(new Date());
-    updateStelDate(dateISO);
-    if (flatpickrInstance) flatpickrInstance.setDate(dateISO, false);
+    const mjd = wallClockToMJD(new Date(), currentTZ);
+    updateStelDate(mjd);
+    if (flatpickrInstance) flatpickrInstance.setDate(mjdToWallClockISO(mjd, currentTZ), false);
   }
 
   onMount(async () => {
@@ -86,9 +58,8 @@
         onChange(selectedDates) {
           if (selectedDates.length > 0) {
             markInteraction();
-            const iso = getISOWithTZ(selectedDates[0]);
-            console.log('DatePicker onChange:', selectedDates[0], '→ ISO:', iso, '→ MJD:', isoToMJD(iso));
-            updateStelDate(iso);
+            const mjd = wallClockToMJD(selectedDates[0], currentTZ);
+            updateStelDate(mjd);
           }
         },
         onMonthChange(selectedDates, _dateStr, instance) {
@@ -120,8 +91,7 @@
       syncInterval = setInterval(() => {
         if (!flatpickrInstance || !engineUTC) return;
         if (Date.now() - lastInteraction > 3000) {
-          const dt = fromMJDToLuxon(engineUTC, currentTZ);
-          flatpickrInstance.setDate(dt.toISO(), false);
+          flatpickrInstance.setDate(mjdToWallClockISO(engineUTC, currentTZ), false);
         }
       }, 500);
     }, 100);

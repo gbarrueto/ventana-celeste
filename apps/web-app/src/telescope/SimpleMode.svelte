@@ -1,15 +1,17 @@
 <script>
   import { onMount } from 'svelte';
-  import { sliderToFov, fovToSlider } from '../lib/fov.js';
-  import { isLoading, setLogFov, setCurrentFov, FOV_SEND_MS } from '../lib/stores.js';
+  import { sliderToFov, fovToSlider } from '@ventanaceleste/core';
+  import { isLoading, setLogFov, setCurrentFov, FOV_SEND_MS, MIN_FOV, MAX_FOV } from '../lib/stores.js';
   import { eventManager, onTelescopeMessage } from '../lib/protobject.js';
+
+  const FOV_RANGE = { minFov: MIN_FOV, maxFov: MAX_FOV };
 
   let zoomValue = $state(100);
 
   function onZoomInput(e) {
     const val = parseFloat(e.target.value);
     zoomValue = val;
-    const fov = sliderToFov(val);
+    const fov = sliderToFov(val, FOV_RANGE);
     setCurrentFov(fov);
     setLogFov(Math.log(fov));
 
@@ -29,7 +31,7 @@
     onTelescopeMessage('setSynchronizedSimpleZoom', (values) => {
       const { data } = values;
       if (data?.fov) {
-        zoomValue = fovToSlider(data.fov);
+        zoomValue = fovToSlider(data.fov, FOV_RANGE);
       }
     });
 

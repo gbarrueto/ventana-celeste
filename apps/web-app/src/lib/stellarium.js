@@ -2,97 +2,73 @@
  * Stellarium engine: initialization, view control, overlays, location, time.
  * Consolidates: initStel.js, stel.js, overlay.js, location.js, time.js, getObject.js
  */
-import { calculateLimitMag, magToBortle } from './fov.js';
 import {
   engine, setEngine, setBortle, setEyepieceFl, setSqmReading, setCitySqmReading,
   FOCAL_LENGTH, eyepieceFl, sqmReading, citySqmReading,
   setObserverLat, setObserverLon,
+  DIAMETER, TELESCOPE_TYPE, COATING, CLEANLINESS, PUPIL, EXPERIENCE,
+  SEEING_DISK_DIAMETER, ZENITH_DISTANCE, STAR_COLOR_INDEX, EXTINCTION,
 } from './stores.js';
+import {
+  computeDefaultObservationTime,
+  setEngineTime,
+  setEngineSpeed as coreSetEngineSpeed,
+  calculateLimitMag,
+  magToBortle,
+  initializeStellariumEngine,
+  removeStellariumEngine,
+} from '@ventanaceleste/core';
+
+function currentLimitMag() {
+  return calculateLimitMag({
+    aperture: DIAMETER,
+    magnification: FOCAL_LENGTH / eyepieceFl,
+    telescopeType: TELESCOPE_TYPE,
+    coatingReflectivity: COATING,
+    cleanliness: CLEANLINESS,
+    sqmReading,
+    starColorIndex: STAR_COLOR_INDEX,
+    zenithDistanceDeg: ZENITH_DISTANCE,
+    extinction: EXTINCTION,
+    seeingDiskDiameter: SEEING_DISK_DIAMETER,
+    observerExperience: EXPERIENCE,
+    observerPupil: PUPIL,
+  });
+}
+
+// Paranal is UTC-3 (Chile continental time, no DST).
+const PARANAL_UTC_OFFSET_HOURS = -3;
 
 // ── Engine initialization ──────────────────────────────────
 
 export function initializeStelEngine(isTelescope = false) {
-  return new Promise((resolve) => {
-    StelWebEngine({
-      wasmFile: 'stellarium-web-engine.wasm',
-      canvas: document.getElementById('stel-canvas'),
-      async onReady(stel) {
-        setEngine(stel);
-        const core = stel.core;
+  return initializeStellariumEngine({
+    canvas: document.getElementById('stel-canvas'),
+    wasmFile: 'stellarium-web-engine.wasm',
+    smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
+    bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
+    extended: !isTelescope,
+    time: { offsetHours: PARANAL_UTC_OFFSET_HOURS },
+    strict: false, // a failed catalog fetch shouldn't block startup
+    async onReady(stel) {
+      setEngine(stel);
+      const { core } = stel;
+      core.planets.hints_visible = false;
+      core.dsos.hints_visible = false;
+      core.minor_planets.hints_visible = false;
+      core.dss.hints_visible = false;
+      core.stars.hints_visible = false;
+      core.comets.hints_visible = false;
+      core.cardinals.visible = false;
+      core.exposure_scale = 2;
 
-        core.observer.utc = toJulianDateIso(getParanalMidnightISO());
-
-        const defaultLocation = {
-          cityName: 'Paranal', lat: -24.6272, lon: -70.4042, elev: 2635, mag: 21.8,
-        };
-
-        const baseUrl = 'https://smalldata.ventanaceleste.com/';
-        const baseUrlBig = 'https://bigdata.ventanaceleste.com/';
-        const promises = [];
-
-        // Basic data sources (both pages)
-        promises.push(
-          core.stars.addDataSource({ url: baseUrl + 'swe-data-packs/minimal/2020-09-01/minimal_2020-09-01_186e7ee2/stars', key: 'minimal' }),
-          core.stars.addDataSource({ url: baseUrl + 'swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/stars', key: 'base' }),
-          core.landscapes.addDataSource({ url: baseUrl + 'landscapes/v1/guereins', key: 'guereins' }),
-        );
-
-        ['moon', 'sun', 'jupiter', 'mercury', 'venus', 'mars', 'saturn', 'uranus', 'neptune', 'io', 'europa', 'ganymede', 'callisto', 'moon-normal'].forEach((p) => {
-          promises.push(core.planets.addDataSource({ url: baseUrl + `surveys/sso/${p}/v1`, key: p }));
-        });
-
-        // Extended data only for the viewer
-        if (!isTelescope) {
-          promises.push(
-            core.stars.addDataSource({ url: baseUrl + 'swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars', key: 'extended' }),
-            core.dss.addDataSource({ url: baseUrlBig + 'surveys/gaia/v1', key: 'gaia' }),
-            core.skycultures.addDataSource({ url: baseUrl + 'skycultures/v3/western', key: 'western' }),
-            core.dsos.addDataSource({ url: baseUrl + 'swe-data-packs/base/2020-09-01/base_2020-09-01_1aa210df/dso' }),
-            core.dsos.addDataSource({ url: baseUrl + 'swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/dso' }),
-            core.milkyway.addDataSource({ url: baseUrl + 'surveys/milkyway/v1' }),
-            core.dss.addDataSource({ url: baseUrlBig + 'surveys/dss/v1' }),
-            core.minor_planets.addDataSource({ url: baseUrl + 'mpc/v1/mpcorb.dat', key: 'mpc_asteroids' }),
-            core.comets.addDataSource({ url: baseUrl + 'mpc/v1/CometEls.txt?v=2019-12-17', key: 'mpc_comets' }),
-          );
-        }
-
-        try {
-          await Promise.all(promises);
-          core.planets.hints_visible = false;
-          core.dsos.hints_visible = false;
-          core.minor_planets.hints_visible = false;
-          core.dss.hints_visible = false;
-          core.stars.hints_visible = false;
-          core.comets.hints_visible = false;
-          core.cardinals.visible = false;
-          core.exposure_scale = 2;
-        } catch (err) {
-          console.error('Error loading data sources:', err);
-        }
-
-        applyLocation(defaultLocation);
-        resolve(stel);
-      },
-    });
+      applyLocation({ cityName: 'Paranal', lat: -24.6272, lon: -70.4042, elev: 2635, mag: 21.8 });
+    },
   });
 }
 
 export function removeStelEngine() {
-  if (!engine) return;
-  if (engine.stop) engine.stop();
-
-  engine.core.selection = null;
-  engine.core.observer = null;
-
-  const oldCanvas = engine.canvas;
-  const gl = oldCanvas.getContext('webgl2') || oldCanvas.getContext('webgl');
-  if (gl?.getExtension('WEBGL_lose_context')) {
-    gl.getExtension('WEBGL_lose_context').loseContext();
-  }
-
-  const newCanvas = document.createElement('canvas');
-  newCanvas.id = 'stel-canvas';
-  oldCanvas.replaceWith(newCanvas);
+  removeStellariumEngine(engine, 'stel-canvas');
   setEngine(null);
 }
 
@@ -109,7 +85,7 @@ export function updateStellariumFov({ fov }) {
   engine.core.fov = fov;
   const degFov = (fov * 180) / Math.PI;
   setEyepieceFl(FOCAL_LENGTH * degFov / 100);
-  engine.core.display_limit_mag = calculateLimitMag();
+  engine.core.display_limit_mag = currentLimitMag();
 }
 
 export function stellariumOption({ path, attr }) {
@@ -231,38 +207,20 @@ export function applyPollution({ mag = 20 }) {
   setBortle(b);
   engine.core.bortle_index = b;
   engine.core.milkyway.visible = b < 6;
-  engine.core.display_limit_mag = calculateLimitMag();
+  engine.core.display_limit_mag = currentLimitMag();
   engine.core.star_relative_scale = 0.6;
 }
 
 // ── Time ───────────────────────────────────────────────────
-
-// Returns ISO string for midnight local time at Paranal (Chile, UTC-3)
-function getParanalMidnightISO() {
-  const OFFSET_MS = 3 * 3600 * 1000; // UTC-3: Chile is 3h behind UTC
-  const now = new Date();
-  const local = new Date(now.getTime() - OFFSET_MS); // shift to local time
-  const midnight = new Date(Date.UTC(
-    local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(),
-    3, 0, 0, 0, // 03:00 UTC = 00:00 UTC-3
-  ));
-  return midnight.toISOString();
-}
-
-export function toJulianDateIso(iso) {
-  const now = new Date(iso);
-  const jd = now.getTime() / 86400000 + 2440587.5;
-  return jd - 2400000.5;
-}
+// Conversions and engine-clock mutation live in @ventanaceleste/core's
+// time/ module; these just adapt the Protobject message shape to it.
 
 export function setEngineSpeed({ speed: multiplier }) {
-  if (!engine?.core) return;
-  engine.core.time_speed = parseInt(multiplier);
+  coreSetEngineSpeed(engine, multiplier);
 }
 
 export function updateDate({ date }) {
-  if (!engine?.core?.observer) return;
-  engine.core.observer.utc = date;
+  setEngineTime(engine, date);
 }
 
 let datetimeInterval = null;

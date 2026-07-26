@@ -1,7 +1,7 @@
 <script>
   import { STEL_BUTTONS, setPollution, POLLUTION_THROTTLE_MS, modes, observerLat, observerLon } from '../lib/stores.js';
   import { applyPollution } from '../lib/stellarium.js';
-  import { bortleToMag, magToBortle } from '../lib/fov.js';
+  import { bortleToMag, magToBortle } from '@ventanaceleste/core';
   import { getMagFromLonLat } from '../lib/light-pollution.js';
   import { eventManager, sendSeeingValue } from '../lib/protobject.js';
   import DateTimePicker from './DateTimePicker.svelte';

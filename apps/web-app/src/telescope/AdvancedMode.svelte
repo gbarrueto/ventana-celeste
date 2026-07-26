@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { computeFovFromEyepiece } from '@ventanaceleste/core';
   import { initializeStelEngine, removeStelEngine } from '../lib/stellarium.js';
   import { eventManager, onTelescopeMessage, sendSeeingValue } from '../lib/protobject.js';
   import { showDebugOverlay, hideDebugOverlay, isDebugOverlayVisible } from '../lib/orientation.js';
@@ -43,8 +44,7 @@
 
   function applyZoom(fl, lensName) {
     activeLens = lensName;
-    const m = FOCAL_LENGTH / fl;
-    let newFov = (100 / m) * Math.PI / 180;
+    const newFov = computeFovFromEyepiece(FOCAL_LENGTH, fl);
     setLogFov(Math.log(newFov));
     updateDisplayFov(lensName);
   }

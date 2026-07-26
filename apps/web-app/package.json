@@ -15,8 +15,8 @@
     "vite": "^6.3.2"
   },
   "dependencies": {
+    "@ventanaceleste/core": "workspace:*",
     "flatpickr": "^4.6.13",
-    "luxon": "^3.5.0",
     "pako": "^2.1.0"
   }
 }
