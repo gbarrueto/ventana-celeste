@@ -66,11 +66,11 @@ commits de `localversion` y toda su cadena `Migration` → `StaticVersion` sigue
 
 ### Purga de secretos
 
-La rama `svelte-app-ventanaceleste-com` tenía **dos `.pem` versionados**
-(`192.168.1.100.pem` y `192.168.1.100-key.pem`): certificado + clave privada autofirmados para
-HTTPS local, necesarios porque los sensores de orientación exigen contexto seguro. Por nombre
+La rama `svelte-app-ventanaceleste-com` tenía **dos `.pem` versionados** (certificado + clave
+privada autofirmados, nombrados según una IP de red local): eran para servir HTTPS en
+desarrollo, necesario porque los sensores de orientación exigen contexto seguro. Por su nombre
 casi seguro no eran secretos de producción, pero una clave privada es una clave privada, y
-`subtree add` sin squash los habría importado **con todo su historial** al repo personal.
+`subtree add` sin squash los habría importado **con todo su historial** al repo nuevo.
 
 Se purgaron con `git filter-repo` antes de importar, de modo que nunca llegaron al monorepo:
 

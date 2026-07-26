@@ -7,44 +7,48 @@ Ver también [`../CONTEXT.md`](../CONTEXT.md) (punto de entrada del repo),
 (propuesta original de diseño de `core`, previa a la implementación) y
 [`packages/core/README.md`](../packages/core/README.md) (referencia de arquitectura actual).
 
-## ⚠️ Estado de git — importante
+## Estado de git
 
-**Todo lo posterior a la migración a monorepo está sin commitear.** El último commit en `main`
-(`b123960`) es el cierre de la migración a monorepo; ya está pusheado a `origin/main`
-(`gbarrueto/ventana-celeste`). Todo lo descrito abajo bajo "Extracción de `packages/core`"
-(sección 2) y "Fixes de conexión y sensores" (sección 3), más `docs/` y `CONTEXT.md` completos,
-vive únicamente en el working tree local. Agrupación de commits **decidida: uno por módulo de
-`core`**, más commits separados para los fixes de `web-app` y para la documentación.
+Todo lo descrito en este documento está **commiteado y pusheado** a `origin/main`
+(`gbarrueto/ventana-celeste`). La extracción de `core` se agrupó en un commit por módulo, más
+commits separados para el rewire de cada app, los fixes de `web-app`, el lockfile y la
+documentación. Las ramas `legacy/*` siguen siendo solo locales, a propósito.
 
-La verificación funcional en dispositivo real ya se hizo para `web-app` (sección 3); `kiosk`
+La verificación en dispositivo real está parcialmente hecha para `web-app` (sección 3); `kiosk`
 sigue sin probarse contra hardware.
+
+## Entorno de desarrollo
+
+Para probar el emparejamiento visor↔teléfono en la red local, **el dev server tiene que correr
+nativo en el sistema del host**, no dentro de WSL ni de una VM: si no, el host no puede usar la
+misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver la Resolución del
+[ADR 0001](adr/0001-protobject-peers-must-share-an-origin.md).
 
 ## 🎯 Próximos pasos (en orden)
 
-1. **Commitear y pushear** todo lo posterior a `b123960`, un commit por módulo de `core`
-   (decidido para mantener consistencia con la estructura de la sección 2), más commits
-   aparte para los fixes de `web-app` de la sección 3 y para la documentación.
-2. **Desbloquear las pruebas con teléfono en la LAN.** Hoy es imposible con `pnpm run dev`
-   en WSL por la combinación de restricciones del ADR 0001. Opción recomendada: **mover el
-   entorno de desarrollo a Windows nativo**, con lo cual host y teléfono comparten el origen
-   de la IP LAN y el problema desaparece de raíz (así se probaba el proyecto en sus inicios).
-   Requiere instalar `pnpm` en Windows (Node 24 ya está) y mover la copia de trabajo al
-   filesystem de Windows — el file watching de Vite sobre `\\wsl.localhost\...` no es
-   confiable. Alternativas si no se quiere migrar: `netsh portproxy`, hosts+mDNS, o túnel.
-   Al migrar, `VITE_LAN_HOST` queda redundante (borrarlo para que no quede desactualizado).
-3. **Terminar la verificación en dispositivo real** de `web-app`: zoom, y el pairing
-   teléfono↔PC una vez desbloqueado el punto 2.
-4. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
+- ~~**Commitear y pushear**~~ — HECHO. 14 commits (uno por módulo de `core`, más los rewires
+  de cada app, los fixes de `web-app`, el lockfile y la documentación), pusheados a
+  `origin/main`. Las ramas `legacy/*` siguen siendo solo locales.
+- ~~**Desbloquear las pruebas con teléfono en la LAN**~~ — HECHO. Entorno migrado a Windows
+  nativo; el host ya alcanza su propia IP LAN. Ver la Resolución del
+  [ADR 0001](adr/0001-protobject-peers-must-share-an-origin.md).
+
+1. **Terminar la verificación en dispositivo real** de `web-app` ahora que el pairing en LAN
+   es posible: emparejamiento teléfono↔PC desde el QR, zoom, y que el overlay del QR se oculte
+   con el handshake `telescopeConnected`.
+2. **Eliminar `VITE_LAN_HOST`** del código si ya no se usa — quedó obsoleto al migrar (era una
+   mitigación del problema de origen, no una solución). Está en `buildTelescopeUrl()` de
+   `apps/web-app/src/viewer/Viewer.svelte`.
+3. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
    refactor a `core` no se probó nunca ahí.
-5. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
+4. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
    `Architecture.md` §2 en consecuencia. Bloquea a `dual-telescope` y a `shared-viewer`.
 
 Detalle del resto de pendientes más abajo.
 
 ## 1. Migración a monorepo (sesión anterior, ya commiteada y pusheada)
 
-- `abellinouc.github.io` (5 ramas, 2 líneas de desarrollo reales) → monorepo pnpm en
-  `VentanaCeleste/VentanaCeleste`, rama `main`.
+- `abellinouc.github.io` (5 ramas, 2 líneas de desarrollo reales) → monorepo pnpm, rama `main`.
 - Historial real preservado vía `git subtree add` (no squash) para `apps/web-app` (←
   `svelte-app-ventanaceleste-com`) y `apps/kiosk-standalone` (← `localversion`).
 - **Purgados con `git filter-repo`** dos archivos `.pem` (cert + clave privada autofirmados) que
@@ -56,7 +60,7 @@ Detalle del resto de pendientes más abajo.
 - `origin` del monorepo apunta a `gbarrueto/ventana-celeste.git` — **pusheado** (rama `main` únicamente,
   las `legacy/*` quedaron solo locales a pedido tuyo).
 
-## 2. Extracción de `packages/core` (esta sesión, sin commitear)
+## 2. Extracción de `packages/core`
 
 Siete módulos extraídos desde `apps/web-app` y `apps/kiosk-standalone`, en el orden del plan de
 `CORE_DESIGN.md`. Detalle completo de API y decisiones de diseño en
@@ -94,7 +98,7 @@ verificados con scripts Node standalone contra valores de referencia conocidos y
 original ejecutada en paralelo. **Ningún dispositivo físico ni sensor real fue probado** (ver
 Limitaciones).
 
-## 3. Fixes de conexión y sensores en `web-app` (sesión 2026-07-26, sin commitear)
+## 3. Fixes de conexión y sensores en `web-app` (2026-07-26)
 
 Primera sesión con verificación en un teléfono real. Salieron tres bugs distintos, todos
 introducidos o destapados por el refactor a `core`:
@@ -159,9 +163,6 @@ Mitigación parcial en el repo: `VITE_LAN_HOST` permite overridear el host del Q
 7. **Empaquetado de datos locales para producción de kiosk** — los paths locales (`/data/smalldata/`,
    etc.) siguen comentados en el config; kiosk en producción sigue apuntando a los servidores remotos.
    Preexistente, no tocado esta sesión.
-8. **Entorno de desarrollo para probar en LAN** — ver punto 2 de "Próximos pasos". Mientras no se
-   resuelva, el pairing teléfono↔PC no se puede probar en local; sí se puede con ambos peers en el
-   mismo origen (dos pestañas), en producción, o en Codespaces.
 9. **Manejo de errores visible en `kiosk`** — `web-app` ya lo tiene (fase `'error'` del overlay de
    calibración); kiosk sigue sin superficie visible para fallos de sensores o de carga de catálogos.
 
