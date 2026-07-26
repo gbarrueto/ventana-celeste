@@ -29,19 +29,20 @@ misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver
 - ~~**Commitear y pushear**~~ — HECHO. 14 commits (uno por módulo de `core`, más los rewires
   de cada app, los fixes de `web-app`, el lockfile y la documentación), pusheados a
   `origin/main`. Las ramas `legacy/*` siguen siendo solo locales.
-- ~~**Desbloquear las pruebas con teléfono en la LAN**~~ — HECHO. Entorno migrado a Windows
-  nativo; el host ya alcanza su propia IP LAN. Ver la Resolución del
+- ~~**Desbloquear las pruebas con teléfono en la LAN**~~ — HECHO. Dev server nativo en el host;
+  el host ya alcanza su propia IP LAN. Ver la Resolución del
   [ADR 0001](adr/0001-protobject-peers-must-share-an-origin.md).
+- ~~**Emparejamiento verificado en dispositivo real**~~ — HECHO. Escaneando el QR desde un
+  teléfono, visor y teléfono emparejan y el overlay del QR se oculta con `telescopeConnected`.
+- ~~**Eliminar `VITE_LAN_HOST`**~~ — HECHO. `buildTelescopeUrl()` deriva el host del QR de
+  `window.location.host`, sin override.
 
-1. **Terminar la verificación en dispositivo real** de `web-app` ahora que el pairing en LAN
-   es posible: emparejamiento teléfono↔PC desde el QR, zoom, y que el overlay del QR se oculte
-   con el handshake `telescopeConnected`.
-2. **Eliminar `VITE_LAN_HOST`** del código si ya no se usa — quedó obsoleto al migrar (era una
-   mitigación del problema de origen, no una solución). Está en `buildTelescopeUrl()` de
-   `apps/web-app/src/viewer/Viewer.svelte`.
-3. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
-   refactor a `core` no se probó nunca ahí.
-4. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
+1. **Terminar de cubrir `web-app`** — es la prioridad antes de pasar a las otras apps. Queda
+   verificar el resto de la interacción en dispositivo real (zoom, lentes, tiempo, ubicación) y
+   atender los problemas que aparezcan en uso.
+2. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
+   refactor a `core` no se probó nunca ahí. Le corresponde también su propio `DEVELOPMENT.md`.
+3. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
    `Architecture.md` §2 en consecuencia. Bloquea a `dual-telescope` y a `shared-viewer`.
 
 Detalle del resto de pendientes más abajo.
@@ -135,12 +136,11 @@ consola del teléfono al visor solo *después* de conectar, y en este teléfono 
 depuración remota por USB. Activa en dev, o con `?debug=1`.
 
 **Hallazgo de entorno documentado como ADR:** Protobject empareja por **origen**, no solo por
-`ptjuid`, y WSL en modo `mirrored` impide que el host alcance su propia IP LAN — combinación que
-hace imposible emparejar teléfono y PC con un `pnpm run dev` normal. Ver
-[`adr/0001-protobject-peers-must-share-an-origin.md`](adr/0001-protobject-peers-must-share-an-origin.md).
-Mitigación parcial en el repo: `VITE_LAN_HOST` permite overridear el host del QR
-(`buildTelescopeUrl()` en `Viewer.svelte`) — sirve para que el teléfono cargue la página, pero
-**no** resuelve el emparejamiento.
+`ptjuid`, y un dev server dentro de WSL en modo `mirrored` no es alcanzable por el host vía su
+propia IP LAN — combinación que hacía imposible emparejar teléfono y PC en local. Ver
+[`adr/0001-protobject-peers-must-share-an-origin.md`](adr/0001-protobject-peers-must-share-an-origin.md),
+ya resuelto corriendo el dev server nativo en el host. Cómo montar el entorno para probar con
+teléfono: [`../apps/web-app/DEVELOPMENT.md`](../apps/web-app/DEVELOPMENT.md).
 
 ## Pendientes
 

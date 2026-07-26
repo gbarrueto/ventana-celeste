@@ -55,8 +55,9 @@ src/
                           Calls enableSimpleModeSettings() at startup (shows star/planet names)
                           Has global CSS for Protobject's .dropdown-menu (black background)
                           Shows QR overlay until the telescope sends `telescopeConnected`
-                          buildTelescopeUrl() builds the QR target; VITE_LAN_HOST overrides
-                            the host for local dev (see ADR 0001)
+                          buildTelescopeUrl() builds the QR target from
+                            window.location.host — intentionally NOT configurable,
+                            so the QR always shares the viewer's origin (ADR 0001)
 
   telescope/
     main.js             → Calls initDebugLog() FIRST, then mounts Telescope.svelte on #app
@@ -224,9 +225,13 @@ KEY DATA FLOWS
    (the previous approach): updateView only arrives after calibration finishes,
    which made connection detection depend on calibration instead of the reverse.
 
-   The QR target host comes from buildTelescopeUrl(), which honours
-   VITE_LAN_HOST. That only affects which URL the phone LOADS — it does not fix
-   pairing, which requires both pages to share an origin (see ADR 0001).
+   The QR target host comes from buildTelescopeUrl(), derived from
+   window.location.host with no override. Load the viewer on a LAN-reachable
+   address and the phone lands on the same origin automatically. If the QR points
+   somewhere the phone cannot reach, the problem is where you loaded the VIEWER
+   from (usually localhost), not the QR generation. See ADR 0001.
+   (A VITE_LAN_HOST override used to exist; it was removed — it only affected
+   which URL the phone loaded, never whether the peers paired.)
 
 
 STORES.JS — STATE REFERENCE

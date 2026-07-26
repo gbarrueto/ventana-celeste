@@ -13,16 +13,12 @@
   function buildTelescopeUrl() {
     const params = new URLSearchParams(window.location.search);
     const uid = params.get('ptjuid');
-    // window.location.host is only reachable from other devices when this
-    // page was itself loaded via a LAN-reachable address. In local dev over
-    // WSL mirrored networking, the host machine often can't browse its own
-    // LAN IP (a separate loopback/hairpin-NAT quirk) and falls back to
-    // `localhost`, which a phone scanning the QR can never reach. VITE_LAN_HOST
-    // lets dev override just the QR target without touching the URL the
-    // viewer itself was loaded through. Unset in production/Codespaces, where
-    // window.location.host is already externally reachable.
-    const host = import.meta.env.VITE_LAN_HOST || window.location.host;
-    const base = `${window.location.protocol}//${host}/telescope.html`;
+    // Deliberately derived from this page's own address: Protobject only pairs
+    // peers that share an origin, so the QR must point at the same host the
+    // viewer was loaded from. Load the viewer on a LAN-reachable address and the
+    // phone lands on the same origin automatically. See
+    // docs/adr/0001-protobject-peers-must-share-an-origin.md.
+    const base = `${window.location.protocol}//${window.location.host}/telescope.html`;
     return uid ? `${base}?ptjuid=${uid}` : base;
   }
 

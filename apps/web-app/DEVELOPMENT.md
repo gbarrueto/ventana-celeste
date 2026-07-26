@@ -105,10 +105,17 @@ dos datos que hay que comparar entre visor y teléfono cuando algo no empareja.
 
 Útil cuando no hay depuración remota por USB disponible.
 
-## `VITE_LAN_HOST` (obsoleto)
+## El host del QR no se configura
 
-Variable de entorno que overridea el host del QR (`buildTelescopeUrl()` en
-`src/viewer/Viewer.svelte`). Fue una mitigación para que el teléfono pudiera *cargar* la página
-cuando el host estaba forzado a `localhost`; **nunca resolvió el emparejamiento**. Con el dev
-server nativo no hace falta. Si se sigue usando, un valor desactualizado apunta el QR a un host
-equivocado sin avisar.
+`buildTelescopeUrl()` (en `src/viewer/Viewer.svelte`) construye el target del QR desde
+`window.location.host`, o sea desde la dirección con la que se cargó el visor. Es a propósito y no
+tiene override: como Protobject exige el mismo origen, el QR *tiene* que apuntar al mismo host que
+el visor. Cargá el visor en una dirección alcanzable desde la LAN y el teléfono cae en el mismo
+origen solo.
+
+Si el QR apunta a un host que el teléfono no alcanza, el problema es **desde dónde cargaste el
+visor** (típicamente `localhost`), no la generación del QR.
+
+> Existió una variable `VITE_LAN_HOST` para overridear ese host. Se eliminó: solo lograba que el
+> teléfono pudiera *cargar* la página, nunca que emparejara, y un valor desactualizado apuntaba el
+> QR a un host equivocado sin avisar. Si aparece en algún `.env.local` viejo, no hace nada.

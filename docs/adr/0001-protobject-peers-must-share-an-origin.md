@@ -15,13 +15,15 @@ otro dispositivo de la red — y entonces el visor se carga en `https://<IP-LAN-
 mientras el teléfono usa esa misma dirección. Verificado: la petición del host a su propia IP LAN
 pasa de dar timeout (dentro de WSL) a responder en milisegundos (nativo).
 
-Con eso `window.location.host` ya es la dirección correcta, `buildTelescopeUrl()` genera el QR
-apuntando al mismo origen sin necesidad de override, y el emparejamiento con el teléfono funciona.
+Con eso `window.location.host` ya es la dirección correcta y `buildTelescopeUrl()` genera el QR
+apuntando al mismo origen. **Verificado en un teléfono real: escaneando el QR el emparejamiento
+funciona.**
 
-**`VITE_LAN_HOST` queda obsoleto** en ese escenario. Era una mitigación para que el teléfono
-pudiera *cargar* la página cuando el host estaba forzado a `localhost`; nunca resolvió el
-emparejamiento. Si se elimina el soporte, borrar también la rama en `buildTelescopeUrl()`
-(`apps/web-app/src/viewer/Viewer.svelte`).
+**`VITE_LAN_HOST` fue eliminado.** Era una mitigación para que el teléfono pudiera *cargar* la
+página cuando el host estaba forzado a `localhost`; nunca resolvió el emparejamiento, y un valor
+desactualizado apuntaba el QR a un host equivocado sin avisar. Hoy `buildTelescopeUrl()`
+(`apps/web-app/src/viewer/Viewer.svelte`) deriva el host del QR de `window.location.host` sin
+override posible — que es justamente lo que garantiza el mismo origen.
 
 Nota: nada de esto cambia el requisito de origen en sí, que es permanente. Sigue siendo
 obligatorio que ambas páginas se carguen desde el mismo scheme + host + puerto; lo que se
@@ -67,10 +69,11 @@ Tratar "ambos navegadores deben cargar el *mismo* scheme + host + puerto" como u
 duro de cualquier flujo basado en Protobject, no como un detalle incidental. El código de la
 aplicación no debe asumir que con que una dirección sea *alcanzable* es suficiente.
 
-Por lo tanto `window.location.host` no es una fuente segura para el target del QR en desarrollo
-local; el host del QR es overrideable vía `VITE_LAN_HOST` (ver `buildTelescopeUrl()` en
-`apps/web-app/src/viewer/Viewer.svelte`). Ojo: eso por sí solo **no** arregla el
-emparejamiento — solo hace que el teléfono pueda cargar la página.
+Corolario de implementación: el target del QR se deriva de `window.location.host`
+(`buildTelescopeUrl()` en `apps/web-app/src/viewer/Viewer.svelte`) y **no** es configurable. Que
+el QR y el visor compartan host por construcción es lo que hace cumplible la regla; volverlo
+overrideable solo permitiría que el teléfono cargue una página con la que después no puede
+emparejar.
 
 ## Consecuencias
 
