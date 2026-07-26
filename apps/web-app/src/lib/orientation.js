@@ -10,6 +10,7 @@
  * - Debug overlay shows pitch, yaw, mode, FOV, status (hidden by default)
  * - Sends updateView messages to the viewer via Protobject
  */
+import { createOrientationController } from '@ventanaceleste/core';
 import { updateStellariumView } from './stellarium.js';
 import { eventManager } from './protobject.js';
 import { logFov } from './stores.js';
@@ -138,6 +139,7 @@ function createCalibOverlay() {
           icon.textContent = '📱';
           msg.textContent = 'Calibración necesaria';
           sub.textContent = 'Apoya el teléfono sobre una superficie plana y, sin moverlo, pulsa el botón para calibrar.';
+          btn.textContent = 'Calibrar';
           btn.style.display = 'block';
           break;
         case 'countdown':
@@ -156,10 +158,19 @@ function createCalibOverlay() {
           msg.textContent = '¡Listo!';
           sub.textContent = 'Ya puedes apuntar el telescopio hacia el cielo.';
           break;
+        case 'error':
+          icon.textContent = '⚠️';
+          msg.textContent = 'No se pudo calibrar';
+          sub.textContent = extra || 'Revisá los permisos de sensores de movimiento del navegador.';
+          btn.textContent = 'Reintentar';
+          btn.style.display = 'block';
+          break;
       }
     },
     onCalibrate(callback) {
-      btn.addEventListener('click', callback, { once: true });
+      // No { once: true }: the same button is reused for the initial "Calibrar"
+      // tap and for "Reintentar" after an error (see the 'error' phase).
+      btn.addEventListener('click', callback);
     },
     // Legacy compat
     setMessage(text, subtext = '') {
@@ -247,358 +258,133 @@ export function isDebugOverlayVisible() {
   return el ? el.style.display !== 'none' : false;
 }
 
-// ── Orientation controller ─────────────────────────────────
+// ── Orientation: web-app adapter around @ventanaceleste/core ──
+// DOM/overlay concerns (above) and Protobject transport (sendView) stay
+// here; the sensor fusion/calibration state machine itself lives in
+// @ventanaceleste/core so it's shared with the other apps.
+
+let controller = null;
+let updateDebug = null;
+let calibOverlay = null;
+let isFirstCalibration = true;
+let isRunning = false;
+let isCalibrating = false;
+let lastYaw = 0;
+let lastPitch = 0;
+let debugState = {};
+
+function sendView({ h, v }) {
+  eventManager.sendThrottled({ msg: 'updateView', values: { h, v } }, 'index.html', 20);
+  updateStellariumView({ h, v });
+}
+
+function handleDebug(partial) {
+  debugState = { ...debugState, ...partial };
+  if (typeof partial.calibrating === 'boolean') isCalibrating = partial.calibrating;
+  if (partial.activeSource === 'calibration-finished') isRunning = true;
+
+  if (partial.activeSource) {
+    console.info('[Orientation]', partial.activeSource, partial.failedSensor ?? '');
+  }
+
+  if (partial.preCalibrating) {
+    calibOverlay?.setPhase('countdown', `Comenzando en ${partial.preCalibCountdown}...`);
+  } else if (partial.calibrating) {
+    calibOverlay?.setPhase('calibrating');
+  } else if (partial.activeSource === 'sensor-error') {
+    updateDebug?.(0, 0, { status: 'Error: sensor no disponible' });
+    return;
+  }
+
+  updateDebug?.(lastPitch, lastYaw, {
+    vVal: Math.exp(logFov),
+    mode: debugState.activeSensorMode,
+    status: isRunning ? 'Running' : 'Calibrating',
+  });
+}
+
+function beginCalibrationFlow() {
+  if (isFirstCalibration) {
+    calibOverlay = createCalibOverlay();
+    calibOverlay.setPhase('instruction');
+    calibOverlay.onCalibrate(() => {
+      calibOverlay.setPhase('countdown', 'Comenzando...');
+      // First run: sensors haven't been created yet, so we need controller.start()
+      // (which creates + starts them, then triggers the readiness gate/calibration),
+      // not startCalibration() (which assumes sensors already exist and no-ops otherwise).
+      console.info('[Orientation] requesting sensor access...');
+      controller.start();
+    });
+  } else {
+    // Recalibrations triggered from the debug overlay skip the full-screen
+    // instruction/countdown UI entirely — only the small debug readout
+    // (driven by handleDebug) shows progress, matching the original flow.
+    calibOverlay = null;
+    controller.startCalibration();
+  }
+}
 
 export const Orientation = {
-  // --- General config ---
-  gyroFreq: 100,
-  relFreq: 30,
-  calibDuration: 3,
-
-  // --- Real zone config ---
-  fovThreshold: 0.8,
-  gyroDeadzone: 0.003,
-
-  // --- Dynamic zone config ---
-  dynamicThreshold: 0.02,
-  dynamicGainMultiplier: 10.0,
-  dynamicSmoothingFactor: 0.15,
-
-  // --- State ---
-  gyroSensor: null,
-  relSensor: null,
-  running: false,
-  calibrating: false,
-  gyroBias: { x: 0, y: 0, z: 0 },
-  biasSamples: [],
-  calibSamplesNeeded: 300,
-
-  orient: { pitch: 0, yaw: 0 },
-  relOrientLast: null,
-  currentMode: 'relative',
-
-  oldX: null,
-  oldY: null,
-
-  // Dynamic zone raw targets (for smoothing filter)
-  rawDynamicX: null,
-  rawDynamicY: null,
-
-  lastTime: null,
-  _pendingRAF: false,
-  _updateDebug: null,
-  _calibOverlay: null,
-  _isFirstCalibration: true,
-
-  quaternionToEuler(q) {
-    if (!q) return { yaw: 0, pitch: 0 };
-    const x = q[0], y = q[1], z = q[2], w = q[3];
-    const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
-    const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-    return { yaw, pitch };
+  get running() {
+    return isRunning;
+  },
+  get calibrating() {
+    return isCalibrating;
   },
 
   start() {
-    this._updateDebug = createDebugOverlay();
-    this._isFirstCalibration = true;
-    this.onCalibReading = this.onCalibReading.bind(this);
-    this.onSensorReading = this.onSensorReading.bind(this);
-    this.onRelReading = this.onRelReading.bind(this);
-    this.startSensors();
+    updateDebug = createDebugOverlay();
+    isFirstCalibration = true;
+    isRunning = false;
+    isCalibrating = false;
+    debugState = {};
+
+    controller = createOrientationController({
+      readinessGate: 'countdown',
+      countdownSeconds: 3,
+      calibDuration: 3,
+      fovThreshold: 0.8,
+      gyroDeadzone: 0.003,
+      dynamicThreshold: 0.02,
+      dynamicSmoothingFactor: 0.15,
+      getLogFov: () => logFov,
+      onDebug: handleDebug,
+      onCoords: ({ yaw, pitch }) => {
+        lastYaw = yaw;
+        lastPitch = pitch;
+      },
+      onView: sendView,
+      onCalibrationVisibility: (visible) => {
+        if (visible) return;
+        calibOverlay?.setPhase('done');
+        const overlay = calibOverlay;
+        setTimeout(() => {
+          overlay?.dismiss();
+          if (calibOverlay === overlay) calibOverlay = null;
+        }, 1800);
+        isFirstCalibration = false;
+      },
+      onError: (err) => {
+        console.error('[Orientation] error:', err);
+        updateDebug?.(0, 0, { status: 'Error: ' + err.message });
+        calibOverlay?.setPhase('error', err.message);
+      },
+    });
+
+    beginCalibrationFlow();
   },
 
   stop() {
-    this.running = false;
-    this.calibrating = false;
-    try { this.gyroSensor?.stop(); } catch {}
-    try { this.relSensor?.stop(); } catch {}
+    controller?.stop();
     const el = document.getElementById('dbg-pitch-yaw');
     if (el) el.remove();
-    if (this._calibOverlay?.el?.parentNode) this._calibOverlay.el.remove();
+    if (calibOverlay?.el?.parentNode) calibOverlay.el.remove();
+    calibOverlay = null;
   },
 
-  async requestIOSPermissionIfNeeded() {
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      await DeviceOrientationEvent.requestPermission();
-    }
-  },
-
-  async startSensors() {
-    try {
-      await this.requestIOSPermissionIfNeeded();
-      if (!('Gyroscope' in window) || !('RelativeOrientationSensor' in window)) {
-        throw new Error('Sensores necesarios no disponibles');
-      }
-      this.gyroSensor = new Gyroscope({ frequency: this.gyroFreq });
-      this.relSensor = new RelativeOrientationSensor({ frequency: this.relFreq });
-
-      this.gyroSensor.addEventListener('error', (e) => console.error('Error Gyro:', e));
-      this.relSensor.addEventListener('error', (e) => console.error('Error RelOrientation:', e));
-
-      this.startCalibration();
-    } catch (err) {
-      console.error('Error al iniciar sensores:', err);
-      this._updateDebug?.(0, 0, { status: 'Error: ' + err.message });
-    }
-  },
-
+  // Triggered by clicking the debug overlay to recalibrate.
   startCalibration() {
-    if (!this.gyroSensor || !this.relSensor) return;
-    this.calibrating = true;
-    this.running = false;
-    this.biasSamples = [];
-    this.calibSamplesNeeded = this.gyroFreq * this.calibDuration;
-    this.currentMode = 'relative';
-
-    if (this._isFirstCalibration) {
-      this._calibOverlay = createCalibOverlay();
-      this._calibOverlay.setPhase('instruction');
-      this._calibOverlay.onCalibrate(() => this._startCountdown());
-    } else {
-      // Subsequent calibrations (via debug overlay): skip instructions, go straight
-      this._updateDebug?.(0, 0, { status: 'Recalibrando...' });
-      this._startCountdown();
-    }
-  },
-
-  _startCountdown() {
-    let remaining = this.calibDuration;
-
-    if (this._calibOverlay) {
-      this._calibOverlay.setPhase('countdown', `Comenzando en ${remaining}...`);
-    }
-
-    const countdownTimer = setInterval(() => {
-      remaining--;
-      if (remaining > 0) {
-        this._calibOverlay?.setPhase('countdown', `Comenzando en ${remaining}...`);
-      } else {
-        clearInterval(countdownTimer);
-        this._calibOverlay?.setPhase('calibrating');
-        this._beginSensorCalibration();
-      }
-    }, 1000);
-  },
-
-  _beginSensorCalibration() {
-    this.biasSamples = [];
-    this.gyroSensor.addEventListener('reading', this.onCalibReading);
-    this.relSensor.addEventListener('reading', this.onRelReading);
-    this.gyroSensor.start();
-    this.relSensor.start();
-  },
-
-  onCalibReading() {
-    if (this.biasSamples.length < this.calibSamplesNeeded) {
-      this.biasSamples.push({
-        x: this.gyroSensor.x,
-        y: this.gyroSensor.y,
-        z: this.gyroSensor.z,
-      });
-    } else {
-      this.finishCalibration();
-    }
-  },
-
-  finishCalibration() {
-    this.calibrating = false;
-    this.gyroSensor.removeEventListener('reading', this.onCalibReading);
-
-    const avg = this.biasSamples.reduce(
-      (acc, r) => ({ x: acc.x + r.x, y: acc.y + r.y, z: acc.z + r.z }),
-      { x: 0, y: 0, z: 0 },
-    );
-    const len = this.biasSamples.length || 1;
-    this.gyroBias = { x: avg.x / len, y: avg.y / len, z: avg.z / len };
-
-    console.log('Calibración completada. Bias:', this.gyroBias);
-
-    if (this.relOrientLast) {
-      const euler = this.quaternionToEuler(this.relOrientLast);
-      this.oldX = euler.yaw;
-      this.oldY = euler.pitch;
-    }
-
-    this.lastTime = performance.now();
-    this.gyroSensor.addEventListener('reading', this.onSensorReading);
-    this.running = true;
-
-    if (this._isFirstCalibration && this._calibOverlay) {
-      this._calibOverlay.setPhase('done');
-      setTimeout(() => {
-        this._calibOverlay.dismiss();
-        this._calibOverlay = null;
-      }, 1800);
-      this._isFirstCalibration = false;
-    }
-  },
-
-  onRelReading() {
-    if (!this.relSensor) return;
-    this.relOrientLast = this.relSensor.quaternion;
-  },
-
-  onSensorReading() {
-    if (this.calibrating) {
-      this.lastTime = performance.now();
-      return;
-    }
-
-    const now = performance.now();
-    const dt = Math.max(1e-6, (now - this.lastTime) / 1000);
-    this.lastTime = now;
-
-    let currentV = 0.05;
-    try { currentV = Math.exp(logFov); } catch {}
-
-    const inDynamicZone = currentV < this.dynamicThreshold;
-
-    if (inDynamicZone) {
-      // =========================================================
-      // DYNAMIC ZONE (< 0.02) - Precision + Smoothing
-      // =========================================================
-
-      let wx = this.gyroSensor.x - this.gyroBias.x;
-      let wz = this.gyroSensor.z - this.gyroBias.z;
-
-      let rawDeltaYaw = wz * dt;
-      let rawDeltaPitch = wx * dt;
-
-      // Gain calculation
-      const zoomRatio = currentV / this.dynamicThreshold;
-      const speed = Math.hypot(rawDeltaYaw, rawDeltaPitch);
-      const noiseFloor = 0.002;
-
-      let precisionGain;
-      if (speed < noiseFloor) {
-        precisionGain = 0.05;
-      } else {
-        precisionGain = Math.min(1.0, Math.pow(speed * 100, 2));
-      }
-
-      const totalFactor = zoomRatio * precisionGain * this.dynamicGainMultiplier;
-
-      // Step 1: Update raw target
-      if (this.rawDynamicX === null) {
-        this.rawDynamicX = this.oldX;
-        this.rawDynamicY = this.oldY;
-      }
-
-      this.rawDynamicX += rawDeltaYaw * totalFactor;
-      this.rawDynamicY += rawDeltaPitch * totalFactor;
-
-      // Step 2: Apply smoothing filter
-      const k = this.dynamicSmoothingFactor;
-      this.oldX += (this.rawDynamicX - this.oldX) * k;
-      this.oldY += (this.rawDynamicY - this.oldY) * k;
-
-      // Sync orient to avoid jumps when returning to real zone
-      this.orient.yaw = this.oldX;
-      this.orient.pitch = this.oldY;
-
-      this.updateView(currentV, 'DYNAMIC');
-
-    } else {
-      // =========================================================
-      // REAL ZONE (>= 0.02) - Relative or Gyro
-      // =========================================================
-
-      // Reset dynamic zone variables
-      this.rawDynamicX = null;
-      this.rawDynamicY = null;
-
-      if (this.currentMode === 'relative' && this.relOrientLast) {
-        const euler = this.quaternionToEuler(this.relOrientLast);
-        this.orient.pitch = euler.pitch;
-        this.orient.yaw = euler.yaw;
-      } else {
-        let wx = this.gyroSensor.x - this.gyroBias.x;
-        let wz = this.gyroSensor.z - this.gyroBias.z;
-        if (Math.abs(wx) < this.gyroDeadzone) wx = 0;
-        if (Math.abs(wz) < this.gyroDeadzone) wz = 0;
-        this.orient.pitch += wx * dt;
-        this.orient.yaw += wz * dt;
-      }
-
-      this.runApplicationLogic(this.orient.pitch, this.orient.yaw, currentV);
-    }
-  },
-
-  // --- Application logic (real zone) ---
-  runApplicationLogic(pitch, yaw, fov) {
-    const requiredMode = (fov < this.fovThreshold) ? 'gyro' : 'relative';
-
-    if (requiredMode !== this.currentMode) {
-      this.transitionToMode(requiredMode);
-    }
-
-    const sensitivity = (this.currentMode === 'gyro') ? 0.1 : 0.5;
-
-    if (this.oldX === null || this.oldY === null) {
-      this.oldX = yaw;
-      this.oldY = pitch;
-      return;
-    }
-
-    const adjustedYaw = unwrapAngle(yaw, this.oldX);
-
-    this.oldX += (adjustedYaw - this.oldX) * sensitivity;
-    this.oldY += (pitch - this.oldY) * sensitivity;
-
-    this.updateView(fov, this.currentMode);
-  },
-
-  transitionToMode(newMode) {
-    if (newMode === 'gyro' && this.currentMode === 'relative') {
-      if (this.relOrientLast) {
-        const euler = this.quaternionToEuler(this.relOrientLast);
-        this.orient.pitch = euler.pitch;
-        this.orient.yaw = euler.yaw;
-        this.oldX = euler.yaw;
-        this.oldY = euler.pitch;
-      }
-    } else if (newMode === 'relative' && this.currentMode === 'gyro') {
-      if (this.relOrientLast) {
-        const euler = this.quaternionToEuler(this.relOrientLast);
-        this.oldX = unwrapAngle(euler.yaw, this.oldX);
-        this.oldY = euler.pitch;
-      }
-    }
-    this.currentMode = newMode;
-  },
-
-  updateView(vVal, modeName) {
-    const h = this.oldX;
-    const v = this.oldY;
-
-    // Update debug overlay
-    this._updateDebug?.(v, h, {
-      vVal: vVal,
-      mode: modeName,
-      status: 'Running',
-    });
-
-    // Send to viewer via throttled protobject
-    try {
-      eventManager.sendThrottled(
-        { msg: 'updateView', values: { h, v } },
-        'index.html',
-        20,
-      );
-    } catch (e) {
-      if (typeof Protobject !== 'undefined') {
-        Protobject.Core.send({ msg: 'updateView', values: { h, v } }).to('index.html');
-      }
-    }
-
-    // Update local guidescope at most once per animation frame
-    if (!this._pendingRAF) {
-      this._pendingRAF = true;
-      requestAnimationFrame(() => {
-        updateStellariumView({ h, v });
-        this._pendingRAF = false;
-      });
-    }
+    if (!controller) return;
+    beginCalibrationFlow();
   },
 };

@@ -13,7 +13,16 @@
   function buildTelescopeUrl() {
     const params = new URLSearchParams(window.location.search);
     const uid = params.get('ptjuid');
-    const base = `${window.location.protocol}//${window.location.host}/telescope.html`;
+    // window.location.host is only reachable from other devices when this
+    // page was itself loaded via a LAN-reachable address. In local dev over
+    // WSL mirrored networking, the host machine often can't browse its own
+    // LAN IP (a separate loopback/hairpin-NAT quirk) and falls back to
+    // `localhost`, which a phone scanning the QR can never reach. VITE_LAN_HOST
+    // lets dev override just the QR target without touching the URL the
+    // viewer itself was loaded through. Unset in production/Codespaces, where
+    // window.location.host is already externally reachable.
+    const host = import.meta.env.VITE_LAN_HOST || window.location.host;
+    const base = `${window.location.protocol}//${host}/telescope.html`;
     return uid ? `${base}?ptjuid=${uid}` : base;
   }
 
@@ -41,6 +50,11 @@
 
     // Render QR as soon as DOM is ready
     const telescopeUrl = buildTelescopeUrl();
+    // Both peers must share a ptjuid to pair; log ours next to the URL the QR
+    // encodes so it can be compared against what the phone actually loaded.
+    console.log('[QR] viewer origin:', window.location.origin,
+      '| ptjuid:', new URLSearchParams(window.location.search).get('ptjuid'));
+    console.log('[QR] telescope URL encoded:', telescopeUrl);
     await renderQr(telescopeUrl);
 
     // Hide QR when a device connects

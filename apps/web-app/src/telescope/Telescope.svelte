@@ -1,15 +1,22 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { modes, isLoading, isMenuOpen } from '../lib/stores.js';
-  import { initTelescopeProtobject } from '../lib/protobject.js';
+  import { initTelescopeProtobject, setTelescopeConnectionHandler } from '../lib/protobject.js';
   import { Orientation } from '../lib/orientation.js';
   import SimpleMode from './SimpleMode.svelte';
   import AdvancedMode from './AdvancedMode.svelte';
   import Menu from './Menu.svelte';
 
+  const CONNECTION_TIMEOUT_MS = 15000;
+
   let currentModes = $state({ simple: true, advanced: false });
   let loading = $state(true);
   let menuOpen = $state(false);
+  // 'connecting' | 'connected' | 'timeout' — calibration must not start until
+  // the WebRTC link to the viewer (index.html) is actually up, otherwise the
+  // phone calibrates against a peer that may never exist.
+  let connectionStatus = $state('connecting');
+  let connectionTimer = null;
 
   modes.subscribe((v) => (currentModes = v));
   isLoading.subscribe((v) => (loading = v));
@@ -33,12 +40,26 @@
   }
 
   onMount(() => {
+    setTelescopeConnectionHandler(() => {
+      console.log('[Telescope] connection confirmed, starting calibration');
+      clearTimeout(connectionTimer);
+      connectionStatus = 'connected';
+      Orientation.start();
+    });
+
+    connectionTimer = setTimeout(() => {
+      if (connectionStatus === 'connecting') {
+        console.warn('[Telescope] no connection after', CONNECTION_TIMEOUT_MS, 'ms');
+        connectionStatus = 'timeout';
+      }
+    }, CONNECTION_TIMEOUT_MS);
+
     initTelescopeProtobject();
-    Orientation.start();
     isLoading.set(false);
   });
 
   onDestroy(() => {
+    clearTimeout(connectionTimer);
     Orientation.stop();
   });
 </script>
@@ -46,6 +67,17 @@
 {#if loading}
   <div class="loading-screen">
     <div class="loader"></div>
+  </div>
+{:else if connectionStatus !== 'connected'}
+  <div class="loading-screen">
+    {#if connectionStatus === 'connecting'}
+      <div class="loader"></div>
+      <p class="connection-msg">Conectando con la aplicación principal…</p>
+    {:else}
+      <p class="connection-msg connection-msg--error">
+        No se pudo conectar. Verificá que ambos dispositivos estén en la misma red y volvé a escanear el código QR.
+      </p>
+    {/if}
   </div>
 {/if}
 
@@ -146,6 +178,22 @@
     background: rgba(6, 8, 15, 0.95);
     display: grid;
     place-items: center;
+    gap: 16px;
+    padding: 32px;
+    box-sizing: border-box;
+  }
+
+  .connection-msg {
+    margin: 0;
+    text-align: center;
+    font-size: 15px;
+    color: rgba(232, 236, 245, 0.75);
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  .connection-msg--error {
+    color: #ff8a65;
   }
 
   .loader {
