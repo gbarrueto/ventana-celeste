@@ -7,3 +7,4 @@ export * from './orientation/controller.js';
 export * from './engine/stellarium.js';
 export * from './sync/messageBus.js';
 export * from './io/connectors.js';
+export * from './config/loadConfig.js';
