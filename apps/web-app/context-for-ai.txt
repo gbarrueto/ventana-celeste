@@ -19,6 +19,12 @@ telescope.html.
 >> HARD CONSTRAINT: Protobject pairs peers by ORIGIN, not just by ptjuid. Both
 >> pages must be loaded from the identical scheme+host+port or they never
 >> connect. See ../../docs/adr/0001-protobject-peers-must-share-an-origin.md.
+>>
+>> BEFORE RUNNING THIS APP OR DEBUGGING A CONNECTION PROBLEM, read
+>> ./DEVELOPMENT.md — it covers how to set up phone testing so the origin rule
+>> is satisfied (run the dev server natively on the host, not inside WSL/a VM;
+>> Codespaces or a tunnel if you can't), plus a 30-second two-tab test that
+>> tells you whether a failure is an origin problem or an app problem.
 
 
 TECH STACK

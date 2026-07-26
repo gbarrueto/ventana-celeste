@@ -18,7 +18,7 @@ que tenía las versiones dispersas en varias ramas — ver
 
 | App | Qué es | Entrada de control | Estado |
 |---|---|---|---|
-| [`apps/web-app`](apps/web-app) | App principal. Dos páginas: visor (`index.html`) + control/telescopio (`telescope.html`). El visor muestra un QR; el teléfono lo escanea y se emparejan por **Protobject** (WebRTC). El teléfono aporta los sensores. | Sensores del teléfono | Funcional |
+| [`apps/web-app`](apps/web-app) | App principal. Dos páginas: visor (`index.html`) + control/telescopio (`telescope.html`). El visor muestra un QR; el teléfono lo escanea y se emparejan por **Protobject** (WebRTC). El teléfono aporta los sensores. Cómo levantarla y probarla: [`DEVELOPMENT.md`](apps/web-app/DEVELOPMENT.md). | Sensores del teléfono | Funcional |
 | [`apps/kiosk-standalone`](apps/kiosk-standalone) | Prototipo mínimo embebido en un telescopio físico. Una sola pantalla, sin red, sin menús. | Arduino emulando **teclado USB-HID** (no Serial) | Funcional |
 | `apps/dual-telescope` | Prototipo avanzado: dos pantallas sincronizadas 100% offline (ocular + guía) vía WebSocket, con RFID y potenciómetro por Serial. | Serial real | **No existe todavía** — diseño pendiente |
 
