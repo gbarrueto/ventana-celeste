@@ -1,5 +1,4 @@
-// Public surface of @ventanaceleste/core.
-// Each module re-exports from here as it lands.
+// Public surface of @ventanaceleste/core — everything apps import comes from here.
 export * from './time/conversions.js';
 export * from './time/engineTime.js';
 export * from './telescope/Telescope.js';
