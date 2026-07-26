@@ -10,15 +10,28 @@ Two extra pages can connect: Mapa.html (2D map, touch to send coordinates)
 and Pelota.html (3D globe with physical sensors), both send coordinates to
 telescope.html.
 
+>> THIS APP IS NOW PART OF A MONOREPO. Shared domain logic (sensor fusion,
+>> optics math, time conversion, Stellarium bootstrap, message bus) lives in
+>> @ventanaceleste/core, NOT here. See ../../CONTEXT.md for the repo map and
+>> ../../packages/core/README.md for the core API. Files under src/lib/ are now
+>> thin app-specific adapters around core, not standalone implementations.
+>>
+>> HARD CONSTRAINT: Protobject pairs peers by ORIGIN, not just by ptjuid. Both
+>> pages must be loaded from the identical scheme+host+port or they never
+>> connect. See ../../docs/adr/0001-protobject-peers-must-share-an-origin.md.
+
 
 TECH STACK
 ----------
 - Svelte 5 (runes: $state, $derived) + Vite 6 (multi-page build)
+- @ventanaceleste/core (workspace dep — shared domain logic)
 - Stellarium Web Engine (WASM, loaded as global script)
 - Protobject (WebRTC framework, loaded as global script)
 - Cesium.js (3D globe, CDN lazy-loaded)
 - Flatpickr (date picker, CDN lazy-loaded)
-- luxon (date/time), pako (decompression), Three.js/Globe.gl (Pelota only)
+- pako (decompression), Three.js/Globe.gl (Pelota only)
+- Time/date: Temporal (via @js-temporal/polyfill) inside core.
+  luxon was REMOVED — do not reintroduce it.
 - Language: all UI text is in SPANISH
 
 
@@ -35,13 +48,16 @@ src/
     Viewer.svelte       → Sky canvas + info card + eyepiece overlay + nolens blur + seeing overlay
                           Calls enableSimpleModeSettings() at startup (shows star/planet names)
                           Has global CSS for Protobject's .dropdown-menu (black background)
-                          Shows QR code overlay until first real updateView message is received
-                          QR dismissal has 2s gate + h/v numeric validation to ignore buffered messages
+                          Shows QR overlay until the telescope sends `telescopeConnected`
+                          buildTelescopeUrl() builds the QR target; VITE_LAN_HOST overrides
+                            the host for local dev (see ADR 0001)
 
   telescope/
-    main.js             → Mounts Telescope.svelte on #app
+    main.js             → Calls initDebugLog() FIRST, then mounts Telescope.svelte on #app
     Telescope.svelte    → Root: header (menu btn + mode toggle) + loads SimpleMode or AdvancedMode
-                          Starts Orientation sensors here (always active, never stops on mode switch)
+                          Waits for a confirmed Protobject connection before starting sensors
+                            ("Conectando…" screen, 15s timeout → visible error).
+                          Once connected, Orientation stays active across mode switches.
     SimpleMode.svelte   → Vertical zoom slider (0-150), sends FOV to viewer
     AdvancedMode.svelte → Stellarium preview canvas + 4 lens buttons (40mm/24mm/10mm/4mm) + focus slider
                           Long-press finder (5s) toggles debug overlay visibility
@@ -67,15 +83,22 @@ src/
     stellarium.js       → Stellarium engine init/control/sync/overlays/location/time
                           applyLocation() stores observerLat/observerLon
                           Default location: Paranal Observatory
-                          Default time: midnight Chile time (UTC-3) via getParanalMidnightISO()
-    protobject.js       → EventManager + viewer/telescope message routing
+                          Time helpers now come from core (setEngineTime, wallClockToMJD,
+                            mjdToWallClockISO). getParanalMidnightISO() was REMOVED.
+    protobject.js       → Adapter over core's createMessageBus + createProtobjectTransport.
+                          Registers viewer/telescope handlers; exposes eventManager.sendThrottled.
                           Handles sendCoordinates from Mapa/Pelota (stores observer position)
-                          connectionHandler fires only on first updateView with valid h/v values
-                          connectionHandlerReadyAt: 2s gate after setConnectionHandler() call
-    orientation.js      → Device sensors: Gyroscope + RelativeOrientationSensor
-                          3 modes based on FOV, manual-trigger calibration flow
+                          Viewer hides the QR on the `telescopeConnected` message.
+                          skipFirstCall() swallows Protobject's initial self-connect event.
+                          The old EventManager class was REMOVED (was entirely unused).
+    orientation.js      → Adapter over core's createOrientationController.
+                          Owns only the DOM overlays (calibration + debug) and Protobject
+                            transport; the sensor/calibration state machine lives in core.
                           Debug overlay hidden by default (toggle via long-press on finder)
-    fov.js              → Slider↔FOV conversion, limiting magnitude, Bortle scale
+    debug-log.js        → On-screen console for the phone (console.* + uncaught errors +
+                          unhandled rejections). Active in dev builds, or with ?debug=1.
+                          Needed because Protobject only forwards the phone's console to
+                          the viewer AFTER a connection exists.
     seeing-overlay.js   → WebGL atmospheric turbulence simulation (shader-based)
     light-pollution.js  → Fetch binary tile data, decompress with pako
     lazy-load.js        → CDN script/CSS loader with caching
@@ -115,9 +138,15 @@ KEY DATA FLOWS
 --------------
 
 1. ORIENTATION (smartphone → viewer)
+   Implemented by core's createOrientationController; src/lib/orientation.js only
+   wires the overlays + Protobject transport around it.
    Gyroscope + RelativeOrientationSensor → manual calibration trigger
+   Gated on connection: nothing starts until the Protobject link is confirmed.
    Startup: full-screen overlay "Calibración necesaria" with instruction text
      and a "Calibrar" button. User places phone flat and taps button.
+     NOTE: the button calls controller.start() (which CREATES the sensors and
+     then calibrates), not controller.startCalibration() — the latter no-ops
+     silently when the sensors don't exist yet. This was a real bug.
      → 3s countdown "Mantén el teléfono completamente inmóvil / Comenzando en 3/2/1..."
      → "Calibrando sensores..." with animated dots
      → "¡Listo! Ya puedes apuntar el telescopio hacia el cielo." (auto-dismiss 1.8s)
@@ -152,14 +181,19 @@ KEY DATA FLOWS
    Default: Paranal Observatory (-24.6272, -70.4042, 2635m, SQM 21.8)
 
 6. TIME
-   DateTimePicker: Flatpickr → ISO → MJD → updateDate to viewer
+   All conversions come from core's time/ module (Temporal-based, not Date/luxon):
+     wallClockToMJD / mjdToWallClockISO bridge the flatpickr Date ↔ MJD,
+     setEngineTime mutates engine.core.observer.utc.
+   DateTimePicker: Flatpickr → wallClockToMJD → updateDate to viewer
    onChange fires on day/time selection; onMonthChange/onYearChange also update sky
    Sync interval (500ms) pauses for 3s after any user interaction
    Speed controls: 0x, 1x, 10x, 60x, 3600x
    Viewer broadcasts syncTime every 300ms back to telescope.
-   Default time: midnight Chile time (UTC-3) of the current date,
-     computed by getParanalMidnightISO() in stellarium.js.
-     Formula: shift now by -3h to get local date, then UTC = local date + 03:00
+   Default time: midnight in the observer's UTC offset, via core's
+     computeDefaultObservationTime({offsetHours, fixedMJD}). The old
+     getParanalMidnightISO() hand-rolled formula was removed — Temporal
+     distinguishes Instant from ZonedDateTime, which is what made the manual
+     "UTC±N" string juggling unnecessary.
 
 7. SEEING OVERLAY (viewer side)
    WebGL shader simulating atmospheric turbulence.
@@ -168,13 +202,25 @@ KEY DATA FLOWS
    Telescope sends seeingOption messages to adjust these.
    Turbulencia slider in menu (advanced mode only).
 
-8. QR CODE (viewer side)
-   Shown on index.html until a real telescope connects and sends gyroscope data.
-   setConnectionHandler(fn) registers the dismiss callback.
-   connectionHandlerReadyAt = Date.now() + 2000 at registration time.
-   Dismissed only when updateView arrives with typeof v.h === 'number' &&
-   typeof v.v === 'number' AND Date.now() >= connectionHandlerReadyAt.
-   This prevents buffered/queued Protobject messages from hiding the QR at startup.
+8. QR CODE + CONNECTION HANDSHAKE (viewer side)
+   Shown on index.html until the telescope confirms it is connected.
+   setConnectionHandler(fn) registers the dismiss callback; it fires when the
+   viewer receives the `telescopeConnected` message.
+
+   Why a message and not Protobject.Core.onConnected: onConnected is asymmetric.
+   On the TELESCOPE it fires twice (once for its own relay join, once for the
+   real peer). On the VIEWER it only ever fires the first time — it does NOT
+   fire when the peer arrives. Both sides therefore wrap their handler in
+   skipFirstCall() to discard the self-connect event, and the telescope sends
+   `telescopeConnected` as soon as its own connection is confirmed.
+
+   Do NOT go back to inferring the connection from the first updateView message
+   (the previous approach): updateView only arrives after calibration finishes,
+   which made connection detection depend on calibration instead of the reverse.
+
+   The QR target host comes from buildTelescopeUrl(), which honours
+   VITE_LAN_HOST. That only affects which URL the phone LOADS — it does not fix
+   pairing, which requires both pages to share an origin (see ADR 0001).
 
 
 STORES.JS — STATE REFERENCE
@@ -206,6 +252,8 @@ Viewer (index.html) handles:
   seeingOption, simpleSettings, advancedSettings,
   requestSynchronizeData, requestSynchronizeSimpleZoom
 
+Viewer also handles: telescopeConnected (hides the QR overlay)
+
 Telescope (telescope.html) handles:
   syncTime, setSynchronizedData (registered by AdvancedMode),
   setSynchronizedSimpleZoom (registered by SimpleMode),
@@ -228,23 +276,36 @@ Default time: midnight local Chile time (UTC-3) of the current date.
 
 ORIENTATION SENSOR CONFIG
 --------------------------
-Located in src/lib/orientation.js, exported as Orientation object.
+The controller lives in core (packages/core/src/orientation/controller.js).
+src/lib/orientation.js passes this app's tuning when constructing it:
   gyroFreq: 100 Hz, relFreq: 30 Hz, calibDuration: 3s
   fovThreshold: 0.8 (relative↔gyro switch)
   dynamicThreshold: 0.02 (gyro↔dynamic switch)
-  dynamicGainMultiplier: 10.0
   dynamicSmoothingFactor: 0.15
   gyroDeadzone: 0.003
+  readinessGate: 'countdown', countdownSeconds: 3
+(dynamicGainMultiplier no longer exists — the dynamic zone derives its gain
+from the FOV ratio instead.)
+
+Core options this app does NOT use: persistBiasKey (kiosk persists gyro bias and
+skips recalibration; web-app always calibrates fresh) and mountingTransform
+(defaults to identity — relevant for dual-telescope, where the phone is mounted
+at an angle to the optical axis).
 
 Uses RelativeOrientationSensor (not Absolute — no magnetometer needed,
 works indoors, no compass issues).
 
 Calibration flow (first time):
+  0. Wait for the confirmed Protobject connection ("Conectando…" screen)
   1. Overlay shows "Calibración necesaria" + instruction text + "Calibrar" button
-  2. User taps button → 3s countdown ("Mantén el teléfono completamente inmóvil")
+  2. User taps button → sensors are created → 3s countdown
+     ("Mantén el teléfono completamente inmóvil")
   3. Sensor reads 300 samples → computes gyro bias
   4. Overlay shows "¡Listo!" then auto-dismisses after 1.8s
 Subsequent recalibrations (debug overlay click): skip step 1, go to step 2 directly.
+On sensor/permission failure the overlay shows a visible "No se pudo calibrar"
+state with a Reintentar button (core now attaches 'error' listeners to both
+sensors; previously such failures were silently swallowed).
 
 Debug overlay: hidden by default. Toggle with 5-second long-press on
 finder-frame in AdvancedMode. Shows FOV, pitch, yaw, mode, status.
@@ -258,7 +319,6 @@ GLOBAL SCRIPTS (available on window)
 - tzlookup                       — loaded in telescope.html only (from tz.js)
 - Cesium                         — lazy-loaded in GlobePicker
 - flatpickr                      — lazy-loaded in DateTimePicker
-- luxon (DateTime)               — imported as ES module from node_modules
 
 
 MENU UX HIERARCHY
@@ -285,10 +345,14 @@ To add a new stel option:  Add to STEL_BUTTONS in stores.js + add button in Menu
 To change default location: Edit defaultLocation in initializeStelEngine() in stellarium.js
                             + update observerLat/observerLon defaults in stores.js
                             + update camera flyTo in GlobePicker.svelte
-To change default time:    Edit getParanalMidnightISO() in stellarium.js
-To add a new message:      Add handler in protobject.js (viewer or telescope side)
-To change orientation:     Edit orientation.js (thresholds, gains, smoothing)
-To change zoom range:      Edit MIN_FOV/MAX_FOV in stores.js + sliderToFov in fov.js
+To change default time:    Use core's time/ module (computeDefaultObservationTime);
+                            getParanalMidnightISO() no longer exists
+To add a new message:      Add a bus.on(...) handler in protobject.js (viewer or
+                            telescope side); send via eventManager.sendThrottled
+To change orientation:     Tuning = the options object in src/lib/orientation.js;
+                            algorithm itself = packages/core/src/orientation/controller.js
+To change zoom range:      Edit MIN_FOV/MAX_FOV in stores.js; sliderToFov/fovToSlider
+                            now come from @ventanaceleste/core (fov.js was deleted)
 To add a new page:         Add to config.js + register handler for its messages in protobject.js
 To change seeing shader:   Edit seeing-overlay.js (WebGL fragment shader)
 To change throttle rates:  Edit constants in stores.js

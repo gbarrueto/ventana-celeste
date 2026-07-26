@@ -1,32 +1,51 @@
-# Contexto del Proyecto
+# Contexto del Proyecto — kiosk-standalone
 
-Ultima actualizacion: 2026-03-19
+Ultima actualizacion: 2026-07-26
+
+> **Esta app ahora vive en un monorepo.** La lógica de dominio compartida (motor de
+> Stellarium, óptica, sensores, tiempo, config) está en `@ventanaceleste/core`, no acá.
+> Ver [`../../CONTEXT.md`](../../CONTEXT.md) y
+> [`../../packages/core/README.md`](../../packages/core/README.md).
+>
+> La sección "Recomendacion de arquitectura" de la versión anterior de este documento
+> **ya se ejecutó** — es lo que hoy es `packages/core`. Se conserva abajo como registro
+> histórico, marcada como completada.
 
 ## Alcance de este contexto
-Este documento resume el estado actual del proyecto para consulta rapida durante desarrollo.
-Telescope.js se deja fuera de foco por ahora (se analizara despues).
+Resume el estado actual de la app para consulta rapida durante desarrollo.
 
 ## Stack y tooling
 - Framework UI: Svelte 4
 - Bundler/dev server: Vite 5
 - Lenguaje: JavaScript (ESM)
+- Dependencia de workspace: `@ventanaceleste/core`
 - Scripts npm:
-  - dev: vite
+  - dev: `NODE_OPTIONS=--max-old-space-size=1536 vite` (el flag de memoria es
+    necesario para el build/dev con los catálogos grandes)
   - build: vite build
   - preview: vite preview
 
 ## Estructura principal
 - index.html: punto de montaje del app en #app y carga de src/main.js
 - src/main.js: bootstrap de Svelte, monta App.svelte
-- src/App.svelte: nucleo funcional actual de la app
+- src/App.svelte: nucleo funcional actual de la app (ahora consume `core`)
+- src/config/: config por entorno (`dev` / `dev-device` / `prod`) via `loadConfig` de core
 - public/stellarium-web-engine.js + .wasm: runtime del motor astronomico en cliente
+
+Movidos a `packages/core` durante la extracción (ya no existen acá):
+`Telescope.js`, `services/orientationController.js`, `services/stellariumEngine.js`,
+`services/arduinoBridge.js` (este último era un stub que nunca se conectó a nada).
 
 ## Flujo de arranque (actual)
 1. Carga index.html y monta Svelte en #app.
 2. App.svelte ejecuta onMount.
 3. Se asegura carga dinamica del script de Stellarium (window.StelWebEngine).
 4. Inicializa el engine con canvas y archivo wasm.
-5. Configura observador (fecha UTC juliana + ubicacion por defecto en Santiago).
+5. Configura observador: ubicacion por defecto Santiago (lat -33.45, lon -70.67, elev 520)
+   y hora = medianoche calculada para `offsetHours: -4` via `computeDefaultObservationTime`
+   de core. (Antes era un MJD hardcodeado de mayo 2040, que resulto ser un valor de
+   prueba olvidado. Se puede volver a fijar con `time: { fixedMJD }` si se quiere una
+   fecha fija para demos.)
 6. Carga multiples data sources remotos (estrellas, planetas, DSO, via lactea, skyculture, MPC, etc.).
 7. Activa/ajusta visibilidad de pistas y parametros de render.
 8. Inicia sistema de orientacion por sensores y setup de zoom/lentes.
@@ -44,48 +63,64 @@ Telescope.js se deja fuera de foco por ahora (se analizara despues).
   - Niveles de lentes predefinidos
   - Modo ojo humano
   - Zoom suave via interpolacion logaritmica
-- Sensores y orientacion:
-  - Usa Gyroscope + AbsoluteOrientationSensor
-  - Calibracion inicial con muestreo de bias
-  - Conmutacion dinamica de modo absolute/gyro segun FOV
+- Sensores y orientacion (hoy en `core/orientation/controller.js`):
+  - Usa Gyroscope + **RelativeOrientationSensor**. La versión anterior de este documento
+    decía `AbsoluteOrientationSensor`: era incorrecto. El código nombraba todo `abs*` /
+    `"absolute"` como resabio de una versión previa, pero el sensor instanciado siempre
+    fue el relativo (no necesita magnetómetro, funciona en interiores, sin brújula).
+  - Calibracion inicial con muestreo de bias, persistida en `localStorage`
+    (`persistBiasKey: "astrovis_gyro_bias"`) — en runs siguientes se salta la calibración.
+    Esto es específico de kiosk; `web-app` calibra siempre de cero.
+  - `readinessGate: 'stillness'` — espera a que el dispositivo esté quieto, en vez de
+    pedir un tap (es un dispositivo instalado, sin interacción).
+  - Conmutacion dinamica de modo relative/gyro segun FOV
   - Suavizado y deadzone para estabilidad
 
 ## Dependencias externas en runtime
 - Endpoint base de datos astronomicos:
   - https://smalldata.ventanaceleste.com/
-- Comentado en codigo como alternativa local:
-  - http://localhost:5000/
+- Comentado en codigo como alternativa local (empaquetado sin terminar):
+  - `/data/smalldata/` y `/data/bigdata/` en `config.dev.js` / `config.prod.js`
 
 ## Controles de usuario (teclado)
+Via `createKeyboardConnector` de core (el Arduino emula un teclado USB-HID).
 - c: recalibrar sensores
-- 0..7: seleccionar nivel de lente
+- 1..8: seleccionar nivel de lente
 - + / =: zoom in
 - -: zoom out
 
 ## Riesgos y observaciones tecnicas
-- Archivo App.svelte concentra demasiada responsabilidad (inicializacion, datos, sensores, UI y controles).
 - El inicio depende de APIs de sensores no disponibles en todos los navegadores/dispositivos.
-- La carga de catalogos depende de red y del host externo; latencia o caidas impactan funcionalidad.
-- Hay constantes y umbrales de sensores sin capa de configuracion externa.
-- La UI principal funciona como experiencia full-screen; no hay fallback visual avanzado ante fallas de motor/sensores.
+- La carga de catalogos depende de red y del host externo; latencia o caidas impactan
+  funcionalidad. Kiosk usa `strict: true` al inicializar el engine: si un catálogo falla,
+  el init aborta (a diferencia de `web-app`, que usa `strict: false` y sigue).
+- La UI principal funciona como experiencia full-screen; no hay fallback visual avanzado ante
+  fallas de motor/sensores.
+- **Empaquetado de datos locales sin terminar:** los paths locales (`/data/smalldata/`, etc.)
+  siguen comentados en el config, así que producción sigue apuntando a los servidores remotos.
+- **Sin verificar contra hardware.** El refactor a `core` no se probó todavía con el Arduino
+  real ni en el dispositivo instalado.
 
-## Recomendacion de arquitectura (cuando se retome)
-- Separar App.svelte en modulos:
-  - services/engine (carga e inicializacion Stellarium)
-  - services/sensors (fusion y calibracion)
-  - state/view (FOV, lente, modo orientacion)
-  - ui/components (overlay, HUD, controles)
-- Agregar capa de configuracion central para endpoints y umbrales.
-- Incorporar manejo de errores visible para usuario (estado de carga, error de red, sensores no soportados).
+## Modularizacion — COMPLETADA (registro historico)
 
-## Ejes de modularizacion obligatorios
-- Motor de Stellarium: inicializacion, entrypoint del engine y carga de datos del cielo.
-- Telescope: datos persistentes de orientacion, distancia focal, apertura y magnificacion.
-- Lectura de sensores: principalmente orientacion, calibracion y fusion de datos.
-- Comunicacion con Arduino: intercambio de estado y control para la version offline simple.
+La versión anterior de este documento proponía separar `App.svelte` en módulos y definía
+cuatro "ejes de modularizacion obligatorios". Eso **ya se hizo**, extrayéndolo a
+`packages/core` en vez de a carpetas locales, para poder compartirlo con `web-app` y con el
+futuro `dual-telescope`:
 
-La modularizacion futura debe respetar estos cuatro ejes como fronteras funcionales, no solo como carpetas tecnicas.
+| Eje propuesto | Dónde vive hoy |
+|---|---|
+| Motor de Stellarium (init + carga de datos del cielo) | `core/engine/` |
+| Telescope (focal, apertura, magnificacion) | `core/telescope/` |
+| Lectura de sensores (orientacion, calibracion, fusion) | `core/orientation/` |
+| Comunicacion con Arduino | `core/io/` — `createKeyboardConnector` (ver abajo) |
+| Capa de configuracion central | `core/config/` + `src/config/` |
 
-## Estado para la siguiente fase
-- Contexto base completado sin profundizar en Telescope.js.
-- Siguiente paso natural: analizar Telescope.js e integrar su rol dentro de la arquitectura modular propuesta.
+**Corrección importante sobre el eje de Arduino:** el "Arduino" de esta app no habla Serial.
+Es un Arduino emulando un **teclado USB-HID**, y lo que la app lee son eventos `keydown`
+normales. `arduinoBridge.js` era un stub que lanzaba `"Arduino bridge not implemented yet"`
+y nunca se conectó a nada. Hoy el control real pasa por `createKeyboardConnector` de `core`.
+`createSerialConnector` existe en `core` pero es un stub — lo necesitará `dual-telescope`.
+
+Pendiente de ese plan: "manejo de errores visible para usuario" sigue sin implementarse en
+kiosk (en `web-app` sí se agregó, ver su changelog).

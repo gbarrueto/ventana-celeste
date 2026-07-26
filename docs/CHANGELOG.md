@@ -1,0 +1,191 @@
+# Changelog de la sesión — migración a monorepo + extracción de `@ventanaceleste/core`
+
+Registro de lo hecho en estas sesiones de trabajo, qué falta, y qué limitaciones tiene lo entregado.
+Ver también [`../CONTEXT.md`](../CONTEXT.md) (punto de entrada del repo),
+[`MIGRATION.md`](MIGRATION.md) (proceso de migración a monorepo),
+[`Architecture.md`](Architecture.md) (visión de producto) y [`CORE_DESIGN.md`](CORE_DESIGN.md)
+(propuesta original de diseño de `core`, previa a la implementación) y
+[`packages/core/README.md`](../packages/core/README.md) (referencia de arquitectura actual).
+
+## ⚠️ Estado de git — importante
+
+**Todo lo posterior a la migración a monorepo está sin commitear.** El último commit en `main`
+(`b123960`) es el cierre de la migración a monorepo; ya está pusheado a `origin/main`
+(`gbarrueto/ventana-celeste`). Todo lo descrito abajo bajo "Extracción de `packages/core`"
+(sección 2) y "Fixes de conexión y sensores" (sección 3), más `docs/` y `CONTEXT.md` completos,
+vive únicamente en el working tree local. Agrupación de commits **decidida: uno por módulo de
+`core`**, más commits separados para los fixes de `web-app` y para la documentación.
+
+La verificación funcional en dispositivo real ya se hizo para `web-app` (sección 3); `kiosk`
+sigue sin probarse contra hardware.
+
+## 🎯 Próximos pasos (en orden)
+
+1. **Commitear y pushear** todo lo posterior a `b123960`, un commit por módulo de `core`
+   (decidido para mantener consistencia con la estructura de la sección 2), más commits
+   aparte para los fixes de `web-app` de la sección 3 y para la documentación.
+2. **Desbloquear las pruebas con teléfono en la LAN.** Hoy es imposible con `pnpm run dev`
+   en WSL por la combinación de restricciones del ADR 0001. Opción recomendada: **mover el
+   entorno de desarrollo a Windows nativo**, con lo cual host y teléfono comparten el origen
+   de la IP LAN y el problema desaparece de raíz (así se probaba el proyecto en sus inicios).
+   Requiere instalar `pnpm` en Windows (Node 24 ya está) y mover la copia de trabajo al
+   filesystem de Windows — el file watching de Vite sobre `\\wsl.localhost\...` no es
+   confiable. Alternativas si no se quiere migrar: `netsh portproxy`, hosts+mDNS, o túnel.
+   Al migrar, `VITE_LAN_HOST` queda redundante (borrarlo para que no quede desactualizado).
+3. **Terminar la verificación en dispositivo real** de `web-app`: zoom, y el pairing
+   teléfono↔PC una vez desbloqueado el punto 2.
+4. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
+   refactor a `core` no se probó nunca ahí.
+5. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
+   `Architecture.md` §2 en consecuencia. Bloquea a `dual-telescope` y a `shared-viewer`.
+
+Detalle del resto de pendientes más abajo.
+
+## 1. Migración a monorepo (sesión anterior, ya commiteada y pusheada)
+
+- `abellinouc.github.io` (5 ramas, 2 líneas de desarrollo reales) → monorepo pnpm en
+  `VentanaCeleste/VentanaCeleste`, rama `main`.
+- Historial real preservado vía `git subtree add` (no squash) para `apps/web-app` (←
+  `svelte-app-ventanaceleste-com`) y `apps/kiosk-standalone` (← `localversion`).
+- **Purgados con `git filter-repo`** dos archivos `.pem` (cert + clave privada autofirmados) que
+  estaban versionados en el historial de `web-app` — no llegaron al monorepo.
+- Fix de seguridad relacionado: `apps/web-app/vite.config.js` ya no lee esos `.pem` a mano;
+  usa `@vitejs/plugin-basic-ssl`.
+- Las 5 ramas originales quedaron renombradas `legacy/*`, solo locales — el remoto de
+  `abellinouc/abellinouc.github.io` nunca se tocó.
+- `origin` del monorepo apunta a `gbarrueto/ventana-celeste.git` — **pusheado** (rama `main` únicamente,
+  las `legacy/*` quedaron solo locales a pedido tuyo).
+
+## 2. Extracción de `packages/core` (esta sesión, sin commitear)
+
+Siete módulos extraídos desde `apps/web-app` y `apps/kiosk-standalone`, en el orden del plan de
+`CORE_DESIGN.md`. Detalle completo de API y decisiones de diseño en
+[`packages/core/README.md`](../packages/core/README.md); acá solo el resumen de cambios y hallazgos.
+
+| Módulo | Reemplaza | Hallazgo notable |
+|---|---|---|
+| `time/` | 4 implementaciones independientes de conversión ISO/Date ⇄ MJD | Fecha hardcodeada a **mayo 2040** en kiosk resultó ser un valor de prueba olvidado |
+| `telescope/` | 3 implementaciones de la fórmula de FOV desde ocular | — |
+| `orientation/` | 2 controladores de sensores (~1100 líneas combinadas) | kiosk usaba `RelativeOrientationSensor` pero nombraba todo `abs*`/`"absolute"` — resabio de una versión anterior con `AbsoluteOrientationSensor` |
+| `engine/` | 2 inicializaciones de Stellarium Web Engine casi idénticas | web-app toleraba fallos de carga de catálogo y seguía funcionando; kiosk no — preservado como flag `strict` |
+| `sync/` | Dispatcher `msg→handler` duplicado 2 veces en el mismo archivo (`protobject.js`) | — |
+| `io/` | Stub muerto de Arduino (`arduinoBridge.js`, nunca conectado a nada) | El control real de kiosk es un Arduino emulando teclado (USB-HID), no Serial |
+| `config/` | Loader de config por entorno que solo tenía kiosk | web-app no lo adoptó (ver Limitaciones) |
+
+**Otros hallazgos/fixes de paso:**
+- Bug real en el panel de debug de kiosk: `jdnToDate` mezclaba las épocas de JD y MJD, mostrando
+  fechas alrededor del año **-4531**. Corregido al migrar a `time/`.
+- `luxon` eliminado de las dependencias de `web-app` (reemplazado por Temporal vía
+  `@js-temporal/polyfill`, ya usado en `core`).
+- Clase `EventManager` en `protobject.js` tenía 3 métodos (`on`/`off`/`cleanup`) sin ningún uso en
+  toda la app — confirmado y eliminado.
+
+**Cambios de comportamiento reales** (no solo refactor, avisados en su momento):
+- La hora por defecto de kiosk pasó de una fecha fija de 2040 a medianoche real calculada
+  (configurable vía `time: { fixedMJD }` si en realidad se quería una fecha fija para demos).
+- `web-app` heredó el algoritmo de suavizado más evolucionado de `orientation/` (el de kiosk, con
+  "progress blending" al volver de la zona dinámica de zoom) — no es una regresión, pero es distinto
+  al que tenía antes.
+- Panel de debug de kiosk: magnificación en "sin lente" muestra `null` en vez de `Infinity`.
+
+**Verificación realizada:** `pnpm install` limpio desde cero, `build` y `dev` de ambas apps en cada
+módulo individualmente y al final todos juntos. Módulos de matemática pura (`time/`, `telescope/`)
+verificados con scripts Node standalone contra valores de referencia conocidos y contra la fórmula
+original ejecutada en paralelo. **Ningún dispositivo físico ni sensor real fue probado** (ver
+Limitaciones).
+
+## 3. Fixes de conexión y sensores en `web-app` (sesión 2026-07-26, sin commitear)
+
+Primera sesión con verificación en un teléfono real. Salieron tres bugs distintos, todos
+introducidos o destapados por el refactor a `core`:
+
+- **La calibración quedaba colgada para siempre.** `apps/web-app/src/lib/orientation.js` llamaba
+  a `controller.startCalibration()` sin haber llamado antes a `controller.start()`. Como
+  `startCalibration()` arranca con `if (!state.gyroSensor || !state.relSensor) return;` y los
+  sensores solo se construyen dentro de `start()`, el tap en "Calibrar" era un no-op silencioso:
+  el overlay pasaba a "countdown" y se quedaba ahí. `kiosk` sí llamaba a `start()` — el refactor
+  perdió esa llamada solo en `web-app`.
+- **Los errores de sensor eran invisibles.** `core/orientation/controller.js` no registraba
+  listener de `'error'` en ninguno de los dos sensores, así que un permiso denegado no llegaba
+  nunca a `onError`. Agregados en ambos, más checkpoints de debug
+  (`requesting-permission`, `sensors-created`). En `web-app`, `onError` solo escribía en el panel
+  de debug oculto; ahora además pinta una fase `'error'` visible con botón de reintento.
+- **El overlay del QR no se ocultaba.** El visor infería "conectado" del primer mensaje
+  `updateView`, que solo llega *después* de que el teléfono termine de calibrar — o sea, la
+  detección de conexión dependía de la calibración, al revés de lo que corresponde. Se intentó
+  usar `Protobject.Core.onConnected`, pero se comprobó que del lado del visor **no dispara nunca
+  al llegar el peer** (solo una vez, al unirse el socket propio al relay). Solución: el teléfono
+  manda un mensaje explícito `telescopeConnected` en cuanto su propia conexión se confirma, y el
+  visor oculta el QR con eso.
+
+**Cambios de comportamiento:**
+- `Telescope.svelte` ya no arranca la calibración en `onMount`: espera la conexión confirmada, y
+  muestra "Conectando…" con timeout de 15s y mensaje de error visible si no llega. Antes
+  calibraba contra un peer que podía no existir.
+- Ambos lados filtran el primer `onConnect` (el auto-connect al relay) con un helper
+  `skipFirstCall`, porque dispara sin que haya ningún peer.
+
+**Nuevo:** `apps/web-app/src/lib/debug-log.js` — consola en pantalla para el teléfono (captura
+`console.*`, errores no atrapados y promesas rechazadas). Necesaria porque Protobject reenvía la
+consola del teléfono al visor solo *después* de conectar, y en este teléfono no se pudo levantar
+depuración remota por USB. Activa en dev, o con `?debug=1`.
+
+**Hallazgo de entorno documentado como ADR:** Protobject empareja por **origen**, no solo por
+`ptjuid`, y WSL en modo `mirrored` impide que el host alcance su propia IP LAN — combinación que
+hace imposible emparejar teléfono y PC con un `pnpm run dev` normal. Ver
+[`adr/0001-protobject-peers-must-share-an-origin.md`](adr/0001-protobject-peers-must-share-an-origin.md).
+Mitigación parcial en el repo: `VITE_LAN_HOST` permite overridear el host del QR
+(`buildTelescopeUrl()` en `Viewer.svelte`) — sirve para que el teléfono cargue la página, pero
+**no** resuelve el emparejamiento.
+
+## Pendientes
+
+1. **Verificación manual en dispositivo real** — parcialmente hecha (ver sección 3). En un
+   teléfono real ya se validaron sensores de orientación y calibración de `web-app`, y el pairing
+   de Protobject **con ambos peers en el mismo origen**. Sigue pendiente: zoom en dispositivo,
+   Arduino-como-teclado en `kiosk` (sin hardware disponible en este entorno), y pairing
+   teléfono↔PC en la LAN, que está bloqueado por la restricción de origen del ADR 0001.
+2. **Commitear y pushear** todo lo posterior a `b123960` (ver sección de git arriba).
+3. **Contradicción sin resolver en `Architecture.md`**: el documento dice que la orientación se
+   transmite "desde el Principal al Secundario" en el modelo dual; en la conversación de diseño
+   surgió que probablemente sea al revés (el Secundario es el que puede leer el cielo
+   correctamente). No bloquea esta etapa, pero hay que resolverlo — y corregir el documento — antes
+   de diseñar `dual-telescope`.
+4. **Diseño de `apps/dual-telescope`** — explícitamente pospuesto hasta ahora.
+5. **`packages/shared-viewer`** (nivel intermedio de compartición entre `web-app` y
+   `dual-telescope`, mencionado en `CORE_DESIGN.md`) — no diseñado, depende del punto 3.
+6. **Implementación real de `createSerialConnector`** — hoy es un stub que lanza error; `dual-telescope`
+   la va a necesitar (RFID + potenciómetro vía Web Serial).
+7. **Empaquetado de datos locales para producción de kiosk** — los paths locales (`/data/smalldata/`,
+   etc.) siguen comentados en el config; kiosk en producción sigue apuntando a los servidores remotos.
+   Preexistente, no tocado esta sesión.
+8. **Entorno de desarrollo para probar en LAN** — ver punto 2 de "Próximos pasos". Mientras no se
+   resuelva, el pairing teléfono↔PC no se puede probar en local; sí se puede con ambos peers en el
+   mismo origen (dos pestañas), en producción, o en Codespaces.
+9. **Manejo de errores visible en `kiosk`** — `web-app` ya lo tiene (fase `'error'` del overlay de
+   calibración); kiosk sigue sin superficie visible para fallos de sensores o de carga de catálogos.
+
+## Limitaciones conocidas
+
+- **Sin suite de tests automatizada** en ninguna de las dos apps. Toda la verificación de esta
+  sesión fue manual: build, boot de dev server, y para los módulos de matemática pura, scripts Node
+  ad-hoc comparando contra la fórmula original. No hay tests de regresión que corran en CI.
+- **~15 llamadas directas a `Protobject.Core.send(...)`** siguen desparramadas en componentes de
+  `web-app` (`DateTimePicker`, `GlobePicker`, `Menu`, etc.), sin pasar por `sync/messageBus.js`.
+  Decisión deliberada de alcance (ver `CORE_DESIGN.md`/conversación) — no es un olvido, pero sí una
+  limitación real de qué tan "swappable" es el transporte hoy: si `dual-telescope` necesita
+  WebSocket, esas ~15 líneas también van a necesitar tocarse.
+- **`web-app` no adoptó el patrón de `config/`** — no tiene distinción real entre dev/prod para sus
+  URLs de datos (siempre apunta al servidor remoto), así que no se le creó un `config.dev.js`/`config.prod.js`
+  especulativo sin contenido real que justifique el split.
+- **Soporte nativo de Temporal no verificado** en los navegadores móviles donde corren estas apps —
+  se usa el polyfill (`@js-temporal/polyfill`) precisamente para no depender de eso, pero agrega
+  peso al bundle.
+- **Transformación de montaje de `orientation/`** (la que permite compartir la misma función entre
+  dispositivos montados distinto) es nueva y no está validada contra hardware real — no existe
+  todavía un dispositivo `dual-telescope` contra el cual probarla.
+- **Bundle de kiosk** ahora incluye 3 chunks de config (`config.dev`/`config.dev-device`/`config.prod`,
+  ~0.2kB cada uno) en vez de 1 — el loader genérico resuelve el modo en runtime, no en build time
+  como el `if/else` original, así que el bundler ya no puede eliminar por dead-code-elimination las
+  ramas no alcanzadas. Costo real: ~0.44kB extra en disco, cero impacto en red (solo se descarga el
+  chunk que efectivamente se usa). No se corrigió por ser insignificante.
