@@ -1,9 +1,11 @@
 <script>
   import { onMount } from "svelte";
   import DebugPanel from "./components/DebugPanel.svelte";
-  import Telescope, { computeFovFromEyepiece } from "./Telescope.js";
-  import { initializeStellariumEngine } from "./services/stellariumEngine.js";
-  import { createOrientationController } from "./services/orientationController.js";
+  import {
+    Telescope, TelescopeType, formatMJDForDisplay, nudgeEngineHours,
+    createOrientationController, initializeStellariumEngine,
+    createKeyboardConnector,
+  } from "@ventanaceleste/core";
   import { loadConfig } from "./config";
 
   let canvasEl;
@@ -15,58 +17,33 @@
   let onDebugZoomIn = () => {};
   let onDebugZoomOut = () => {};
   let onDebugToggleVertical = () => {};
-  
-  const JULIAN_HOUR = 1 / 24;
 
   function addHour() {
-    // Cerchiamo l'engine direttamente nell'istanza globale o variabile
-    const core = window.currentStelEngine?.core; 
-    if (core?.observer) {
-      core.observer.utc += JULIAN_HOUR;
-      console.log("Ora +1");
-    }
+    nudgeEngineHours(window.currentStelEngine, 1);
   }
 
   function subHour() {
-    const core = window.currentStelEngine?.core;
-    if (core?.observer) {
-      core.observer.utc -= JULIAN_HOUR;
-      console.log("Ora -1");
-    }
+    nudgeEngineHours(window.currentStelEngine, -1);
   }
 
   let isDebugPanelVisible = false; // será actualizado según config
   let invertVerticalMotion = true;
   let appConfig = null;
-  const telescope = new Telescope("Prototipo", "refractor", 200, 1200);
+  const telescope = new Telescope({
+    name: "Prototipo",
+    type: TelescopeType.REFRACTOR,
+    aperture: 200,
+    focalLength: 1200,
+  });
 
   const RAD_TO_DEG = 180 / Math.PI;
-
-  function jdnToDate(jdn) {
-    if (!jdn) return null;
-    const UNIX_EPOCH_JDN = 2440587.5;
-    const ms = (jdn - UNIX_EPOCH_JDN) * 86400000;
-    return new Date(ms);
-  }
-
-  function formatDate(date) {
-    if (!date || !(date instanceof Date)) return "-";
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    const hours = String(date.getUTCHours()).padStart(2, "0");
-    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-    const seconds = String(date.getUTCSeconds()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
 
   function getEngineTime() {
     const utc = window.currentStelEngine?.core?.observer?.utc;
     if (!utc) return { jdn: null, date: "-" };
-    const dateObj = jdnToDate(utc);
     return {
       jdn: utc.toFixed(6),
-      date: formatDate(dateObj),
+      date: formatMJDForDisplay(utc),
     };
   }
 
@@ -193,8 +170,25 @@
         canvas: canvasEl,
         smalldataBaseUrl: appConfig.smallDataPath,
         bigdataBaseUrl: appConfig.bigDataPath,
+        location: { cityName: "Santiago", lat: -33.45, lon: -70.67, elev: 520, mag: 17.13 },
+        time: { offsetHours: -4 },
+        includeGaia: false,
         onReady(stel) {
           engine = stel;
+          const { core } = stel;
+          core.planets.hints_visible = true;
+          core.dsos.hints_visible = true;
+          core.minor_planets.hints_visible = false;
+          core.dss.hints_visible = false;
+          core.stars.hints_visible = true;
+          core.comets.hints_visible = false;
+          core.cardinals.visible = false;
+          core.constellations.lines_visible = true;
+          core.constellations.images_visible = false;
+          core.constellations.labels_visible = true;
+          core.star_relative_scale = 1.0;
+          core.stars.label_amount = 3.0;
+          core.exposure_scale = 1;
         },
       });
     }
@@ -237,7 +231,7 @@
       if (!lens) return;
 
       telescope.setEyepieceFocalLength(lens);
-      const fov = computeFovFromEyepiece(telescope, lens);
+      const fov = telescope.fovFromEyepiece(lens);
       currentFov = fov;
       logFov = Math.log(fov);
       updateStellariumFov({ fov });
@@ -337,6 +331,7 @@
     }
 
     const orientation = createOrientationController({
+      persistBiasKey: "astrovis_gyro_bias",
       getLogFov: () => logFov,
       onDebug: (partial) => setDebug(partial),
       onCoords: ({ yaw, pitch }) => setDebugCoords(yaw, pitch),
@@ -355,30 +350,24 @@
     onDebugZoomOut = triggerZoomOut;
     onDebugToggleVertical = toggleVerticalMotion;
 
-    function handleKeyDown(e) {
-      const key = e.key.toLowerCase();
-
-      if (key === "c") {
-        triggerRecalibration();
-        return;
-      }
-
-      if (key >= "1" && key <= "8") {
-        triggerLens(parseInt(key, 10));
-        return;
-      }
-
-      if (key === "+" || key === "=") {
-        triggerZoomIn();
-        return;
-      }
-      if (key === "-") {
-        triggerZoomOut();
-        return;
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
+    const keyboardConnector = createKeyboardConnector({
+      bindings: {
+        c: () => triggerRecalibration(),
+        1: () => triggerLens(1),
+        2: () => triggerLens(2),
+        3: () => triggerLens(3),
+        4: () => triggerLens(4),
+        5: () => triggerLens(5),
+        6: () => triggerLens(6),
+        7: () => triggerLens(7),
+        8: () => triggerLens(8),
+        "+": () => triggerZoomIn(),
+        "=": () => triggerZoomIn(),
+        "-": () => triggerZoomOut(),
+      },
+      onError: (error) => console.error("Keyboard connector error:", error),
+    });
+    keyboardConnector.connect();
 
     initEngine().catch((err) => {
       console.error("Engine initialization failed:", err);
@@ -393,7 +382,7 @@
     }, 1000);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      keyboardConnector.disconnect();
       orientation.stop();
       clearInterval(timeUpdateInterval);
       lastZoomMotion = null;
