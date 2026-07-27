@@ -142,6 +142,39 @@ propia IP LAN — combinación que hacía imposible emparejar teléfono y PC en 
 ya resuelto corriendo el dev server nativo en el host. Cómo montar el entorno para probar con
 teléfono: [`../apps/web-app/DEVELOPMENT.md`](../apps/web-app/DEVELOPMENT.md).
 
+## 4. Orientación: bug de shape y fluidez (2026-07-27)
+
+Verificado en teléfono real, ya con el emparejamiento funcionando.
+
+**Bug: la orientación no llegaba al cielo.** `onView` de `core` emite `{ yaw, pitch }` (su propio
+vocabulario, igual que `onCoords`), pero `sendView` en `web-app` desestructuraba `{ h, v }` — o sea
+`undefined` en ambos. El mensaje `updateView` igual se enviaba y se recibía, así que los logs se
+veían sanos, y al llegar `updateStellariumView` hacía `observer.yaw = -undefined`, escribiendo NaN
+en el engine. El resto de los mensajes funcionaba porque ninguno pasa por `onView`.
+
+Esto también explica por qué el overlay del QR nunca se ocultaba antes del handshake: ese chequeo
+exigía `typeof v.h === 'number'`, imposible con `undefined`. El bug venía de la extracción de
+`core`, no de los cambios de conexión.
+
+`updateStellariumView` ahora además ignora valores no finitos y avisa una vez, en vez de meter NaN
+en silencio — que era indistinguible de "no llegan mensajes".
+
+**Perf: flood de logs por el canal de WebRTC.** `onSensorReading` emite `activeSource` en *cada*
+lectura del giroscopio (100 Hz) y `handleDebug` lo logueaba sin filtro. Protobject reenvía la
+consola del teléfono al visor **por el mismo data channel** que `updateView`, así que ~100
+mensajes/s competían con un stream limitado a 50 Hz. No estaba gateado por entorno, así que
+afectaba también a producción. Ahora se loguea solo en transiciones de `activeSource`. Además
+`updateDisplay` reconstruía un string con tres `toFixed(5)` ~200 veces/s incluso con el overlay
+en `display:none`; ahora sale temprano si está oculto.
+
+**Fluidez: la causa dominante era la red.** Ver la tabla en
+[`../apps/web-app/DEVELOPMENT.md`](../apps/web-app/DEVELOPMENT.md): con el teléfono actuando de
+hotspot 2.4 GHz el movimiento era claramente laggy (en dos teléfonos), y sobre una Wi-Fi normal
+quedó fluido. **Descartado** que sea la app renderizando en el teléfono: el modo avanzado corre
+fluido y no hay diferencia con el modo simple. **No aislado**: qué parte del hotspot es la culpable.
+Esto es un riesgo directo para `dual-telescope`, que planea usar el móvil principal como AP — ver
+el recuadro de riesgo en [`Architecture.md`](Architecture.md).
+
 ## Pendientes
 
 1. **Verificación manual en dispositivo real** — parcialmente hecha (ver sección 3). En un

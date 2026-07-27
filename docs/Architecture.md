@@ -31,6 +31,39 @@ El objetivo principal es simular la experiencia completa y fiel de un telescopio
 | **Campo de Visión (FOV)** | **Local** | Local Store (Svelte) | **Principal:** Cambia según chip RFID en Arduino.<br>**Guidescope:** Fijo en campo amplio (~5°–8°). |
 | **Enfoque (Focus Blur)** | **Local** | Local Store (Svelte) | **Principal:** Ajustado via Potenciómetro.<br>**Guidescope:** Siempre en enfoque perfecto. |
 
+### ⚠️ Riesgo detectado: el hotspot del teléfono como AP
+
+El diseño de arriba pone al móvil principal como **Hotspot Wi-Fi**, y es justamente la
+configuración en la que `web-app` mostró la peor latencia de orientación.
+
+Medido en `web-app` (2026-07-27), que transmite orientación por WebRTC a ~50 Hz — un régimen
+comparable al de los 30–60 Hz que especifica esta tabla:
+
+- Teléfono como hotspot (2.4 GHz) + visor en un laptop conectado a ese hotspot: **movimiento
+  claramente laggy**, en dos teléfonos distintos.
+- Misma app, mismos dispositivos, sobre una **red Wi-Fi normal: fluido**.
+
+Lo que **no** está aislado todavía: si la causa es el teléfono actuando de AP (radio compartida,
+power saving, scheduling), la banda de 2.4 GHz, o la congestión. Se cambió toda la red de una vez.
+Lo que sí quedó descartado: no es la app renderizando en el teléfono — la vista previa de
+Stellarium del modo avanzado corre fluida y no hubo diferencia entre modo simple y avanzado. Y el
+uplink 4G del hotspot tampoco debería estar en el camino, porque los dos peers estaban en la misma
+LAN y el tráfico P2P no sale a Internet.
+
+Implicaciones para `dual-telescope`, que va a usar exactamente esta topología (y además 100%
+offline, sin uplink):
+
+1. **Validar el enlace con el hardware real y en la topología real, temprano** — antes de dar por
+   buena la meta de latencia <16 ms del §5. Es un riesgo de diseño, no un detalle de tuning.
+2. Preferir **5 GHz** en el AP si el dispositivo lo soporta.
+3. El payload binario/ArrayBuffer que ya especifica esta tabla ayuda, pero no arregla la latencia
+   del medio: conviene tener también **interpolación/predicción en el receptor**, para que el guía
+   se vea fluido aunque lleguen menos paquetes.
+4. Considerar una tasa adaptativa en vez de fija: degradar a menos Hz antes que acumular retraso.
+
+Ver también la sección de red en
+[`../apps/web-app/DEVELOPMENT.md`](../apps/web-app/DEVELOPMENT.md).
+
 ---
 
 ## 3. Reestructuración del Proyecto (Monorepo Strategy)

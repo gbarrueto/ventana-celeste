@@ -83,6 +83,35 @@ en el mismo equipo, porque `localhost` y `127.0.0.1` son orígenes **distintos**
 No emparejan. Poniendo las dos en el mismo host sí. Es un diagnóstico de 30 segundos que separa
 "problema de origen" de "problema de la app".
 
+## La red afecta la fluidez de la orientación
+
+La orientación se transmite a ~50 Hz (throttle de 20 ms sobre `updateView`), así que es lo primero
+que se degrada cuando la red no da. Medido el 2026-07-27:
+
+| Red | Resultado |
+|---|---|
+| Teléfono como hotspot (2.4 GHz), visor en un laptop conectado a ese hotspot | **Laggy**, en dos teléfonos distintos |
+| Red Wi-Fi normal | **Fluido** |
+
+No está aislado *qué* parte del hotspot es la culpable (el teléfono actuando de AP, la banda de
+2.4 GHz, o congestión) — se cambió toda la red de una vez. Sí quedó descartado que sea la app
+renderizando en el teléfono: la vista previa de Stellarium del modo avanzado corre fluida y no hay
+diferencia perceptible entre modo simple y avanzado.
+
+Dos cosas que conviene tener en cuenta:
+
+- **Al debuggear "se siente laggy", descartar la red antes que el código.** Probar la misma app en
+  una Wi-Fi distinta es más rápido que perseguir el pipeline de sensores.
+- **No controlamos la red del usuario final.** Vale asumir que en producción va a haber gente con
+  enlaces peores que el de desarrollo, así que la fluidez percibida no es solo cuestión de nuestro
+  código. Si hace falta robustecerlo, el lugar es interpolar/predecir en el receptor (el visor),
+  no subir la tasa de envío.
+
+Para diagnosticar con números en vez de sensaciones: `chrome://webrtc-internals` en el visor
+muestra el par de candidatos ICE elegido y las estadísticas del data channel. Un candidato `relay`
+significa que el tráfico está pasando por un TURN externo en vez de ir directo por la LAN, lo cual
+explicaría latencias altas por sí solo.
+
 ## Qué esperar al conectar
 
 - El teléfono muestra **"Conectando…"** hasta que la conexión se confirma. A los 15 s sin
