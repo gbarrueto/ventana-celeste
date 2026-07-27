@@ -273,9 +273,14 @@ let lastYaw = 0;
 let lastPitch = 0;
 let debugState = {};
 
-function sendView({ h, v }) {
-  eventManager.sendThrottled({ msg: 'updateView', values: { h, v } }, 'index.html', 20);
-  updateStellariumView({ h, v });
+// core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords.
+// Stellarium's view API speaks { h, v } (and negates h internally), so the
+// translation belongs here, at the app boundary. Destructuring { h, v } straight
+// off the callback silently yields undefined and the view never moves.
+function sendView({ yaw, pitch }) {
+  const values = { h: yaw, v: pitch };
+  eventManager.sendThrottled({ msg: 'updateView', values }, 'index.html', 20);
+  updateStellariumView(values);
 }
 
 function handleDebug(partial) {

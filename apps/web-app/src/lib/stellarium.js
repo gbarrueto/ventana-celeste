@@ -74,8 +74,20 @@ export function removeStelEngine() {
 
 // ── View & FOV control ─────────────────────────────────────
 
+let warnedInvalidView = false;
+
 export function updateStellariumView({ h, v }) {
   if (!engine?.core?.observer) return;
+  // A malformed payload used to write NaN into observer.yaw/pitch, which looks
+  // exactly like "no messages are arriving" — the view simply never moves. Warn
+  // once (this runs per frame) instead of corrupting engine state silently.
+  if (!Number.isFinite(h) || !Number.isFinite(v)) {
+    if (!warnedInvalidView) {
+      warnedInvalidView = true;
+      console.warn('[stellarium] updateView ignorado: se esperaba { h, v } numérico, llegó', { h, v });
+    }
+    return;
+  }
   engine.core.observer.yaw = -h;
   engine.core.observer.pitch = v;
 }
