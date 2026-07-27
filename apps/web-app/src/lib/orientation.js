@@ -216,6 +216,10 @@ function createDebugOverlay() {
   }
 
   function updateDisplay(pitch, yaw, info = {}) {
+    // Called on every sensor reading (~200 Hz counting both emitDebug calls).
+    // The overlay is hidden by default, so bail out before formatting anything.
+    if (el.style.display === 'none') return;
+
     const p = (typeof pitch === 'number') ? pitch : 0;
     const y = (typeof yaw === 'number') ? yaw : 0;
     const vVal = info.vVal !== undefined ? info.vVal.toFixed(4) : '-';
@@ -272,6 +276,7 @@ let isCalibrating = false;
 let lastYaw = 0;
 let lastPitch = 0;
 let debugState = {};
+let lastLoggedSource = null;
 
 // core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords.
 // Stellarium's view API speaks { h, v } (and negates h internally), so the
@@ -288,7 +293,12 @@ function handleDebug(partial) {
   if (typeof partial.calibrating === 'boolean') isCalibrating = partial.calibrating;
   if (partial.activeSource === 'calibration-finished') isRunning = true;
 
-  if (partial.activeSource) {
+  // onSensorReading emits activeSource on EVERY reading (~100 Hz), so logging it
+  // unconditionally floods the console — and Protobject forwards the telescope's
+  // console to the viewer over the same WebRTC channel as updateView, starving
+  // the orientation stream. Only log actual transitions.
+  if (partial.activeSource && partial.activeSource !== lastLoggedSource) {
+    lastLoggedSource = partial.activeSource;
     console.info('[Orientation]', partial.activeSource, partial.failedSensor ?? '');
   }
 
