@@ -71,7 +71,13 @@ export function initViewerProtobject() {
   bus.on('toggleEyepiece', toggleEyepieceOverlay);
   bus.on('updateFov', updateStellariumFov);
   bus.on('updateBlur', updateStellariumBlur);
-  bus.on('updateView', updateStellariumView);
+  // Orientation doubles as the densest liveness signal we have (~50 Hz while the
+  // phone is streaming), so a drop is noticed from real traffic rather than from
+  // the next missed 1 Hz heartbeat. Costs nothing: the message already arrives.
+  bus.on('updateView', (v) => {
+    viewerPeer?.markSeen();
+    updateStellariumView(v);
+  });
   // Explicit handshake from the telescope (sent as soon as *its* connection
   // is confirmed — see initTelescopeProtobject below) — this is what actually
   // hides the QR. Not onConnect: see the note on skipFirstCall above.

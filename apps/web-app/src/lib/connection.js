@@ -19,7 +19,12 @@
  */
 
 export const HEARTBEAT_MS = 1000;
-export const PEER_TIMEOUT_MS = 3000;
+// 2.5 beats of tolerance: survives one dropped heartbeat plus jitter, without
+// waiting a full extra second like a 3 s timeout did.
+export const PEER_TIMEOUT_MS = 2500;
+// Checked independently of the heartbeat rate — this is pure local bookkeeping,
+// no traffic, so a tight interval only costs the comparison itself.
+export const CHECK_MS = 250;
 
 export function createPeerMonitor({
   sendHeartbeat,
@@ -58,7 +63,7 @@ export function createPeerMonitor({
       }, heartbeatMs);
       checkTimer = setInterval(() => {
         if (Date.now() - lastSeen > timeoutMs) setAlive(false);
-      }, Math.max(250, Math.floor(heartbeatMs / 2)));
+      }, CHECK_MS);
     },
 
     stop() {
