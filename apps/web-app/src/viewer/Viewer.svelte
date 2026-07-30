@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings } from '../lib/stellarium.js';
-  import { initViewerProtobject, setSeeingOptionHandler, setConnectionHandler } from '../lib/protobject.js';
+  import { initViewerProtobject, setSeeingOptionHandler, setConnectionStatusHandler } from '../lib/protobject.js';
   import { initializeSeeingOverlay } from '../lib/seeing-overlay.js';
   import { loadCdnScript } from '../lib/lazy-load.js';
   import { engine } from '../lib/stores.js';
@@ -9,6 +9,10 @@
   let infoCard = $state({ visible: false, name: '', mag: '', ra: '', dec: '', alt: '', az: '' });
   let showQr = $state(true);
   let qrContainerEl = $state();
+  let peerConnected = $state(false);
+  // Distinguishes "no phone has paired yet" from "the phone dropped", which need
+  // different wording on the QR overlay.
+  let connectionLost = $state(false);
 
   function buildTelescopeUrl() {
     const params = new URLSearchParams(window.location.search);
@@ -53,9 +57,11 @@
     console.log('[QR] telescope URL encoded:', telescopeUrl);
     await renderQr(telescopeUrl);
 
-    // Hide QR when a device connects
-    setConnectionHandler(() => {
-      showQr = false;
+    // Hide the QR while a phone is connected, bring it back when it drops.
+    setConnectionStatusHandler(({ alive, everAlive }) => {
+      peerConnected = alive;
+      showQr = !alive;
+      connectionLost = !alive && everAlive;
     });
 
     // Object click listener
@@ -119,17 +125,35 @@
 <div id="eyepiece-overlay"></div>
 <div id="nolens"></div>
 
-{#if showQr}
-  <div class="qr-overlay">
-    <div class="qr-text">
+<div
+  class="conn-status"
+  class:conn-status--on={peerConnected}
+  title={peerConnected ? 'Telescopio conectado' : 'Telescopio desconectado'}
+  role="status"
+  aria-label={peerConnected ? 'Telescopio conectado' : 'Telescopio desconectado'}
+></div>
+
+<!-- Always mounted, toggled with CSS. Inside an {#if} the container would be
+     destroyed on connect, and the overlay returning after a disconnect would get a
+     *new, empty* div while the QR was only ever rendered once in onMount — which
+     showed up as a blank white square. -->
+<div class="qr-overlay" class:qr-overlay--hidden={!showQr}>
+  <div class="qr-text">
+    {#if connectionLost}
+      <p class="qr-title">Se perdió la conexión</p>
+      <p class="qr-subtitle">
+        Recarga la página del telescopio en tu smartphone.<br>
+        Si no vuelve a conectarse, escanea el código otra vez.
+      </p>
+    {:else}
       <p class="qr-title">Escanea con tu smartphone</p>
       <p class="qr-subtitle">para convertirlo en tu telescopio<br>y explorar el cielo estrellado</p>
-    </div>
-    <div class="qr-frame">
-      <div bind:this={qrContainerEl} class="qr-container"></div>
-    </div>
+    {/if}
   </div>
-{/if}
+  <div class="qr-frame">
+    <div bind:this={qrContainerEl} class="qr-container"></div>
+  </div>
+</div>
 
 <style>
   :global(.dropdown-menu) {
@@ -202,6 +226,28 @@
     -webkit-backdrop-filter: blur(90px);
   }
 
+  /* Connection indicator: deliberately small and quiet. Sits above the QR
+     overlay so it stays visible while the overlay is up. */
+  .conn-status {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 10001;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #d64545;
+    box-shadow: 0 0 6px rgba(214, 69, 69, 0.7);
+    opacity: 0.75;
+    transition: background 0.3s, box-shadow 0.3s;
+    pointer-events: none;
+  }
+
+  .conn-status--on {
+    background: #3ec46d;
+    box-shadow: 0 0 6px rgba(62, 196, 109, 0.7);
+  }
+
   /* ── QR overlay ── */
   .qr-overlay {
     position: fixed;
@@ -215,6 +261,13 @@
     gap: 32px;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* Compound selector on purpose: `.qr-overlay` sets `display: flex`, and after
+     Svelte adds its scoping class a single-class `.qr-overlay--hidden` ties on
+     specificity and loses to whichever rule comes later. This wins regardless. */
+  .qr-overlay.qr-overlay--hidden {
+    display: none;
   }
 
   .qr-text {

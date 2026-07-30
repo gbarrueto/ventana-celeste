@@ -1,7 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { modes, isLoading, isMenuOpen } from '../lib/stores.js';
-  import { initTelescopeProtobject, setTelescopeConnectionHandler } from '../lib/protobject.js';
+  import {
+    initTelescopeProtobject, setTelescopeConnectionHandler, setTelescopeStatusHandler,
+  } from '../lib/protobject.js';
   import { Orientation } from '../lib/orientation.js';
   import SimpleMode from './SimpleMode.svelte';
   import AdvancedMode from './AdvancedMode.svelte';
@@ -12,9 +14,10 @@
   let currentModes = $state({ simple: true, advanced: false });
   let loading = $state(true);
   let menuOpen = $state(false);
-  // 'connecting' | 'connected' | 'timeout' — calibration must not start until
-  // the WebRTC link to the viewer (index.html) is actually up, otherwise the
-  // phone calibrates against a peer that may never exist.
+  // 'connecting' | 'connected' | 'timeout' | 'lost' — calibration must not start
+  // until the WebRTC link to the viewer (index.html) is actually up, otherwise the
+  // phone calibrates against a peer that may never exist. 'lost' means we were
+  // connected and the viewer stopped answering (refreshed, closed, or off-network).
   let connectionStatus = $state('connecting');
   let connectionTimer = null;
 
@@ -54,6 +57,18 @@
       }
     }, CONNECTION_TIMEOUT_MS);
 
+    // Ongoing link state. Sensors keep running through a drop: the orientation
+    // state stays valid and simply has nowhere to go, so a brief blip recovers
+    // without recalibrating.
+    setTelescopeStatusHandler(({ alive, everAlive }) => {
+      if (alive) {
+        connectionStatus = 'connected';
+      } else if (everAlive) {
+        console.warn('[Telescope] lost the viewer');
+        connectionStatus = 'lost';
+      }
+    });
+
     initTelescopeProtobject();
     isLoading.set(false);
   });
@@ -73,9 +88,16 @@
     {#if connectionStatus === 'connecting'}
       <div class="loader"></div>
       <p class="connection-msg">Conectando con la aplicación principal…</p>
+    {:else if connectionStatus === 'lost'}
+      <p class="connection-msg connection-msg--error">Se perdió la conexión</p>
+      <p class="connection-msg">
+        Recarga esta página para volver a conectarte.<br>
+        Si la aplicación principal se cerró y se abrió de nuevo, escanea el código QR otra vez.
+      </p>
+      <button class="reload-btn" onclick={() => window.location.reload()}>Recargar</button>
     {:else}
       <p class="connection-msg connection-msg--error">
-        No se pudo conectar. Verificá que ambos dispositivos estén en la misma red y volvé a escanear el código QR.
+        No se pudo conectar. Verifica que ambos dispositivos estén en la misma red y vuelve a escanear el código QR.
       </p>
     {/if}
   </div>
@@ -194,6 +216,19 @@
 
   .connection-msg--error {
     color: #ff8a65;
+    font-weight: 700;
+  }
+
+  .reload-btn {
+    padding: 12px 40px;
+    font-size: 15px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff7a0d, #ff5500);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
   }
 
   .loader {

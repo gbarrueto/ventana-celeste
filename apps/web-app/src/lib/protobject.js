@@ -9,6 +9,7 @@
  * dual-telescope) only touches the `createProtobjectTransport()` call below.
  */
 import { createMessageBus, createProtobjectTransport } from '@ventanaceleste/core';
+import { createPeerMonitor } from './connection.js';
 import {
   updateStellariumFov, updateStellariumView, updateStellariumBlur,
   stellariumOption, enableSimpleModeSettings, enableAdvancedModeSettings,
@@ -57,10 +58,14 @@ export const eventManager = {
 let seeingOptionHandler = null;
 export function setSeeingOptionHandler(fn) { seeingOptionHandler = fn; }
 
-let connectionHandler = null;
-export function setConnectionHandler(fn) {
-  connectionHandler = fn;
+// Reports ongoing link state to the viewer UI: { alive, everAlive }. Not a
+// fire-once handler, so the QR can come back when the phone goes away.
+let connectionStatusHandler = null;
+export function setConnectionStatusHandler(fn) {
+  connectionStatusHandler = fn;
 }
+
+let viewerPeer = null;
 
 export function initViewerProtobject() {
   bus.on('toggleEyepiece', toggleEyepieceOverlay);
@@ -72,9 +77,12 @@ export function initViewerProtobject() {
   // hides the QR. Not onConnect: see the note on skipFirstCall above.
   bus.on('telescopeConnected', () => {
     console.log('[Protobject] viewer: received telescopeConnected handshake');
-    connectionHandler?.();
-    connectionHandler = null;
+    viewerPeer?.markSeen();
   });
+  // Any heartbeat also proves the phone is alive — this is what brings the QR
+  // back when it stops arriving, and what recovers if the phone reconnects
+  // without a fresh handshake (e.g. it was briefly backgrounded).
+  bus.on('telescopeHeartbeat', () => viewerPeer?.markSeen());
   bus.on('applyLocation', applyLocation);
   bus.on('setSpeed', setEngineSpeed);
   bus.on('updateDate', updateDate);
@@ -95,6 +103,19 @@ export function initViewerProtobject() {
       console.log('[Protobject] viewer: onConnect fired a second time (unexpected but harmless)');
     }),
   });
+
+  // Started immediately rather than on first pairing: before any phone arrives
+  // the monitor simply reports "not alive", which is exactly the initial UI state
+  // (QR showing). It also means a phone connecting to an already-running viewer is
+  // picked up by its heartbeat alone.
+  viewerPeer = createPeerMonitor({
+    sendHeartbeat: () => bus.send('viewerHeartbeat', {}, 'telescope.html'),
+    onChange: ({ alive, everAlive }) => {
+      console.log(`[Protobject] viewer: telescope ${alive ? 'alive' : 'lost'}`);
+      connectionStatusHandler?.({ alive, everAlive });
+    },
+  });
+  viewerPeer.start();
 }
 
 // ── Telescope-side message handler ─────────────────────────
@@ -108,6 +129,14 @@ let telescopeConnectionHandler = null;
 export function setTelescopeConnectionHandler(fn) {
   telescopeConnectionHandler = fn;
 }
+
+// Reports ongoing link state to the telescope UI: { alive, everAlive }.
+let telescopeStatusHandler = null;
+export function setTelescopeStatusHandler(fn) {
+  telescopeStatusHandler = fn;
+}
+
+let telescopePeer = null;
 
 // ── Seeing value sender (used by telescope components) ─────
 
@@ -149,10 +178,24 @@ export function initTelescopeProtobject() {
     bus.send('applyLocation', data, 'index.html');
   });
 
+  // The viewer's heartbeat is how the phone notices the viewer went away — e.g.
+  // the main page was refreshed or closed. There is no disconnect event to rely on.
+  onTelescopeMessage('viewerHeartbeat', () => telescopePeer?.markSeen());
+
+  telescopePeer = createPeerMonitor({
+    sendHeartbeat: () => bus.send('telescopeHeartbeat', {}, 'index.html'),
+    onChange: ({ alive, everAlive }) => {
+      console.log(`[Protobject] telescope: viewer ${alive ? 'alive' : 'lost'}`);
+      telescopeStatusHandler?.({ alive, everAlive });
+    },
+  });
+
   bus.start({
     onConnect: skipFirstCall(() => {
       console.log('[Protobject] telescope: connected to viewer');
       bus.send('telescopeConnected', {}, 'index.html');
+      telescopePeer.markSeen();
+      telescopePeer.start();
       telescopeConnectionHandler?.();
       telescopeConnectionHandler = null;
     }),
