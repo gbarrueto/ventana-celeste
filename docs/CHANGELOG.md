@@ -37,9 +37,12 @@ misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver
 - ~~**Eliminar `VITE_LAN_HOST`**~~ — HECHO. `buildTelescopeUrl()` deriva el host del QR de
   `window.location.host`, sin override.
 
-1. **Terminar de cubrir `web-app`** — es la prioridad antes de pasar a las otras apps. Queda
-   verificar el resto de la interacción en dispositivo real (zoom, lentes, tiempo, ubicación) y
-   atender los problemas que aparezcan en uso.
+- ~~**Verificar la interacción en dispositivo real**~~ — HECHO. Zoom, lentes, tiempo y ubicación
+  funcionan como se espera.
+- ~~**Feedback de desconexión en ambos lados**~~ — HECHO. Ver sección 5.
+
+1. **Atender la lista de detalles/bugs de `web-app`** que está en recolección durante el uso.
+   Sigue siendo la prioridad antes de pasar a las otras apps.
 2. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
    refactor a `core` no se probó nunca ahí. Le corresponde también su propio `DEVELOPMENT.md`.
 3. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
@@ -65,7 +68,7 @@ Detalle del resto de pendientes más abajo.
 
 Siete módulos extraídos desde `apps/web-app` y `apps/kiosk-standalone`, en el orden del plan de
 `CORE_DESIGN.md`. Detalle completo de API y decisiones de diseño en
-[`packages/core/README.md`](../packages/core/README.md); acá solo el resumen de cambios y hallazgos.
+[`packages/core/README.md`](../packages/core/README.md); aquí solo el resumen de cambios y hallazgos.
 
 | Módulo | Reemplaza | Hallazgo notable |
 |---|---|---|
@@ -174,6 +177,43 @@ quedó fluido. **Descartado** que sea la app renderizando en el teléfono: el mo
 fluido y no hay diferencia con el modo simple. **No aislado**: qué parte del hotspot es la culpable.
 Esto es un riesgo directo para `dual-telescope`, que planea usar el móvil principal como AP — ver
 el recuadro de riesgo en [`Architecture.md`](Architecture.md).
+
+## 5. Robustez de conexión en `web-app` (2026-07-27)
+
+Interacción verificada en dispositivo real: zoom, lentes, tiempo y ubicación funcionan como se
+espera. Sobre eso se agregó feedback de estado de la conexión, que antes no existía en ninguno de
+los dos lados: si el enlace se caía, el visor se quedaba mostrando un cielo congelado y el
+teléfono no daba ninguna señal.
+
+**No hay evento de desconexión en Protobject.** `Protobject.Core` expone solo `onConnected` y
+`onReceived` — verificado contra el `p.js` que se sirve hoy (`'onClosed'` y `'onDisconnected'` no
+existen como métodos). Así que la liveness se infiere con un **heartbeat** de 1 Hz por lado
+(`src/lib/connection.js`), declarando al peer perdido tras 3 s de silencio. Un timeout además
+cubre casos que un evento de cierre no cubriría: red caída, página congelada, pestaña en segundo
+plano. Se mantiene a 1 Hz con payload vacío porque comparte data channel con la orientación a
+~50 Hz, y ya se vio que saturar ese canal se siente como lag.
+
+- **Visor:** el overlay del QR vuelve cuando el teléfono deja de responder, con el texto cambiado
+  a "Se perdió la conexión"; punto de estado verde/rojo arriba a la derecha.
+  `setConnectionHandler` (disparo único) pasó a `setConnectionStatusHandler`, que reporta
+  `{ alive, everAlive }` de forma continua — `everAlive` es lo que permite distinguir "todavía no
+  se conectó ningún teléfono" de "el teléfono se cayó".
+- **Teléfono:** estado `'lost'` con mensaje y botón **Recargar**. Los sensores siguen corriendo
+  durante el corte, así que un blip breve se recupera sin recalibrar. El texto distingue los dos
+  caminos de recuperación: recargar el teléfono alcanza si la página principal solo se recargó,
+  pero si se cerró y se volvió a abrir probablemente tenga un `ptjuid` nuevo y hay que volver a
+  escanear el QR.
+
+**Detalle de implementación que costó dos intentos:** el overlay del QR tiene que estar siempre
+montado y ocultarse por CSS. Dentro de un `{#if}`, el contenedor bindeado con `bind:this` se
+destruye al conectar, y al reaparecer Svelte crea un div nuevo y vacío mientras `renderQr()` solo
+corrió una vez en `onMount` — se ve como un cuadrado blanco. Y la regla que lo oculta necesita
+selector compuesto (`.qr-overlay.qr-overlay--hidden`): tras el scoping de Svelte, una sola clase
+empata en especificidad con `.qr-overlay` y pierde por orden de declaración.
+
+**Idioma:** los textos de UI agregados estaban en español rioplatense, inconsistente con la copia
+que ya existía en la app (que usa formas de *tú*). Normalizados a español neutro, junto con la
+documentación escrita en estas sesiones.
 
 ## Pendientes
 

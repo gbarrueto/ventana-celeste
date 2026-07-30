@@ -4,7 +4,7 @@ Recomendaciones para levantar y probar esta app, en particular el emparejamiento
 visor↔teléfono, que es la parte que históricamente más problemas dio.
 
 > Guía específica de `web-app`. Las otras apps del monorepo tendrán la suya cuando se trabaje
-> en ellas; nada de acá se puede asumir válido para `kiosk-standalone`, que no usa Protobject.
+> en ellas; nada de aquí se puede asumir válido para `kiosk-standalone`, que no usa Protobject.
 
 ## Arranque
 
@@ -58,16 +58,16 @@ IP LAN. Entonces el visor queda forzado a un origen `localhost` y el teléfono a
 sesiones distintas de Protobject. La página carga bien en el teléfono, el QR escanea bien, y no
 pasa nada más.
 
-Si igual hay que exponer un puerto de WSL a la red, tener en cuenta que requiere una regla del
+Si aun así hay que exponer un puerto de WSL a la red, tener en cuenta que requiere una regla del
 firewall de **Hyper-V** (`New-NetFirewallHyperVRule`), no solo del Windows Firewall normal.
 
-## Si trabajás en WSL/VM y no querés migrar
+## Si el desarrollo es en WSL/VM y no se quiere migrar
 
 - **GitHub Codespaces o equivalente (recomendado).** Las dos páginas se sirven desde la misma URL
   reenviada, así que comparten origen *por construcción* y el problema no existe. Es la razón por
   la que el emparejamiento siempre funcionó ahí mientras fallaba en local.
 - **Un túnel público** (tipo cloudflared/ngrok) apuntando al dev server: mismo efecto, ambos
-  dispositivos entran por el mismo origen. Ojo que publica el dev server en Internet.
+  dispositivos entran por el mismo origen. Ten en cuenta que publica el dev server en Internet.
 - **Opciones más pesadas**, si hace falta quedarse en la LAN: un `netsh portproxy` del lado de
   Windows, o un hostname que resuelva a loopback en el host y a la IP LAN en el teléfono
   (hosts + mDNS). Funcionan, pero agregan infraestructura que hay que mantener.
@@ -116,11 +116,33 @@ explicaría latencias altas por sí solo.
 
 - El teléfono muestra **"Conectando…"** hasta que la conexión se confirma. A los 15 s sin
   conexión pasa a un error visible en pantalla.
-- **La calibración arranca recién después** de conectar — a propósito. Si arranca antes, está
+- **La calibración arranca solo después** de conectar — a propósito. Si arranca antes, está
   calibrando contra un peer que puede no existir.
 - El visor oculta el QR cuando recibe el mensaje `telescopeConnected`. No lo deduce de recibir
   datos de orientación: eso ataba la detección de conexión a que la calibración terminara, que es
   justo al revés.
+- El visor muestra un **punto de estado** en la esquina superior derecha: verde conectado, rojo
+  desconectado.
+
+### Cuando se cae la conexión
+
+`Protobject.Core` expone solo `onConnected` y `onReceived` — **no hay evento de desconexión**
+(verificado contra el `p.js` que se sirve hoy). Así que la caída se detecta por **heartbeat**:
+cada lado manda uno a 1 Hz y considera al peer perdido si no llega ninguno en 3 s
+(`src/lib/connection.js`). Un timeout además cubre casos que un evento de cierre no cubriría:
+red caída, página congelada, pestaña en segundo plano.
+
+Se mantiene a 1 Hz con payload mínimo a propósito: comparte el data channel con la orientación a
+~50 Hz, y ya se vio que saturar ese canal se siente como lag.
+
+- **Si se cae el teléfono:** el visor vuelve a mostrar el QR, con el texto cambiado a
+  "Se perdió la conexión" en vez del de bienvenida, y el punto pasa a rojo.
+- **Si se cae el visor** (típicamente porque se recargó la página principal): el teléfono muestra
+  "Se perdió la conexión" con un botón **Recargar**. Los sensores siguen corriendo, así que un
+  corte breve se recupera solo, sin recalibrar.
+- Si la app principal se **cerró y se volvió a abrir**, probablemente tenga un `ptjuid` nuevo: ahí
+  recargar el teléfono no alcanza y hay que volver a escanear el QR. Los mensajes de ambos lados
+  dicen justamente eso.
 
 ## Depurar en el teléfono
 
@@ -139,7 +161,7 @@ dos datos que hay que comparar entre visor y teléfono cuando algo no empareja.
 `buildTelescopeUrl()` (en `src/viewer/Viewer.svelte`) construye el target del QR desde
 `window.location.host`, o sea desde la dirección con la que se cargó el visor. Es a propósito y no
 tiene override: como Protobject exige el mismo origen, el QR *tiene* que apuntar al mismo host que
-el visor. Cargá el visor en una dirección alcanzable desde la LAN y el teléfono cae en el mismo
+el visor. Carga el visor en una dirección alcanzable desde la LAN y el teléfono cae en el mismo
 origen solo.
 
 Si el QR apunta a un host que el teléfono no alcanza, el problema es **desde dónde cargaste el

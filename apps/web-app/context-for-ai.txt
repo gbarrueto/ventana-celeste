@@ -54,7 +54,11 @@ src/
     Viewer.svelte       → Sky canvas + info card + eyepiece overlay + nolens blur + seeing overlay
                           Calls enableSimpleModeSettings() at startup (shows star/planet names)
                           Has global CSS for Protobject's .dropdown-menu (black background)
-                          Shows QR overlay until the telescope sends `telescopeConnected`
+                          Shows QR overlay until the telescope sends `telescopeConnected`;
+                            QR comes BACK (with "Se perdió la conexión" wording) if the
+                            phone stops heartbeating. Green/red status dot, top-right.
+                            Overlay is always mounted and CSS-toggled — inside an {#if}
+                            the QR container is destroyed and comes back empty.
                           buildTelescopeUrl() builds the QR target from
                             window.location.host — intentionally NOT configurable,
                             so the QR always shares the viewer's origin (ADR 0001)
@@ -64,6 +68,10 @@ src/
     Telescope.svelte    → Root: header (menu btn + mode toggle) + loads SimpleMode or AdvancedMode
                           Waits for a confirmed Protobject connection before starting sensors
                             ("Conectando…" screen, 15s timeout → visible error).
+                          connectionStatus: 'connecting' | 'connected' | 'timeout' | 'lost'.
+                            'lost' = viewer stopped heartbeating (refreshed/closed) →
+                            shows "Se perdió la conexión" + Recargar button. Sensors keep
+                            running, so a brief blip recovers without recalibrating.
                           Once connected, Orientation stays active across mode switches.
     SimpleMode.svelte   → Vertical zoom slider (0-150), sends FOV to viewer
     AdvancedMode.svelte → Stellarium preview canvas + 4 lens buttons (40mm/24mm/10mm/4mm) + focus slider
@@ -102,6 +110,11 @@ src/
                           Owns only the DOM overlays (calibration + debug) and Protobject
                             transport; the sensor/calibration state machine lives in core.
                           Debug overlay hidden by default (toggle via long-press on finder)
+    connection.js       → Peer liveness via heartbeat (createPeerMonitor).
+                          Protobject has NO disconnect event, so each side sends a
+                          1 Hz heartbeat and declares the peer lost after 3 s of
+                          silence. Kept at 1 Hz because this shares the data
+                          channel with the ~50 Hz orientation stream.
     debug-log.js        → On-screen console for the phone (console.* + uncaught errors +
                           unhandled rejections). Active in dev builds, or with ?debug=1.
                           Needed because Protobject only forwards the phone's console to
@@ -263,7 +276,9 @@ Viewer (index.html) handles:
   seeingOption, simpleSettings, advancedSettings,
   requestSynchronizeData, requestSynchronizeSimpleZoom
 
-Viewer also handles: telescopeConnected (hides the QR overlay)
+Viewer also handles: telescopeConnected (hides the QR overlay),
+                     telescopeHeartbeat (1 Hz liveness from the phone)
+Viewer also sends:   viewerHeartbeat (1 Hz liveness to the phone)
 
 Telescope (telescope.html) handles:
   syncTime, setSynchronizedData (registered by AdvancedMode),
