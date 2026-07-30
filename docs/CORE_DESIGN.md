@@ -7,7 +7,7 @@ diseñar `dual-telescope`. Es una propuesta — todavía no hay código escrito 
 ## Modelo de compartición (3 niveles)
 
 1. **`packages/core`** — usado por las 3 versiones (presentes y futuras). Lo único que entra
-   acá es lo que no depende de: un framework de UI específico, un transporte de red específico,
+   aquí es lo que no depende de: un framework de UI específico, un transporte de red específico,
    o una forma de renderizar la UI específica.
 2. **Compartido parcial** (p. ej. futuro `packages/shared-viewer`) — usado por `web-app` y
    `dual-telescope`, no por `kiosk`. No se diseña en esta etapa (depende de resolver primero

@@ -3,7 +3,7 @@
 Ultima actualizacion: 2026-07-26
 
 > **Esta app ahora vive en un monorepo.** La lógica de dominio compartida (motor de
-> Stellarium, óptica, sensores, tiempo, config) está en `@ventanaceleste/core`, no acá.
+> Stellarium, óptica, sensores, tiempo, config) está en `@ventanaceleste/core`, no aquí.
 > Ver [`../../CONTEXT.md`](../../CONTEXT.md) y
 > [`../../packages/core/README.md`](../../packages/core/README.md).
 >
@@ -32,7 +32,7 @@ Resume el estado actual de la app para consulta rapida durante desarrollo.
 - src/config/: config por entorno (`dev` / `dev-device` / `prod`) via `loadConfig` de core
 - public/stellarium-web-engine.js + .wasm: runtime del motor astronomico en cliente
 
-Movidos a `packages/core` durante la extracción (ya no existen acá):
+Movidos a `packages/core` durante la extracción (ya no existen aquí):
 `Telescope.js`, `services/orientationController.js`, `services/stellariumEngine.js`,
 `services/arduinoBridge.js` (este último era un stub que nunca se conectó a nada).
 

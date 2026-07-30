@@ -161,7 +161,7 @@ function createCalibOverlay() {
         case 'error':
           icon.textContent = '⚠️';
           msg.textContent = 'No se pudo calibrar';
-          sub.textContent = extra || 'Revisá los permisos de sensores de movimiento del navegador.';
+          sub.textContent = extra || 'Revisa los permisos de sensores de movimiento del navegador.';
           btn.textContent = 'Reintentar';
           btn.style.display = 'block';
           break;
