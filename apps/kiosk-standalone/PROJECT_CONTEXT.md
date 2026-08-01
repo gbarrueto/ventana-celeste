@@ -76,6 +76,26 @@ Movidos a `packages/core` durante la extracción (ya no existen aquí):
   - Conmutacion dinamica de modo relative/gyro segun FOV
   - Suavizado y deadzone para estabilidad
 
+## HTTPS por modo (sensores y contexto seguro)
+
+Los sensores de orientación solo funcionan en un **contexto seguro**. Si la página se sirve por
+HTTP plano en una dirección de LAN, carga bien pero los sensores no devuelven nada — parece un bug
+de código y en realidad es un permiso que el navegador nunca da.
+
+Por eso `vite.config.js` activa `@vitejs/plugin-basic-ssl` en **todos los modos menos
+`production`**:
+
+| Modo | Sirve | Motivo |
+|---|---|---|
+| `development` (por defecto) | `https` | se sirve desde la PC y se abre en el teléfono por la LAN |
+| `dev-device` | `https` | mismo caso: ese modo existe justamente para probar en el teléfono |
+| `production` | `http` | el dispositivo se sirve a sí mismo en `http://localhost`, que el navegador **ya** trata como contexto seguro |
+
+O sea: en el dispositivo no hace falta certificado y no aparece ninguna advertencia de conexión
+insegura. En desarrollo sí aparece, porque el certificado es autofirmado — se acepta una vez por
+navegador. Si molesta, la alternativa sin advertencia es generar un certificado de desarrollo con
+`mkcert` e instalar su CA en el teléfono una sola vez.
+
 ## ⚠️ El despliegue real corre en modo `development`
 
 En el dispositivo, la app se levanta con `pnpm run dev` desde Termux — o sea `vite`, el dev

@@ -1,9 +1,21 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
-export default defineConfig({
+// HTTPS is enabled for every mode EXCEPT production, on purpose.
+//
+// Development means serving from a PC and opening the app on a phone over the
+// LAN. The orientation sensors require a *secure context*, and a plain-HTTP LAN
+// address is not one — the page loads but the sensors silently return nothing,
+// which looks like broken code rather than a missing permission.
+//
+// Production means the device serving itself under Termux and opening
+// http://localhost, which browsers already treat as a secure context. A
+// self-signed certificate there would buy nothing and cost an "insecure
+// connection" warning on every launch.
+export default defineConfig(({ mode }) => ({
   base: "./",
-  plugins: [svelte()],
+  plugins: [svelte(), ...(mode === "production" ? [] : [basicSsl()])],
   build: {
     target: "es2017",
     minify: "esbuild",
@@ -24,4 +36,4 @@ export default defineConfig({
       ignored: ["**/data/bigdata/**", "**/data/smalldata/**"],
     },
   },
-});
+}));
