@@ -45,8 +45,10 @@ misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver
    Sigue siendo la prioridad antes de pasar a las otras apps.
 2. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
    refactor a `core` no se probó nunca ahí. Le corresponde también su propio `DEVELOPMENT.md`.
-3. **Resolver la dirección del dato de orientación en el modelo dual** y corregir
-   `Architecture.md` §2 en consecuencia. Bloquea a `dual-telescope` y a `shared-viewer`.
+3. **Arrancar `dual-telescope`** — plan de construcción, inventario de qué se re-cablea y lista
+   de decisiones abiertas en [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md). Los cuatro
+   bloqueantes (dirección de la orientación, contexto seguro/HTTPS, viabilidad de Web Serial en
+   Android, y si hace falta roll) hay que resolverlos antes de escribir código.
 
 Detalle del resto de pendientes más abajo.
 
