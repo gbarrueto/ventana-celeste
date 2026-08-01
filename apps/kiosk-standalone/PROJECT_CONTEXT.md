@@ -76,6 +76,24 @@ Movidos a `packages/core` durante la extracción (ya no existen aquí):
   - Conmutacion dinamica de modo relative/gyro segun FOV
   - Suavizado y deadzone para estabilidad
 
+## ⚠️ El despliegue real corre en modo `development`
+
+En el dispositivo, la app se levanta con `pnpm run dev` desde Termux — o sea `vite`, el dev
+server, no un build. Consecuencia directa: `import.meta.env.MODE` vale `'development'`, así que
+`loadConfig` selecciona **`config.dev.js`** y `config.prod.js` no se usa nunca en campo.
+
+Hoy no rompe nada porque los dos archivos son idénticos salvo el campo `env`. Pasa a importar en
+cuanto diverjan — sobre todo al terminar el empaquetado de datos locales, donde `config.prod.js`
+apuntaría a `/data/...` y el dispositivo seguiría yendo a los servidores remotos igual.
+
+Cuando se toque: `vite --mode production` conserva el flujo de dev server que Termux necesita
+pero selecciona la config correcta. Verificar en ese momento si además cambia
+`import.meta.env.DEV`/`PROD`, que no está comprobado.
+
+Relacionado: en ese despliegue `import.meta.env.DEV` es `true`, así que cualquier herramienta de
+debug gateada por `DEV` quedaría encendida en campo. Hoy solo la usa `debug-log.js` de `web-app`,
+así que a `kiosk` no le afecta — pero conviene saberlo antes de agregar uno acá.
+
 ## Dependencias externas en runtime
 - Endpoint base de datos astronomicos:
   - https://smalldata.ventanaceleste.com/

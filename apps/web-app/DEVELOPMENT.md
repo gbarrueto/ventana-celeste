@@ -128,9 +128,15 @@ explicaría latencias altas por sí solo.
 
 `Protobject.Core` expone solo `onConnected` y `onReceived` — **no hay evento de desconexión**
 (verificado contra el `p.js` que se sirve hoy). Así que la caída se detecta por **heartbeat**:
-cada lado manda uno a 1 Hz y considera al peer perdido si no llega ninguno en 3 s
+cada lado manda uno a 1 Hz y considera al peer perdido tras 2,5 s de silencio
 (`src/lib/connection.js`). Un timeout además cubre casos que un evento de cierre no cubriría:
 red caída, página congelada, pestaña en segundo plano.
+
+El visor además cuenta cualquier `updateView` como señal de vida: la orientación ya llega a
+~50 Hz mientras el teléfono transmite, así que la caída se nota por tráfico real y no por el
+siguiente heartbeat perdido (detección ~1,5 s). El heartbeat sigue siendo el piso para los huecos
+donde no fluye orientación — sobre todo la calibración, durante la cual `core` no envía ningún
+`updateView` por varios segundos. Ese hueco es la razón de que el timeout no pueda bajar a ~1 s.
 
 Se mantiene a 1 Hz con payload mínimo a propósito: comparte el data channel con la orientación a
 ~50 Hz, y ya se vio que saturar ese canal se siente como lag.
@@ -155,6 +161,25 @@ rechazadas, y al arrancar loguea el **origen** y el **`ptjuid`** de la página �
 dos datos que hay que comparar entre visor y teléfono cuando algo no empareja.
 
 Útil cuando no hay depuración remota por USB disponible.
+
+## Qué queda activo en producción
+
+Auditado sobre un build real (`pnpm --filter @ventanaceleste/web-app build`):
+
+- **La consola en pantalla (`debug-log.js`) queda desactivada.** `import.meta.env.DEV` se resuelve
+  a `false` en el bundle de producción; la función de gate compila a un único chequeo de
+  `?debug=1`. O sea que sigue existiendo la puerta de entrada manual — a propósito, porque es la
+  única forma de diagnosticar un teléfono ya desplegado — pero no se activa sola.
+- **El panel de debug de orientación NO está gateado por entorno.** Se abre con una pulsación
+  larga de 5 s sobre el marco del buscador en modo avanzado (`AdvancedMode.svelte`), y eso sigue
+  disponible en producción. Está oculto por defecto y requiere un gesto deliberado, así que
+  funciona como herramienta de diagnóstico en campo — pero es una decisión, no un descuido:
+  si no se quiere ahí, hay que gatearlo explícitamente.
+- **Los `console.*` siguen en el bundle** (~11 en el de telescope, ~5 en el del visor). Importa
+  más de lo habitual acá: Protobject reenvía la consola del teléfono al visor **por el mismo data
+  channel que la orientación**. Hoy son solo transiciones —el flood por lectura ya se corrigió—
+  pero cualquier log nuevo que se agregue en un camino caliente se paga en ese canal, en
+  producción. Vite no los elimina solo.
 
 ## El host del QR no se configura
 

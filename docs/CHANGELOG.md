@@ -233,7 +233,18 @@ documentación escrita en estas sesiones.
    `dual-telescope`, mencionado en `CORE_DESIGN.md`) — no diseñado, depende del punto 3.
 6. **Implementación real de `createSerialConnector`** — hoy es un stub que lanza error; `dual-telescope`
    la va a necesitar (RFID + potenciómetro vía Web Serial).
-7. **Empaquetado de datos locales para producción de kiosk** — los paths locales (`/data/smalldata/`,
+7. **`kiosk` en Termux corre en modo `development`** — el despliegue real lo arranca con
+   `pnpm run dev`, o sea `vite`, así que `import.meta.env.MODE` vale `'development'` y
+   `loadConfig` elige **`config.dev.js`**, no `config.prod.js`. Hoy es inofensivo porque los dos
+   archivos son idénticos salvo el campo `env`, pero deja de serlo en cuanto diverjan — en
+   particular al hacer el punto 8, donde `config.prod.js` pasaría a apuntar a los datos locales
+   y el dispositivo en campo seguiría yendo a los servidores remotos. Cuando se toque:
+   `vite --mode production` mantiene el flujo de dev server que Termux necesita pero selecciona
+   la config correcta (verificar en ese momento si además cambia `import.meta.env.DEV`/`PROD`,
+   que no está comprobado). Nota relacionada: en ese despliegue `import.meta.env.DEV` es `true`,
+   así que cualquier herramienta de debug que se gatee por `DEV` quedaría **encendida** en campo.
+   Hoy solo la usa `debug-log.js` de `web-app`, así que no afecta a `kiosk`.
+8. **Empaquetado de datos locales para producción de kiosk** — los paths locales (`/data/smalldata/`,
    etc.) siguen comentados en el config; kiosk en producción sigue apuntando a los servidores remotos.
    Preexistente, no tocado esta sesión.
 9. **Manejo de errores visible en `kiosk`** — `web-app` ya lo tiene (fase `'error'` del overlay de
