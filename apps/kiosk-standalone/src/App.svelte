@@ -148,8 +148,20 @@
       currentLensLevel,
     });
 
+    let warnedInvalidView = false;
+
     function updateStellariumView({ h, v }) {
       if (!engine || !engine.core || !engine.core.observer) return;
+      // A malformed payload used to write NaN into observer.yaw/pitch, which looks
+      // exactly like "no readings are arriving" — the view simply never moves.
+      // Warn once (this runs per frame) instead of corrupting engine state.
+      if (!Number.isFinite(h) || !Number.isFinite(v)) {
+        if (!warnedInvalidView) {
+          warnedInvalidView = true;
+          console.warn("[stellarium] updateView ignorado: se esperaba { h, v } numérico, llegó", { h, v });
+        }
+        return;
+      }
       engine.core.observer.yaw = -h;
       engine.core.observer.pitch = invertVerticalMotion ? -v : v;
       registerZoomMotion(h, v);
@@ -335,7 +347,11 @@
       getLogFov: () => logFov,
       onDebug: (partial) => setDebug(partial),
       onCoords: ({ yaw, pitch }) => setDebugCoords(yaw, pitch),
-      onView: ({ h, v }) => updateStellariumView({ h, v }),
+      // core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords
+      // right above. This app speaks { h, v } toward Stellarium, so the
+      // translation belongs here. Destructuring { h, v } off the callback yields
+      // undefined and the view never moves.
+      onView: ({ yaw, pitch }) => updateStellariumView({ h: yaw, v: pitch }),
       onCalibrationVisibility: (visible) => {
         if (overlayEl) overlayEl.style.display = visible ? "block" : "none";
       },
