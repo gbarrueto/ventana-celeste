@@ -23,6 +23,15 @@ function buildDataSources(smalldataBaseUrl, bigdataBaseUrl, { extended = true, i
     sources.push({ loader: 'planets', config: { url: `${smalldataBaseUrl}surveys/sso/${planet}/v1`, key: planet } });
   });
 
+  // ORDER IS SIGNIFICANT for the two `dss` entries below. Both gaia and the DSS
+  // colour survey are registered on the same `core.dss` module, and the module
+  // keeps the last source added — so gaia must come FIRST and `surveys/dss/v1`
+  // LAST, or gaia silently replaces DSS and no deep-sky imagery renders. This is
+  // the order the pre-monorepo web-app used; swapping it broke DSS.
+  if (includeGaia) {
+    sources.push({ loader: 'dss', config: { url: `${bigdataBaseUrl}surveys/gaia/v1`, key: 'gaia' } });
+  }
+
   if (extended) {
     sources.push(
       { loader: 'stars', config: { url: `${smalldataBaseUrl}swe-data-packs/extended/2020-03-11/extended_2020-03-11_26aa5ab8/stars`, key: 'extended' } },
@@ -34,10 +43,6 @@ function buildDataSources(smalldataBaseUrl, bigdataBaseUrl, { extended = true, i
       { loader: 'minor_planets', config: { url: `${smalldataBaseUrl}mpc/v1/mpcorb.dat`, key: 'mpc_asteroids' } },
       { loader: 'comets', config: { url: `${smalldataBaseUrl}mpc/v1/CometEls.txt?v=2019-12-17`, key: 'mpc_comets' } },
     );
-  }
-
-  if (includeGaia) {
-    sources.push({ loader: 'dss', config: { url: `${bigdataBaseUrl}surveys/gaia/v1`, key: 'gaia' } });
   }
 
   return sources;
