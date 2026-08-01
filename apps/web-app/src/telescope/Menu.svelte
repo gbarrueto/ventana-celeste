@@ -10,7 +10,11 @@
   let { onclose } = $props();
 
   let activeTab = $state(null); // 'location' | 'datetime' | null
-  let activeButtons = $state({ atmosphere: true, landscape: true });
+  // Derived from STEL_BUTTONS so the menu can't drift from the engine defaults
+  // the way a separate hardcoded list did.
+  let activeButtons = $state(
+    Object.fromEntries(Object.entries(STEL_BUTTONS).map(([name, info]) => [name, info.on])),
+  );
   let pollutionValue = $state(9);
   let autoPollutionEnabled = $state(false);
   let isAdvanced = $state(false);

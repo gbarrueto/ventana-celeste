@@ -30,13 +30,20 @@ export const POLLUTION_THROTTLE_MS = 100;
 export const LOCATION_SEND_MS = 50;
 
 // Stellarium option button config
+// `on` is the state the viewer's engine actually starts in, and it drives how
+// the telescope's menu paints each toggle before the user touches anything.
+// The telescope has no engine of its own to read, so this mirrors the engine's
+// defaults rather than observing them — if a default changes (or the viewer's
+// onReady starts overriding one), it has to be updated here too, or the button
+// will show the opposite of reality. That drift is exactly how `dss` ended up
+// painted off while the viewer was rendering it.
 export const STEL_BUTTONS = {
-  constellations: { label: 'Constelaciones', img: 'constellations', path: 'constellations', attr: 'lines_visible' },
-  atmosphere: { label: 'Atmosfera', img: 'atmosphere', path: 'atmosphere', attr: 'visible' },
-  landscape: { label: 'Terreno', img: 'landscape', path: 'landscapes', attr: 'visible' },
-  azimuthal: { label: 'Azimuthal', img: 'azimuthal', path: 'lines.azimuthal', attr: 'visible' },
-  equatorial: { label: 'Equatorial', img: 'equatorial', path: 'lines.equatorial', attr: 'visible' },
-  dss: { label: 'Nebulosa', img: 'nebulae', path: 'dss', attr: 'visible' },
+  constellations: { label: 'Constelaciones', img: 'constellations', path: 'constellations', attr: 'lines_visible', on: false },
+  atmosphere: { label: 'Atmosfera', img: 'atmosphere', path: 'atmosphere', attr: 'visible', on: true },
+  landscape: { label: 'Terreno', img: 'landscape', path: 'landscapes', attr: 'visible', on: true },
+  azimuthal: { label: 'Azimuthal', img: 'azimuthal', path: 'lines.azimuthal', attr: 'visible', on: false },
+  equatorial: { label: 'Equatorial', img: 'equatorial', path: 'lines.equatorial', attr: 'visible', on: false },
+  dss: { label: 'Nebulosa', img: 'nebulae', path: 'dss', attr: 'visible', on: true },
 };
 
 // ── Mutable shared state ───────────────────────────────────
