@@ -3,3 +3,7 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+# Run package scripts through pnpm's POSIX shell emulator so `VAR=x cmd`
+# prefixes work on Windows too (cmd.exe has no such syntax). kiosk's dev
+# script needs it; it is also how the app is launched on the device.
+shellEmulator: true
