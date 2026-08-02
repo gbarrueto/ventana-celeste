@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Sky Test — Orientation Lab</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #e8ecf5;
+                 font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+    #stel-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .panel { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 10;
+             background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
+             border-radius: 10px; padding: 9px 11px; }
+    .row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
+    .row span:last-child { font-variant-numeric: tabular-nums; }
+    .muted { color: rgba(232,236,245,.5); }
+    .bad { color: #ff6b6b; } .ok { color: #3ec46d; } .warn { color: #ffd166; }
+    button, select { background: rgba(255,255,255,.1); color: #e8ecf5;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
+      padding: 8px 12px; font: inherit; margin: 4px 4px 0 0; }
+    .crosshair { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px;
+      margin: -13px 0 0 -13px; z-index: 5; pointer-events: none;
+      border: 1px solid rgba(255,122,13,.85); border-radius: 50%; }
+    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,122,13,.85); }
+    .crosshair::before { left: 50%; top: -9px; width: 1px; height: 44px; margin-left: -.5px; }
+    .crosshair::after { top: 50%; left: -9px; height: 1px; width: 44px; margin-top: -.5px; }
+    #status { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 10;
+              background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
+              border-radius: 10px; padding: 9px 11px; }
+  </style>
+</head>
+<body>
+  <canvas id="stel-canvas"></canvas>
+  <div class="crosshair"></div>
+
+  <div class="panel">
+    <div>
+      compensación
+      <select id="axis"><option value="x">x</option><option value="y" selected>y</option><option value="z">z</option></select>
+      <select id="angle">
+        <option value="0">0° (crudo)</option>
+        <option value="-90" selected>−90°</option>
+        <option value="90">+90°</option>
+        <option value="180">180°</option>
+      </select>
+      <button id="apply">Aplicar</button>
+    </div>
+    <div class="row" style="margin-top:5px"><span class="muted">θ (gimbal)</span><span id="theta">—</span></div>
+    <div class="row"><span class="muted">yaw / pitch enviados</span><span id="yp">—</span></div>
+  </div>
+
+  <div id="status">iniciando…</div>
+
+<script type="module">
+import {
+  initializeStellariumEngine,
+  createOrientationController,
+  quaternionFromAxisAngle,
+} from '@ventanaceleste/core';
+
+const $ = (id) => document.getElementById(id);
+const DEG = 180 / Math.PI;
+const setStatus = (t, cls = '') => { const e = $('status'); e.textContent = t; e.className = cls; };
+
+if (!window.isSecureContext) {
+  setStatus('Contexto NO seguro: los sensores no van a entregar nada. Abre por https://', 'bad');
+}
+
+// θ sólo para mostrar: es el ángulo que la descomposición de core nunca calcula,
+// y el que delata si el montaje está sobre la singularidad.
+function middleAngle(q) {
+  const [x, y, z, w] = q;
+  return Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x)))) * DEG;
+}
+
+let engine = null;
+let controller = null;
+
+function currentMount() {
+  const deg = parseFloat($('angle').value);
+  return deg === 0 ? null : quaternionFromAxisAngle($('axis').value, deg);
+}
+
+function startController() {
+  controller?.stop();
+  controller = createOrientationController({
+    mountQuaternion: currentMount(),
+    // Este test se queda deliberadamente en modo 'relative' (el que usa el
+    // quaternion). Con un umbral enorme nunca entra al camino de integración del
+    // giroscopio, que necesita su propia corrección de ejes y todavía no la tiene.
+    fovThreshold: 1e9,
+    dynamicThreshold: 0,
+    readinessGate: 'immediate',
+    calibDuration: 1,
+    onView: ({ yaw, pitch }) => {
+      if (!engine?.core?.observer) return;
+      engine.core.observer.yaw = -yaw;
+      engine.core.observer.pitch = pitch;
+      $('yp').textContent = `${(yaw * DEG).toFixed(1)}° / ${(pitch * DEG).toFixed(1)}°`;
+    },
+    onError: (e) => setStatus('Sensor: ' + e.message, 'bad'),
+  });
+  controller.start();
+  setStatus(`Corriendo. Compensación: ${$('axis').value} ${$('angle').value}°`, 'ok');
+}
+
+$('apply').onclick = startController;
+
+// θ en vivo, leído directo del sensor (sin pasar por core) para que se vea
+// dónde está el montaje respecto de la singularidad.
+try {
+  const rel = new RelativeOrientationSensor({ frequency: 15 });
+  rel.addEventListener('reading', () => {
+    const t = middleAngle(rel.quaternion);
+    const el = $('theta');
+    el.textContent = t.toFixed(1) + '°';
+    el.className = Math.abs(t) > 80 ? 'bad' : Math.abs(t) > 65 ? 'warn' : 'ok';
+  });
+  rel.start();
+} catch { /* el panel de θ es opcional */ }
+
+setStatus('cargando motor…');
+initializeStellariumEngine({
+  canvas: $('stel-canvas'),
+  wasmFile: '/stellarium-web-engine.wasm',
+  scriptUrl: '/stellarium-web-engine.js',
+  smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
+  bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
+  extended: false, // catálogos mínimos: acá sólo importa que el cielo se mueva bien
+  location: { lat: -24.6272, lon: -70.4042, elev: 2635 },
+  time: { offsetHours: -3 },
+  strict: false,
+  onReady(stel) {
+    engine = stel;
+    stel.core.atmosphere.visible = false;
+    stel.core.landscapes.visible = false;
+    stel.core.cardinals.visible = true;
+    stel.core.constellations.lines_visible = true;
+    stel.core.fov = 1.2;
+  },
+})
+  .then(() => startController())
+  .catch((e) => setStatus('Motor: ' + e.message, 'bad'));
+</script>
+</body>
+</html>

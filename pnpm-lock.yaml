@@ -28,6 +28,10 @@ importers:
         version: 5.4.21
 
   apps/orientation-lab:
+    dependencies:
+      '@ventanaceleste/core':
+        specifier: workspace:*
+        version: link:../../packages/core
     devDependencies:
       '@vitejs/plugin-basic-ssl':
         specifier: ^1.2.0

@@ -34,6 +34,29 @@ function quaternionToEuler(q) {
   return { yaw, pitch };
 }
 
+// Hamilton product, [x, y, z, w] — same layout the sensor uses.
+function quaternionMultiply(a, b) {
+  const [x1, y1, z1, w1] = a;
+  const [x2, y2, z2, w2] = b;
+  return [
+    w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+    w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+    w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+    w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+  ];
+}
+
+// Builds a `mountQuaternion` readably: quaternionFromAxisAngle('y', -90).
+export function quaternionFromAxisAngle(axis, degrees) {
+  const half = (degrees * Math.PI) / 360;
+  const s = Math.sin(half);
+  const c = Math.cos(half);
+  if (axis === 'x') return [s, 0, 0, c];
+  if (axis === 'y') return [0, s, 0, c];
+  if (axis === 'z') return [0, 0, s, c];
+  throw new Error(`quaternionFromAxisAngle: eje inválido "${axis}"`);
+}
+
 export function createOrientationController({
   gyroFreq = 100,
   relFreq = 30,
@@ -53,6 +76,25 @@ export function createOrientationController({
   persistBiasKey = null,
 
   mountingTransform = (yaw, pitch) => ({ yaw, pitch }),
+
+  // Rotation applied to the raw sensor quaternion BEFORE it is decomposed into
+  // Euler angles. This is not the same knob as `mountingTransform`, and one
+  // cannot do the other's job: `mountingTransform` runs on the *result* of the
+  // decomposition, so it can offset or swap angles but cannot undo a degenerate
+  // decomposition.
+  //
+  // Why it exists: quaternionToEuler() below extracts two angles under a fixed
+  // convention whose middle angle is never computed, and that decomposition is
+  // singular when the middle angle reaches +-90 degrees. A phone rolled 90
+  // degrees about its Y axis lands exactly there — measured on device, the two
+  // angles then read 0 and 0 while the device is plainly rotated, and any motion
+  // is amplified by ~240x compared with the same samples decomposed off the
+  // singularity. Pre-rotating the quaternion moves the mount away from the
+  // singular attitude, which is the only place the problem can be fixed.
+  //
+  // Build it with quaternionFromAxisAngle(). null = no rotation, so apps that do
+  // not set it are bit-for-bit unaffected.
+  mountQuaternion = null,
 
   getLogFov = () => 0.05,
   onDebug = () => {},
@@ -328,7 +370,10 @@ export function createOrientationController({
 
   function onRelReading() {
     if (!state.relSensor) return;
-    state.relOrientLast = state.relSensor.quaternion;
+    const q = state.relSensor.quaternion;
+    // Applied here, at the one place the quaternion is stored, so every consumer
+    // downstream decomposes the corrected orientation.
+    state.relOrientLast = mountQuaternion ? quaternionMultiply(q, mountQuaternion) : q;
   }
 
   function runApplicationLogic(pitch, yaw, fov) {
