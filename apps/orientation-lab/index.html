@@ -88,11 +88,32 @@
     <div class="row"><span class="muted">muestras</span><span id="samples">0</span></div>
   </div>
 
-  <button id="reset">Reiniciar jitter</button>
-  <button id="hold">Congelar</button>
-  <div class="hint">
-    Procedimiento: dejá el teléfono <b>quieto</b> en cada orientación de montaje y mirá el jitter.
-    Con el aparato inmóvil, cualquier jitter es error de medición o de descomposición.
+  <div class="card">
+    <h2>Procedimiento — 3 mediciones</h2>
+    <ol style="margin:0 0 8px; padding-left:18px">
+      <li><b>Plano.</b> Teléfono apoyado en la mesa, pantalla arriba, sin tocarlo.
+          Espera ~3 s quieto y pulsa <b>Capturar 1</b>. Es la línea base.</li>
+      <li><b>Montaje.</b> Colócalo como iría el teléfono del ocular (girado 90° sobre su
+          eje, de costado). Sin tocarlo, espera ~3 s y pulsa <b>Capturar 2</b>.</li>
+      <li><b>Compensado.</b> Solo si en el paso 2 el jitter subió: sin mover el teléfono,
+          prueba combinaciones de eje/ángulo arriba hasta que el jitter compensado baje a
+          valores como los del paso 1. Pulsa <b>Capturar 3</b>.</li>
+    </ol>
+    <div>
+      <button data-cap="1 plano">Capturar 1</button>
+      <button data-cap="2 montaje">Capturar 2</button>
+      <button data-cap="3 compensado">Capturar 3</button>
+    </div>
+    <div>
+      <button id="copy">Copiar reporte</button>
+      <button id="reset">Reiniciar jitter</button>
+      <button id="hold">Congelar</button>
+    </div>
+    <pre id="report" style="white-space:pre-wrap; font-size:11px; margin:8px 0 0; color:rgba(232,236,245,.75)"></pre>
+    <div class="hint">
+      Con el teléfono inmóvil, cualquier jitter es error de medición o de descomposición.
+      Copia el reporte y pégalo en el chat: con esos números alcanza para decidir.
+    </div>
   </div>
 
 <script type="module">
@@ -103,7 +124,7 @@ const WIN = 60; // muestras para el RMS
 function fatal(msg) { const el = $('fatal'); el.hidden = false; el.textContent = msg; }
 
 if (!window.isSecureContext) {
-  fatal('Contexto NO seguro. Los sensores no van a entregar nada. Abrí esta página por https:// o por localhost.');
+  fatal('Contexto NO seguro. Los sensores no van a entregar nada. Abre esta página por https:// o por localhost.');
 }
 
 // --- la descomposición EXACTA que usa packages/core/src/orientation/controller.js ---
@@ -202,6 +223,44 @@ function render() {
   }
   $('samples').textContent = n;
 }
+
+const NL = String.fromCharCode(10);
+const captures = [];
+function currentReading() {
+  if (!quat) return null;
+  const theta = middleAngle(quat) * DEG;
+  const comp = qmul(quat, axisAngleQuat($('axis').value, parseFloat($('angle').value)));
+  return {
+    theta, thetaComp: middleAngle(comp) * DEG,
+    axis: $('axis').value, angle: $('angle').value,
+    jRaw: [jYawRaw.rms(), jPitchRaw.rms()],
+    jComp: [jYawC.rms(), jPitchC.rms()],
+  };
+}
+function renderReport() {
+  $('report').textContent = captures.length
+    ? captures.map((c) =>
+        `[${c.label}] theta=${c.theta.toFixed(1)}deg  jitter_crudo(yaw/pitch)=` +
+        `${fmt(c.jRaw[0],3)}/${fmt(c.jRaw[1],3)}  ` +
+        `comp(${c.axis},${c.angle}deg) theta=${c.thetaComp.toFixed(1)} ` +
+        `jitter=${fmt(c.jComp[0],3)}/${fmt(c.jComp[1],3)}`).join(NL)
+    : '';
+}
+document.querySelectorAll('[data-cap]').forEach((btn) => {
+  btn.onclick = () => {
+    const r = currentReading();
+    if (!r) return;
+    captures.push({ label: btn.dataset.cap, ...r });
+    renderReport();
+  };
+});
+$('copy').onclick = async () => {
+  const txt = $('report').textContent;
+  if (!txt) return;
+  try { await navigator.clipboard.writeText(txt); $('copy').textContent = 'Copiado'; }
+  catch { $('copy').textContent = 'Selecciona y copia a mano'; }
+  setTimeout(() => { $('copy').textContent = 'Copiar reporte'; }, 1500);
+};
 
 $('reset').onclick = () => { [jYawRaw, jPitchRaw, jYawC, jPitchC].forEach((j) => j.reset()); n = 0; };
 $('hold').onclick = (e) => { frozen = !frozen; e.target.textContent = frozen ? 'Reanudar' : 'Congelar'; };
