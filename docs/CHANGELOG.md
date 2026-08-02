@@ -43,8 +43,9 @@ misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver
 
 1. **Atender la lista de detalles/bugs de `web-app`** que está en recolección durante el uso.
    Sigue siendo la prioridad antes de pasar a las otras apps.
-2. **Verificar `kiosk` contra hardware** (Arduino-como-teclado, dispositivo instalado). El
-   refactor a `core` no se probó nunca ahí. Le corresponde también su propio `DEVELOPMENT.md`.
+2. **Verificar `kiosk` contra hardware real** — el Arduino y el dispositivo instalado. En
+   navegador ya funciona (orientación, y zoom continuo simulado por teclado, ver sección 7), pero
+   nunca se probó con las placas. Le corresponde también su propio `DEVELOPMENT.md`.
 3. **Arrancar `dual-telescope`** — plan de construcción, inventario de qué se re-cablea y lista
    de decisiones abiertas en [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md). Los cuatro
    bloqueantes (dirección de la orientación, contexto seguro/HTTPS, viabilidad de Web Serial en
@@ -190,7 +191,7 @@ teléfono no daba ninguna señal.
 **No hay evento de desconexión en Protobject.** `Protobject.Core` expone solo `onConnected` y
 `onReceived` — verificado contra el `p.js` que se sirve hoy (`'onClosed'` y `'onDisconnected'` no
 existen como métodos). Así que la liveness se infiere con un **heartbeat** de 1 Hz por lado
-(`src/lib/connection.js`), declarando al peer perdido tras 3 s de silencio. Un timeout además
+(`src/lib/connection.js`), declarando al peer perdido tras 3 s de silencio (bajado luego a 2,5 s, ver sección 6). Un timeout además
 cubre casos que un evento de cierre no cubriría: red caída, página congelada, pestaña en segundo
 plano. Se mantiene a 1 Hz con payload vacío porque comparte data channel con la orientación a
 ~50 Hz, y ya se vio que saturar ese canal se siente como lag.
@@ -216,6 +217,62 @@ empata en especificidad con `.qr-overlay` y pierde por orden de declaración.
 **Idioma:** los textos de UI agregados estaban en español rioplatense, inconsistente con la copia
 que ya existía en la app (que usa formas de *tú*). Normalizados a español neutro, junto con la
 documentación escrita en estas sesiones.
+
+## 6. Fixes en `web-app` y `core` (2026-07-30 → 2026-08-01)
+
+**Detección de desconexión más rápida, sin tráfico extra.** Tardaba 2,0–3,5 s. Nada de eso venía
+de Protobject —que no expone señal de desconexión alguna— sino de constantes propias: timeout de
+3000 ms, chequeo cada 500 ms, y el último heartbeat podía tener ya 1000 ms cuando el teléfono
+moría. Ahora el visor cuenta también cada `updateView` como señal de vida (la orientación ya llega
+a ~50 Hz, era una señal 50× más densa que se estaba ignorando), timeout a 2500 ms y chequeo a
+250 ms. Detección ~1,5 s. **El piso lo pone la calibración**: durante ella `core` no emite ningún
+`updateView`, así que el heartbeat sigue siendo necesario y el timeout no puede bajar a ~1 s sin
+falsos positivos.
+
+**Los deep sky surveys no cargaban.** No era el servidor —los tres endpoints responden 200— ni el
+manifiesto. Gaia y el survey DSS se registran **los dos sobre `core.dss`**, y la extracción a
+`core` movió gaia a su propio bloque `includeGaia`, que corre *después* del bloque `extended`.
+Eso invirtió el orden respecto del web-app pre-monorepo, y como el módulo se queda con la última
+fuente agregada, gaia estaba reemplazando al survey DSS. Restaurado el orden original (gaia
+primero, DSS último) y marcado en el código como significativo, porque nada en dos `push`
+adyacentes sugiere que el orden importe.
+
+**El botón "Nebulosa" pintaba apagado con DSS encendido.** `Menu.svelte` arrancaba de un objeto
+hardcodeado que solo listaba `atmosphere` y `landscape`, así que el resto quedaba en falsy. Peor
+que cosmético: el botón invertía: tocarlo *apagaba* una capa que la UI decía apagada. El estado
+inicial pasó a vivir en `STEL_BUTTONS` (campo `on`), junto al `path` y `attr` que cada uno maneja.
+
+## 7. `kiosk-standalone`: primera sesión de trabajo (2026-08-01)
+
+**El script `dev` no corría en Windows.** Usa un prefijo POSIX (`NODE_OPTIONS=... vite`) que
+cmd.exe no entiende, así que intentaba ejecutar `NODE_OPTIONS` como comando. Solo afectaba a
+`kiosk`; los scripts de `web-app` no llevan prefijo. Resuelto con `shellEmulator: true` — **en
+`pnpm-workspace.yaml`, no en `.npmrc`**: pnpm 10+ movió sus propios settings ahí, y ponerlo en
+`.npmrc` se ignora en silencio. Sin dependencia nueva y sin tocar el script, que sigue igual en
+Termux.
+
+**HTTPS por modo.** `@vitejs/plugin-basic-ssl` estaba en devDependencies pero nunca se había
+cableado, así que `kiosk` solo servía HTTP. Ahora se activa en todos los modos **menos
+`production`**: desarrollo significa servir desde una PC y abrir en el teléfono por LAN, donde
+HTTP plano no es contexto seguro y los sensores no devuelven nada; producción significa el
+dispositivo sirviéndose a sí mismo en `http://localhost`, que el navegador ya trata como seguro,
+así que ahí un certificado autofirmado solo agregaría la advertencia molesta.
+
+**La misma regresión de `onView` que tuvo `web-app`.** `onView: ({ h, v }) => ...` contra un
+`core` que emite `{ yaw, pitch }` → `undefined` → NaN en `observer.yaw/pitch` → las lecturas
+llegaban y el cielo no se movía. La línea de arriba (`onCoords: ({ yaw, pitch })`) es lo que
+delata que era un desliz y no una convención — y explica el síntoma exacto: el panel de debug
+mostraba coordenadas porque `onCoords` estaba bien. Corregido, con la misma guarda de valores no
+finitos. **Auditados el resto de callbacks** (`onDebug`, `onCalibrationVisibility`, `onError`,
+`getLogFov`): `onView` era el único mal cableado.
+
+**Verificada la entrada de control externo.** El Arduino es un teclado USB-HID: `core`
+`createKeyboardConnector` escucha `keydown` en `window` y mapea `e.key`. No hay ruta separada
+para el hardware, así que **se puede probar sin Arduino**, con el teclado o despachando
+`KeyboardEvent`s. El zoom continuo son `+`/`=`/`-`: cada pulsación mueve `targetLogFov` ±0,1 en
+espacio logarítmico y un loop de `requestAnimationFrame` interpola con suavizado 0,12; el conector
+no filtra `e.repeat`, así que mantener la tecla da zoom continuo. Los `1..8` son cambio discreto
+de ocular, fuera del alcance del prototipo.
 
 ## Pendientes
 

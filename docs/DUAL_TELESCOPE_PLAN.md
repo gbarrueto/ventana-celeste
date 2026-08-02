@@ -72,7 +72,7 @@ consecuencia.
 **4.2 · ¿El Secundario necesita sensores? → ¿la app necesita HTTPS?**
 Si el dispositivo que lee el cielo es el que **recibe la página desde el otro teléfono**, entonces
 esa página necesita ser **contexto seguro** o los sensores no entregan nada (mismo fallo silencioso
-que ya nos costó tiempo en `web-app` y en `kiosk`). Y `http://localhost` no salva acá: solo aplica
+que ya nos costó tiempo en `web-app` y en `kiosk`). Y `http://localhost` no salva aquí: solo aplica
 al teléfono que se sirve a sí mismo, no al remoto, que entra por IP de LAN.
 
 Consecuencias si la respuesta es "sí":

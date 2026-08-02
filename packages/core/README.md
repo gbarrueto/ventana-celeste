@@ -95,11 +95,15 @@ Parámetros clave:
   manifiesto de catálogos (estrellas, planetas, DSOs, vía láctea, cometas, asteroides) — idéntico
   entre apps, parametrizado por `extended` (catálogos completos vs. mínimos) e `includeGaia`
   (independiente de `extended`, porque kiosk excluye Gaia específicamente por tamaño de datos).
+  **El orden de las dos fuentes `dss` es significativo:** gaia y el survey DSS se registran los
+  dos sobre el mismo módulo `core.dss`, que se queda con la última agregada. Gaia va primero y
+  `surveys/dss/v1` último; invertirlo hace que gaia reemplace al DSS y no se renderice imagen de
+  cielo profundo. Ya pasó una vez al extraer el manifiesto.
 - `initializeStellariumEngine({canvas, wasmFile, smalldataBaseUrl, bigdataBaseUrl, extended,
   includeGaia, location, time, strict, onReady, onError})`: hace todo lo anterior + inicializa
   `StelWebEngine`. `strict` (default `true`) decide si un catálogo que falla en cargar aborta el init
   (kiosk) o solo se loggea y se sigue (web-app, `strict:false`). Los **flags visuales post-carga**
-  (qué hints se muestran, exposure, etc.) **no** viven acá — cada app los aplica en su propio
+  (qué hints se muestran, exposure, etc.) **no** viven aquí — cada app los aplica en su propio
   `onReady`, porque son política de UI, no del motor.
 - `removeStellariumEngine(engine, canvasId)`: teardown de contexto WebGL + reemplazo de canvas.
 
@@ -119,7 +123,7 @@ lo único que hace falta — el shape del mensaje y el dispatch no cambian.
 
 > **Nota de alcance**: `web-app` migró su punto central de dispatch (`protobject.js`) a este bus,
 > pero todavía tiene ~15 llamadas directas a `Protobject.Core.send(...)` sueltas en componentes de
-> UI que no pasan por acá. Ver [`../../docs/CHANGELOG.md`](../../docs/CHANGELOG.md).
+> UI que no pasan por aquí. Ver [`../../docs/CHANGELOG.md`](../../docs/CHANGELOG.md).
 
 ### `io/` — contratos de conectores de hardware
 
@@ -143,7 +147,7 @@ Hoy solo `kiosk` lo usa (tenía 3 modos: `development`/`dev-device`/`production`
 adoptó este patrón porque no tiene todavía una distinción real entre sus entornos para justificarlo
 (ver [`CHANGELOG.md`](../../docs/CHANGELOG.md)).
 
-## Lo que deliberadamente no está acá
+## Lo que deliberadamente no está aquí
 
 - **UI / DOM**: overlays de calibración, paneles de debug, componentes Svelte — viven en cada app.
 - **Transporte concreto**: qué WebRTC/WebSocket real se usa, cómo se negocia la conexión.

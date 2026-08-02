@@ -112,9 +112,14 @@ src/
                           Debug overlay hidden by default (toggle via long-press on finder)
     connection.js       → Peer liveness via heartbeat (createPeerMonitor).
                           Protobject has NO disconnect event, so each side sends a
-                          1 Hz heartbeat and declares the peer lost after 3 s of
+                          1 Hz heartbeat and declares the peer lost after 2.5 s of
                           silence. Kept at 1 Hz because this shares the data
                           channel with the ~50 Hz orientation stream.
+                          The viewer ALSO marks the peer seen on every updateView —
+                          free, denser liveness, so a drop shows in ~1.5 s. The
+                          heartbeat is still the floor: during calibration core
+                          sends no updateView for several seconds, which is why the
+                          timeout cannot drop to ~1 s.
     debug-log.js        → On-screen console for the phone (console.* + uncaught errors +
                           unhandled rejections). Active in dev builds, or with ?debug=1.
                           Needed because Protobject only forwards the phone's console to
@@ -254,6 +259,11 @@ Constants:
   DIAMETER = 100, TELESCOPE_TYPE = 2 (refractor)
   Throttle rates: FOV_SEND_MS=50, ZOOM_THROTTLE_MS=100, etc.
   STEL_BUTTONS = { constellations, atmosphere, landscape, azimuthal, equatorial, dss }
+    Each entry: { label, img, path, attr, on }. `on` is the engine's own default
+    for that property, and it is what paints the telescope menu before the user
+    touches anything (Menu.svelte derives its state from here). The telescope has
+    no engine to read in simple mode, so this MIRRORS the engine defaults — if one
+    changes, update it here or the button will show the opposite of reality.
 
 Mutable state (module vars with get/set exports):
   engine, bortle, eyepieceFl(25), sqmReading(20), citySqmReading(20),

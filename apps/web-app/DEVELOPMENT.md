@@ -176,7 +176,7 @@ Auditado sobre un build real (`pnpm --filter @ventanaceleste/web-app build`):
   funciona como herramienta de diagnóstico en campo — pero es una decisión, no un descuido:
   si no se quiere ahí, hay que gatearlo explícitamente.
 - **Los `console.*` siguen en el bundle** (~11 en el de telescope, ~5 en el del visor). Importa
-  más de lo habitual acá: Protobject reenvía la consola del teléfono al visor **por el mismo data
+  más de lo habitual aquí: Protobject reenvía la consola del teléfono al visor **por el mismo data
   channel que la orientación**. Hoy son solo transiciones —el flood por lectura ya se corrigió—
   pero cualquier log nuevo que se agregue en un camino caliente se paga en ese canal, en
   producción. Vite no los elimina solo.

@@ -112,7 +112,7 @@ pero selecciona la config correcta. Verificar en ese momento si además cambia
 
 Relacionado: en ese despliegue `import.meta.env.DEV` es `true`, así que cualquier herramienta de
 debug gateada por `DEV` quedaría encendida en campo. Hoy solo la usa `debug-log.js` de `web-app`,
-así que a `kiosk` no le afecta — pero conviene saberlo antes de agregar uno acá.
+así que a `kiosk` no le afecta — pero conviene saberlo antes de agregar uno aquí.
 
 ## Dependencias externas en runtime
 - Endpoint base de datos astronomicos:
@@ -122,10 +122,20 @@ así que a `kiosk` no le afecta — pero conviene saberlo antes de agregar uno a
 
 ## Controles de usuario (teclado)
 Via `createKeyboardConnector` de core (el Arduino emula un teclado USB-HID).
+
+**No hay una ruta separada para el hardware**: el conector escucha `keydown` en `window` y mapea
+`e.key`, así que la app no distingue un Arduino de un teclado. Se puede probar sin las placas,
+con el teclado o despachando `KeyboardEvent`s desde la consola.
+
 - c: recalibrar sensores
-- 1..8: seleccionar nivel de lente
+- 1..8: seleccionar nivel de lente (cambio discreto de ocular; fuera del alcance del prototipo)
 - + / =: zoom in
 - -: zoom out
+
+El zoom es **continuo**: cada pulsación mueve `targetLogFov` ±0,1 en espacio logarítmico y un loop
+de `requestAnimationFrame` interpola hacia él con suavizado 0,12. El conector no filtra
+`e.repeat`, así que mantener la tecla apretada deja que el auto-repeat del sistema lo mueva de
+forma continua. `=` está mapeado además de `+` para no depender de Shift.
 
 ## Riesgos y observaciones tecnicas
 - El inicio depende de APIs de sensores no disponibles en todos los navegadores/dispositivos.
