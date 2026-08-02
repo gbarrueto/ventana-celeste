@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Orientation Lab — VentanaCeleste</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 12px 12px 40px;
+      background: #06080f; color: #e8ecf5;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 13px; line-height: 1.45;
+    }
+    h1 { font-size: 15px; margin: 0 0 10px; letter-spacing: .04em; color: #ff7a0d; }
+    .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+    .card h2 { font-size: 12px; margin: 0 0 8px; color: rgba(232,236,245,.55);
+               text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+    .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+    .row span:last-child { font-variant-numeric: tabular-nums; }
+    .big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ok { color: #3ec46d; } .warn { color: #ffd166; } .bad { color: #ff6b6b; }
+    .muted { color: rgba(232,236,245,.5); }
+    button, select {
+      background: rgba(255,255,255,.09); color: #e8ecf5; border: 1px solid rgba(255,255,255,.15);
+      border-radius: 8px; padding: 9px 14px; font: inherit; margin: 3px 3px 0 0;
+    }
+    button:active { background: rgba(255,255,255,.2); }
+    .banner { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-weight: 700; }
+    .banner.bad { background: rgba(255,107,107,.15); border: 1px solid #ff6b6b; }
+    .banner.warn { background: rgba(255,209,102,.13); border: 1px solid #ffd166; color: #ffd166; }
+    .hint { font-size: 11px; color: rgba(232,236,245,.45); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>ORIENTATION LAB</h1>
+  <div id="fatal" class="banner bad" hidden></div>
+
+  <div class="card">
+    <h2>Ángulo medio θ — indicador de gimbal lock</h2>
+    <div class="big" id="theta">—</div>
+    <div id="thetaState" class="muted">esperando sensor…</div>
+    <div class="hint">
+      `core` extrae solo dos ángulos del quaternion y nunca calcula este. La descomposición
+      se vuelve degenerada cuando |θ| → 90°: los otros dos dejan de ser independientes.
+      Si el ruido dispara acá, el problema es la matemática, no el sensor.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Descomposición de core (tal cual, sin compensar)</h2>
+    <div class="row"><span>yaw ψ</span><span id="yawRaw">—</span></div>
+    <div class="row"><span>"pitch" φ <span class="muted">(roll por convención ZYX)</span></span><span id="pitchRaw">—</span></div>
+    <div class="row"><span class="muted">jitter yaw (RMS/muestra)</span><span id="jYawRaw">—</span></div>
+    <div class="row"><span class="muted">jitter pitch (RMS/muestra)</span><span id="jPitchRaw">—</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Con compensación aplicada ANTES de descomponer</h2>
+    <div>
+      eje
+      <select id="axis"><option value="x">x</option><option value="y" selected>y</option><option value="z">z</option></select>
+      ángulo
+      <select id="angle">
+        <option value="0" selected>0°</option><option value="90">+90°</option>
+        <option value="-90">−90°</option><option value="180">180°</option>
+      </select>
+    </div>
+    <div class="row" style="margin-top:6px"><span>yaw ψ</span><span id="yawC">—</span></div>
+    <div class="row"><span>"pitch" φ</span><span id="pitchC">—</span></div>
+    <div class="row"><span>θ compensado</span><span id="thetaC">—</span></div>
+    <div class="row"><span class="muted">jitter yaw</span><span id="jYawC">—</span></div>
+    <div class="row"><span class="muted">jitter pitch</span><span id="jPitchC">—</span></div>
+    <div class="hint">
+      Si con el teléfono quieto el jitter compensado baja mucho respecto del crudo, el sensor
+      está bien y lo que falla es descomponer en esa orientación. Esa combinación eje/ángulo es
+      la que habría que aplicar al quaternion (no a yaw/pitch después).
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Crudo</h2>
+    <div class="row"><span>quaternion x,y,z,w</span><span id="quat">—</span></div>
+    <div class="row"><span>gyro x,y,z (rad/s)</span><span id="gyro">—</span></div>
+    <div class="row"><span>|ω|</span><span id="gyroMag">—</span></div>
+    <div class="row"><span class="muted">muestras</span><span id="samples">0</span></div>
+  </div>
+
+  <button id="reset">Reiniciar jitter</button>
+  <button id="hold">Congelar</button>
+  <div class="hint">
+    Procedimiento: dejá el teléfono <b>quieto</b> en cada orientación de montaje y mirá el jitter.
+    Con el aparato inmóvil, cualquier jitter es error de medición o de descomposición.
+  </div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const DEG = 180 / Math.PI;
+const WIN = 60; // muestras para el RMS
+
+function fatal(msg) { const el = $('fatal'); el.hidden = false; el.textContent = msg; }
+
+if (!window.isSecureContext) {
+  fatal('Contexto NO seguro. Los sensores no van a entregar nada. Abrí esta página por https:// o por localhost.');
+}
+
+// --- la descomposición EXACTA que usa packages/core/src/orientation/controller.js ---
+function coreEuler(q) {
+  const x = q[0], y = q[1], z = q[2], w = q[3];
+  const pitch = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)); // φ
+  const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));   // ψ
+  return { yaw, pitch };
+}
+// el ángulo que core nunca calcula: donde vive la singularidad
+function middleAngle(q) {
+  const x = q[0], y = q[1], z = q[2], w = q[3];
+  return Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x))));
+}
+
+// q ⊗ r  (rotación fija en el marco del propio dispositivo = offset de montaje)
+function qmul(a, b) {
+  const [x1, y1, z1, w1] = a, [x2, y2, z2, w2] = b;
+  return [
+    w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+    w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+    w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+    w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+  ];
+}
+function axisAngleQuat(axis, deg) {
+  const h = (deg / DEG) / 2, s = Math.sin(h), c = Math.cos(h);
+  return axis === 'x' ? [s, 0, 0, c] : axis === 'y' ? [0, s, 0, c] : [0, 0, s, c];
+}
+
+// jitter wrap-safe: RMS de la diferencia entre muestras consecutivas
+function makeJitter() {
+  let prev = null; const buf = [];
+  return {
+    push(deg) {
+      if (prev !== null) {
+        let d = deg - prev;
+        while (d > 180) d -= 360; while (d < -180) d += 360;
+        buf.push(d); if (buf.length > WIN) buf.shift();
+      }
+      prev = deg;
+    },
+    rms() {
+      if (!buf.length) return null;
+      return Math.sqrt(buf.reduce((a, d) => a + d * d, 0) / buf.length);
+    },
+    reset() { prev = null; buf.length = 0; },
+  };
+}
+const jYawRaw = makeJitter(), jPitchRaw = makeJitter(), jYawC = makeJitter(), jPitchC = makeJitter();
+
+let quat = null, gyro = null, n = 0, frozen = false;
+
+function fmt(v, d = 2) { return v === null || v === undefined ? '—' : v.toFixed(d); }
+function jitterClass(v) { return v === null ? '' : v < 0.05 ? 'ok' : v < 0.3 ? 'warn' : 'bad'; }
+
+function render() {
+  if (frozen || !quat) return;
+  n++;
+
+  const theta = middleAngle(quat) * DEG;
+  const raw = coreEuler(quat);
+  const rawYaw = raw.yaw * DEG, rawPitch = raw.pitch * DEG;
+
+  const comp = qmul(quat, axisAngleQuat($('axis').value, parseFloat($('angle').value)));
+  const c = coreEuler(comp);
+  const cYaw = c.yaw * DEG, cPitch = c.pitch * DEG, cTheta = middleAngle(comp) * DEG;
+
+  jYawRaw.push(rawYaw); jPitchRaw.push(rawPitch);
+  jYawC.push(cYaw); jPitchC.push(cPitch);
+
+  const absT = Math.abs(theta);
+  const tEl = $('theta');
+  tEl.textContent = fmt(theta, 1) + '°';
+  tEl.className = 'big ' + (absT > 80 ? 'bad' : absT > 65 ? 'warn' : 'ok');
+  $('thetaState').textContent = absT > 80
+    ? 'ZONA SINGULAR — yaw y pitch no son confiables acá'
+    : absT > 65 ? 'acercándose a la zona singular' : 'lejos de la singularidad';
+
+  $('yawRaw').textContent = fmt(rawYaw, 2) + '°';
+  $('pitchRaw').textContent = fmt(rawPitch, 2) + '°';
+  $('yawC').textContent = fmt(cYaw, 2) + '°';
+  $('pitchC').textContent = fmt(cPitch, 2) + '°';
+  $('thetaC').textContent = fmt(cTheta, 1) + '°';
+
+  for (const [id, j] of [['jYawRaw', jYawRaw], ['jPitchRaw', jPitchRaw], ['jYawC', jYawC], ['jPitchC', jPitchC]]) {
+    const v = j.rms(); const el = $(id);
+    el.textContent = v === null ? '—' : fmt(v, 3) + '°';
+    el.className = jitterClass(v);
+  }
+
+  $('quat').textContent = quat.map((v) => v.toFixed(3)).join(', ');
+  if (gyro) {
+    $('gyro').textContent = gyro.map((v) => v.toFixed(3)).join(', ');
+    $('gyroMag').textContent = fmt(Math.hypot(...gyro), 3);
+  }
+  $('samples').textContent = n;
+}
+
+$('reset').onclick = () => { [jYawRaw, jPitchRaw, jYawC, jPitchC].forEach((j) => j.reset()); n = 0; };
+$('hold').onclick = (e) => { frozen = !frozen; e.target.textContent = frozen ? 'Reanudar' : 'Congelar'; };
+
+try {
+  if (!('RelativeOrientationSensor' in window) || !('Gyroscope' in window)) {
+    fatal('Este navegador no expone RelativeOrientationSensor / Gyroscope (Generic Sensor API). En iOS no existen.');
+  } else {
+    const rel = new RelativeOrientationSensor({ frequency: 30 });
+    rel.addEventListener('reading', () => { quat = rel.quaternion; render(); });
+    rel.addEventListener('error', (e) => fatal('RelativeOrientationSensor: ' + (e.error?.message || e.error?.name || 'error')));
+    rel.start();
+
+    const g = new Gyroscope({ frequency: 30 });
+    g.addEventListener('reading', () => { gyro = [g.x, g.y, g.z]; });
+    g.addEventListener('error', (e) => fatal('Gyroscope: ' + (e.error?.message || e.error?.name || 'error')));
+    g.start();
+  }
+} catch (err) {
+  fatal('No se pudieron iniciar los sensores: ' + err.message);
+}
+</script>
+</body>
+</html>
