@@ -13,146 +13,141 @@ Piezas disponibles: [`../packages/core/README.md`](../packages/core/README.md).
 
 ---
 
-## 1. Qué se re-cablea (inventario honesto)
+## 1. Qué se re-cablea
 
 | Pieza de `core` | Rol en `dual-telescope` | Estado |
 |---|---|---|
 | `time/` | Reloj de simulación, sincronizado desde el Principal | **Tal cual** |
 | `telescope/` | Óptica: focal, magnificación, FOV desde ocular, NELM/Bortle | **Tal cual** |
-| `engine/` | Bootstrap de Stellarium en **ambos** teléfonos | **Tal cual** (con `strict` y paths locales) |
-| `config/` | Modos por entorno | **Tal cual** (ojo el trap de MODE, §4.6) |
-| `orientation/` | Lectura de sensores en el dispositivo que sea la fuente | **Tal cual salvo roll** (§4.4) |
-| `sync/messageBus` | Mismo contrato `{msg, values}` | **Tal cual**; falta el adapter |
-| `sync/` transport | Transporte WebSocket | **Falta** — es la pieza nueva principal |
-| `io/createKeyboardConnector` | Entrada por HID si se sigue esa vía | **Tal cual** |
-| `io/createSerialConnector` | RFID + potenciómetro | **Stub** — y quizá inviable (§4.3) |
-
-Lo que **no** existe todavía y hay que decidir si se crea: `packages/shared-viewer` (§4.11).
+| `engine/` | Bootstrap de Stellarium en **ambos** teléfonos | **Tal cual** — el Guía usa `extended: false` |
+| `config/` | Modos por entorno | **Tal cual** (ojo el trap de MODE, §5.2) |
+| `orientation/` | Lectura de sensores en el dispositivo que resulte fuente | **Tal cual** salvo roll (§5.1) |
+| `sync/messageBus` | Mismo contrato `{msg, values}`, payload JSON | **Tal cual** |
+| `io/createKeyboardConnector` | RFID → pulsación de tecla, igual que `kiosk` | **Tal cual** |
+| `sync/` transport | Transporte WebSocket | **Falta** — la pieza nueva principal |
+| `io/createSerialConnector` | — | **Archivar** (§4.3) |
 
 ## 2. Qué es genuinamente nuevo
 
 1. **`createWebSocketTransport()`** en `core/sync/` — implementa el mismo contrato de tres
-   métodos que `createProtobjectTransport`. Es literalmente lo único que el `messageBus`
-   necesita para cambiar de transporte.
-2. **Un servidor** en el Principal que sirva los estáticos y hable WS (§4.6).
-3. **Dos roles/entradas** en la app: Ocular (Principal) y Guía (Secundario) (§4.5).
-4. **Integración de hardware real** (RFID + potenciómetro), condicionada a §4.3.
-5. **Empaquetado offline** de los catálogos, hoy pendiente para `kiosk` también.
+   métodos que `createProtobjectTransport`. Es lo único que el `messageBus` necesita para cambiar
+   de transporte.
+2. **Un servidor** en el Principal que sirva los estáticos y hable WS (§5.2).
+3. **Dos entradas** en la app: Ocular y Guía (§4.5).
+4. **Empaquetado offline** de los catálogos — pendiente también para `kiosk`.
+
+Nótese lo que **no** está en esta lista: no hay que implementar Web Serial (§4.3), ni un
+heartbeat (§4.9), ni catálogos completos en el Guía (§4.10). Tres cosas que el plan original daba
+por nuevas y resultaron ser re-cableado.
 
 ## 3. Pasos propuestos
 
-Cada paso deja el repo buildeable y algo verificable a mano, igual que la extracción de `core`.
+Cada paso deja el repo buildeable y algo verificable a mano.
 
-0. **Resolver los bloqueantes de §4.1–4.4.** No es papeleo: cambian qué se cablea.
+0. **Experimento de sensores con roll de 90°** (§5.1). Es lo único que bloquea el diseño.
 1. **Scaffold** `apps/dual-telescope`: Vite + Svelte, dos entradas, `@ventanaceleste/core` como
-   dependencia de workspace. Sin lógica. Verifica que el andamiaje compila.
+   dependencia de workspace. Sin lógica.
 2. **Transporte**: `createWebSocketTransport` + servidor mínimo. Criterio de éxito: un `{msg,
    values}` de ida y vuelta entre dos navegadores, usando el `messageBus` sin tocarlo.
-3. **Rol Ocular**: engine + óptica + (según §4.1) sensores, y emisión de orientación.
-4. **Rol Guía**: engine + recepción + FOV fijo amplio + interpolación en el receptor.
+3. **Rol con sensores**: engine + óptica + orientación + emisión.
+4. **Rol receptor**: engine + recepción + FOV fijo amplio + interpolación en el receptor.
 5. **Medir latencia y fluidez en la topología real** (teléfono como AP), *antes* de sumar
-   hardware. Es el riesgo #1 ya documentado en `Architecture.md`, y es el que puede obligar a
-   rediseñar el canal.
-6. **Hardware** según lo que resuelva §4.3.
-7. **Offline**: catálogos locales + modo producción real.
-8. **Recién ahí**, evaluar si `shared-viewer` tiene sentido (§4.11).
+   hardware (§5.3). Es el riesgo ya documentado en `Architecture.md`.
+6. **Hardware**: cablear `createKeyboardConnector` a las teclas del lector RFID.
+7. **Offline**: catálogos locales + arranque en el dispositivo (§5.2).
+8. **Recién ahí**, evaluar si `shared-viewer` tiene sentido.
 
-## 4. Lo que hay que clarificar antes de cablear
+## 4. Decisiones tomadas
 
-### Bloqueantes
+**4.2 · El Secundario no lleva sensores.** Recibe el movimiento del otro dispositivo. Esto
+**elimina el requisito de HTTPS** que el plan original anticipaba — con una condición importante,
+en §5.1.
 
-**4.1 · ¿Qué dispositivo lee el cielo?**
-`Architecture.md` §2 dice que la orientación va del Principal al Secundario. En la conversación
-de diseño surgió lo contrario: el Guía apunta a donde apunta el tubo, mientras que el Ocular
-apunta con la parte trasera del teléfono y necesita transformación. **Esta decisión determina
-4.2, los valores de `mountingTransform` de cada rol y la dirección del flujo.** `core` no toma
-partido a propósito — pero la app sí tiene que hacerlo. Hay que corregir `Architecture.md` §2 en
-consecuencia.
+**4.3 · No se usa Web Serial.** Era una suposición heredada, no un requisito. El lector RFID es
+una placa que **manda una pulsación de tecla**, exactamente como ya funciona en `kiosk`: tarjetas
+distintas en una ranura que las lee. Se re-cablea `createKeyboardConnector` y se **archiva**
+`createSerialConnector`. Hay que corregir `Architecture.md`, que habla de Serial.
 
-**4.2 · ¿El Secundario necesita sensores? → ¿la app necesita HTTPS?**
-Si el dispositivo que lee el cielo es el que **recibe la página desde el otro teléfono**, entonces
-esa página necesita ser **contexto seguro** o los sensores no entregan nada (mismo fallo silencioso
-que ya nos costó tiempo en `web-app` y en `kiosk`). Y `http://localhost` no salva aquí: solo aplica
-al teléfono que se sirve a sí mismo, no al remoto, que entra por IP de LAN.
+**4.5 · Una app, dos páginas.** Como `web-app` con su build multipágina. Comparten stores, engine
+y óptica; difieren en qué conectan.
 
-Consecuencias si la respuesta es "sí":
-- El servidor del Principal tiene que servir **HTTPS**, no HTTP.
-- Y por lo tanto **`wss://`**, no `ws://`: una página `https://` no puede abrir un WebSocket en
-  claro (mixed content).
-- Certificado en una IP de LAN: o se acepta la advertencia en cada arranque, o se usa `mkcert`
-  con su CA instalada una vez en ambos teléfonos (funciona offline y sin advertencia).
+**4.7 · El Principal es la autoridad** de tiempo y ubicación. Si el Guía arranca primero,
+**reintenta cada X segundos** hasta conectar y sincronizar.
 
-**4.3 · ¿Web Serial existe en el navegador de estos teléfonos?**
-El plan asume RFID + potenciómetro por Web Serial. **Hay que verificarlo antes de diseñar nada
-alrededor**: Web Serial es, hasta donde sabemos, una API de escritorio y no está disponible en
-Chrome para Android. Si se confirma que no está:
-- seguir con el Arduino como **teclado HID**, que ya funciona y ya tiene conector en `core`; o
-- **WebUSB**, si aplica al dispositivo; o
-- un **puente en Termux**: un proceso lee el serial y lo reenvía al navegador por el mismo
-  WS/HTTP local que ya vamos a tener.
-La opción que se elija cambia si `createSerialConnector` se implementa o se archiva, y hay que
-corregir `Architecture.md` §5 si el supuesto no se sostiene.
+**4.8 · Payload JSON.** Sin fast-path binario por ahora; se revisa si una medición lo justifica.
 
-**4.4 · ¿Se necesita roll?**
-`Architecture.md` §2 sincroniza "Alt / Az / **Roll**", pero `core` **no produce roll**: `onCoords`
-y `onView` emiten solo `yaw`/`pitch`. Si el roll hace falta de verdad (rotación de campo), hay que
-extender `orientation/` — el dato está disponible en el quaternion del `RelativeOrientationSensor`,
-no es un problema de sensores sino de superficie de API. Si no hace falta, hay que sacarlo del
-documento para que nadie lo implemente por inercia.
+**4.9 · Sin heartbeats.** WebSocket tiene `close`/`error` nativos, a diferencia de Protobject.
+Eventos nativos + reconexión con backoff.
 
-### Estructurales
+**4.10 · El Guía solo necesita datos mínimos**, no los catálogos completos — coherente con su FOV
+amplio y fijo. Esto ya es un parámetro existente: `initializeStellariumEngine({ extended: false })`,
+la misma distinción que hoy separa al visor del telescopio en `web-app`. Reduce mucho lo que haya
+que transferir o empaquetar para el Guía.
 
-**4.5 · ¿Una app con dos entradas, o dos apps?**
-Recomendación: **una app, dos páginas** (`index.html` + `guide.html`), como ya hace `web-app` con
-su build multipágina. Comparten stores, engine y óptica; se diferencian en qué conectan. Dos apps
-duplicarían wiring por una diferencia de rol.
+**4.11 · `shared-viewer` más adelante**, cuando haya un segundo consumidor real con el que
+comparar.
 
-**4.6 · ¿Qué proceso corre el servidor?**
-El dev server de Vite no sirve WS propio sin un plugin. Opciones: un proceso Node aparte, un
-plugin de Vite para desarrollo, o un servidor propio que en producción sirva también los
-estáticos. Decidir temprano porque condiciona cómo se arranca en el dispositivo — y recordar que
-en Termux `pnpm run dev` implica modo `development` (ver pendiente en
-[`CHANGELOG.md`](CHANGELOG.md)).
+**4.12 · Mapeo RFID → ocular: por pulsación de tecla.** En `kiosk` el mapa vigente es
+`1 → ojo humano`, `2 → 40 mm`, `3 → 6 mm`, `4 → 0,5 mm` (y `5–8` repiten los mismos cuatro
+valores). Se reutiliza tal cual.
 
-**4.7 · ¿Quién es la autoridad de tiempo y ubicación?**
-Presumiblemente el Principal, con handshake JSON al conectar y re-sync periódico. Falta definir
-qué pasa si el Guía arranca primero.
+**4.13 · Enfoque/potenciómetro: igual que `web-app`.**
 
-**4.8 · ¿Formato del payload?**
-§5 pide binario/TypedArray para la orientación. El `messageBus` hoy mueve `{msg, values}`.
-Recomendación: **empezar en JSON y medir**; agregar un fast-path binario solo si el número lo
-justifica. Optimizar el canal antes de tener una medición es exactamente lo que nos hizo perder
-tiempo persiguiendo lag que era de red.
+**4.14 · FOV del Guía: cerrado, con los mismos valores que `web-app`** (`MIN_FOV`/`MAX_FOV` y
+`FOCAL_LENGTH = 1200` viven en sus stores).
 
-**4.9 · ¿Liveness y reconexión?**
-A diferencia de Protobject, WebSocket **sí** tiene `close`/`error` nativos, así que no hace falta
-el heartbeat que tuvimos que inventar en `web-app`. Recomendación: eventos nativos + reconexión
-con backoff, y sumar un monitor tipo `createPeerMonitor` solo si aparece el caso "conectado pero
-mudo". Si se necesita, esa pieza se promueve de `web-app` a `core`.
+**4.16 · Si el Principal desaparece**, el Guía muestra "Reintentando conexión…" y sigue
+reintentando (mismo mecanismo que §4.7).
 
-**4.10 · ¿Cómo llegan los catálogos a cada teléfono?**
-Los packs locales siguen sin empaquetar. ¿Cada teléfono tiene su copia, o el Guía los descarga del
-Principal? Descargarlos por el hotspot compite con la orientación por el mismo medio.
+## 5. Lo que sigue abierto
 
-**4.11 · ¿`shared-viewer` ahora o después?**
-Recomendación: **después**. Hoy hay un solo "visor pasivo" real (el de `web-app`); extraer un
-paquete a partir de un caso y medio es adivinar. Cuando el Guía funcione, comparar los dos y
-extraer lo que de verdad coincida.
+### 5.1 · Dónde viven los sensores — y la condición de contexto seguro
 
-### De producto y hardware
+**Bloqueante, y ahora es un experimento concreto, no un debate.** El Ocular va montado con un
+**roll de 90°** respecto del tubo (diseño newtoniano). Hay que **investigar cómo se comportan los
+sensores en esa orientación**: si la fusión gyro + `RelativeOrientationSensor` se degrada ahí, la
+salida es poner los sensores en el **buscador** y que ese sea la fuente de orientación.
 
-- **4.12** Mapeo RFID → focal/FOV: qué tag corresponde a qué ocular.
-- **4.13** Curva potenciómetro → blur de enfoque.
-- **4.14** FOV fijo del Guía (~5°–8°): ¿configurable o cerrado?
-- **4.15** Montaje físico de cada teléfono respecto al tubo → valores concretos de
-  `mountingTransform` (para esto existe el parámetro).
-- **4.16** Qué muestra el Guía si el Principal desaparece.
-- **4.17** Rendimiento: dos motores WASM + teléfono haciendo de AP. Ya hay un riesgo documentado
-  en `Architecture.md` sobre esta topología exacta.
+De eso dependen: los valores de `mountingTransform` de cada rol, la dirección del flujo, y si hace
+falta extender `orientation/` para exponer **roll** (hoy `core` emite solo `yaw`/`pitch`; el dato
+está en el quaternion, es superficie de API, no un problema de sensores).
 
-## 5. Criterio de "listo" por paso
+**Condición que hay que respetar en cualquiera de las dos ramas:**
 
-Ningún paso se da por cerrado sin algo observable: el transporte con un mensaje de ida y vuelta,
-el Guía con el cielo moviéndose al mover el otro teléfono, el hardware con una lectura real
+> El dispositivo que lleva los sensores tiene que ser **el que corre el servidor**, para servirse a
+> sí mismo por `http://localhost` — que el navegador ya trata como contexto seguro. El otro
+> dispositivo, sin sensores, puede recibir la página por HTTP plano sin problema.
+>
+> Si en cambio el dispositivo con sensores recibiera su página del otro por IP de LAN, esa página
+> **no** sería contexto seguro y los sensores no devolverían nada — el mismo fallo silencioso que
+> ya costó tiempo en `web-app` y en `kiosk`. Ahí volverían HTTPS y `wss://`, con certificado en
+> una IP de LAN.
+
+Hoy las respuestas encajan (sensores en el Ocular, servidor en el Ocular). Si el experimento mueve
+los sensores al buscador, **hay que mover el servidor con ellos**, no agregar HTTPS.
+
+### 5.2 · Cómo se arranca en el dispositivo
+
+El servidor corre en el Principal y sirve también los estáticos. El precedente es `kiosk`: Termux
++ un script `.sh` que levanta las dos cosas, y el flujo de trabajo es *push* desde la PC y *pull*
+desde el teléfono — cómodo y ya probado.
+
+Vale evaluar alternativas más sólidas **siempre que no pierdan esa comodidad**: por ejemplo
+instalar la app como PWA, empaquetarla en un contenedor nativo, o `Termux:Boot` para que levante
+sola. Criterio: que actualizar siga siendo tan simple como hoy.
+
+Recordar el trap de modo: en Termux `pnpm run dev` implica modo `development`, así que la config
+que se carga es la de desarrollo (ver pendientes en [`CHANGELOG.md`](CHANGELOG.md)).
+
+### 5.3 · Rendimiento en la topología real
+
+Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`
+sobre exactamente esta configuración. **Se decide midiendo**, en el paso 5, antes de sumar
+hardware.
+
+## 6. Criterio de "listo" por paso
+
+Ningún paso se cierra sin algo observable: el transporte con un mensaje de ida y vuelta, el
+receptor con el cielo moviéndose al mover el otro teléfono, el hardware con una tarjeta RFID
 cambiando el FOV. Los dos bugs de `onView` (`{yaw,pitch}` vs `{h,v}`) pasaron desapercibidos
 justamente porque "compila" no es evidencia de que el dato llegue.

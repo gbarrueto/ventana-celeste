@@ -5,7 +5,7 @@
 
 Actualmente existen dos versiones desarrolladas en un único repositorio con múltiples ramas (que será migrado a `legacy`):
 1. **App Principal:** Aplicación web completa en Svelte que utiliza **Protobject** (sobre PeerJS / WebRTC) para conectar un móvil via QR como control remoto/sensor.
-2. **Prototipo Mínimo (Kiosk/Standalone):** Versión embebida dentro de un telescopio físico, donde un móvil/pantalla recibe eventos directamente de un **Arduino** (vía comunicación Serial) para controlar zoom y movimiento sin menús de configuración.
+2. **Prototipo Mínimo (Kiosk/Standalone):** Versión embebida dentro de un telescopio físico, donde un móvil/pantalla recibe eventos directamente de un **Arduino** que emula un **teclado USB-HID** para controlar zoom y movimiento sin menús de configuración. (El documento decía "Serial": era una suposición, nunca se implementó así.)
 
 ---
 
@@ -14,7 +14,7 @@ El objetivo principal es simular la experiencia completa y fiel de un telescopio
 
 * **Móvil Principal (Ocular):** 
   * Renderiza la vista principal con Stellarium.
-  * Conectado por cable USB/Serial a un **Arduino** con lectores **RFID** (cambio físico de oculares = ajuste de FOV) y **Potenciómetro** (control manual de enfoque / Blur).
+  * Conectado a una placa con lector **RFID** (cambio físico de oculares = ajuste de FOV) y **Potenciómetro** (control manual de enfoque / Blur). La placa **manda pulsaciones de tecla** (USB-HID), igual que en `kiosk` — no Serial. Ver §4.3 y §4.12 de [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md).
   * Actúa como **Hotspot Wi-Fi (AP)** de la red local.
   * Corre un **servidor WebSocket nativo** (HTTP + WS).
 * **Móvil Secundario (Guidescope / Telescopio Guía):**
@@ -26,7 +26,7 @@ El objetivo principal es simular la experiencia completa y fiel de un telescopio
 
 | Estado / Variable | Tipo de Alcance | Protocolo / Canal | Comentario |
 | :--- | :--- | :--- | :--- |
-| **Orientación (Alt / Az / Roll)** | **Global Sync** | WebSocket (30-60 Hz, Binary/ArrayBuffer) | Transmitido continuamente desde el Principal al Secundario. |
+| **Orientación (Alt / Az / Roll?)** | **Global Sync** | WebSocket, payload **JSON** | Del dispositivo que lleve los sensores hacia el otro. **Qué dispositivo es depende del experimento de roll de 90°** — ver §5.1 de [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md). Si el roll no hace falta, sacarlo de esta fila: `core` hoy emite solo yaw/pitch. |
 | **Parámetros Astronómicos** | **Global Sync** | WebSocket (JSON Handshake) | Hora UTC, Ubicación GPS, Clase Bortle, Contaminación. |
 | **Campo de Visión (FOV)** | **Local** | Local Store (Svelte) | **Principal:** Cambia según chip RFID en Arduino.<br>**Guidescope:** Fijo en campo amplio (~5°–8°). |
 | **Enfoque (Focus Blur)** | **Local** | Local Store (Svelte) | **Principal:** Ajustado via Potenciómetro.<br>**Guidescope:** Siempre en enfoque perfecto. |
@@ -78,7 +78,7 @@ ventana-celeste/
 └── apps/
     ├── web-app/                 # App Principal (Legacy Svelte + Protobject/QR)
     ├── kiosk-standalone/        # Prototipo Mínimo (Standalone + Arduino USB)
-    └── dual-telescope/          # Prototipo Avanzado (WebSocket Server + Dual Sync + RFID/Pot)
+    └── dual-telescope/          # Prototipo Avanzado (WebSocket Server + Dual Sync + RFID/Pot vía HID)
 ```
 
 ---
@@ -90,7 +90,7 @@ El núcleo astronómico se diseña como una capa reactiva neutra bajo el patrón
 1. **Agnosticismo del Hardware:** `@ventanaceleste/core` no conoce la procedencia de los datos (Arduino, WebSocket, WebRTC o Keyboard).
 2. **Svelte Stores Centrales:** Expone stores reactivos como `telescopeOrientation`, `fov`, `focusBlur`, `skyTime`, etc.
 3. **Pluggable Connectors:**
-   * **SerialInputConnector:** Lee la trama del Arduino (`potentiometer`, `rfid_tag`) y actualiza los stores locales (`focusBlur.set(val)`).
+   * **KeyboardInputConnector:** `createKeyboardConnector` de `core` — la placa RFID/potenciómetro llega como pulsaciones de tecla y se mapea a acciones locales. Es lo que ya usa `kiosk`; no hay un conector Serial real.
    * **WebSocketServerOutputConnector:** Suscrito a `telescopeOrientation`, transmite las coordenadas hacia el móvil secundario.
    * **WebSocketClientInputConnector:** Usado por el *Guidescope*, recibe el payload remoto y actualiza su propio store de orientación.
 
