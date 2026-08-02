@@ -126,6 +126,20 @@ está en el quaternion, es superficie de API, no un problema de sensores).
 Hoy las respuestas encajan (sensores en el Ocular, servidor en el Ocular). Si el experimento mueve
 los sensores al buscador, **hay que mover el servidor con ellos**, no agregar HTTPS.
 
+### 5.1b · Transformación del canvas para vista newtoniana
+
+Pendiente, anotado para no perderlo: la vista por un newtoniano llega **rotada y con una
+reflexión** respecto de lo que se ve a ojo desnudo. Eso es una transformación del *canvas*
+(render), no de la orientación — es independiente de `mountQuaternion` y de `mountingTransform`,
+y hay que resolverla aparte para que la imagen coincida con lo que la persona ve por el ocular.
+
+### 5.1c · Camino del giroscopio con montaje rotado
+
+`mountQuaternion` corrige el camino del quaternion (modo `relative`). El camino de **integración
+del giroscopio**, que se usa con FOV angosto, lee los ejes crudos del dispositivo, que también
+están rotados por el montaje — necesita su propia corrección del vector de velocidad angular. El
+banco de pruebas se fija a modo `relative` a propósito para no mezclar las dos cosas.
+
 ### 5.2 · Cómo se arranca en el dispositivo
 
 El servidor corre en el Principal y sirve también los estáticos. El precedente es `kiosk`: Termux

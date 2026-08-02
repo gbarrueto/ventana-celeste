@@ -47,6 +47,12 @@
       </select>
       <button id="apply">Aplicar</button>
     </div>
+    <div style="margin-top:5px">
+      mapeo
+      <label><input type="checkbox" id="swap" /> swap yaw/pitch</label>
+      <label><input type="checkbox" id="invY" /> −yaw</label>
+      <label><input type="checkbox" id="invP" /> −pitch</label>
+    </div>
     <div class="row" style="margin-top:5px"><span class="muted">θ (gimbal)</span><span id="theta">—</span></div>
     <div class="row"><span class="muted">yaw / pitch enviados</span><span id="yp">—</span></div>
   </div>
@@ -78,6 +84,24 @@ function middleAngle(q) {
 let engine = null;
 let controller = null;
 
+// Leído en cada llamada, así los toggles se aplican en vivo sin reiniciar el
+// controlador (y sin volver a calibrar).
+const tf = { swap: false, invY: false, invP: false };
+for (const k of ['swap', 'invY', 'invP']) {
+  document.getElementById(k).onchange = (e) => {
+    tf[k] = e.target.checked;
+    setStatus(`mapeo: ${tf.swap ? 'swap ' : ''}${tf.invY ? '−yaw ' : ''}${tf.invP ? '−pitch' : ''}` || 'mapeo: directo', 'ok');
+  };
+}
+
+function applyMapping(yaw, pitch) {
+  let y = yaw, p = pitch;
+  if (tf.swap) { const t = y; y = p; p = t; }
+  if (tf.invY) y = -y;
+  if (tf.invP) p = -p;
+  return { yaw: y, pitch: p };
+}
+
 function currentMount() {
   const deg = parseFloat($('angle').value);
   return deg === 0 ? null : quaternionFromAxisAngle($('axis').value, deg);
@@ -94,6 +118,10 @@ function startController() {
     dynamicThreshold: 0,
     readinessGate: 'immediate',
     calibDuration: 1,
+    // El pre-giro del quaternion arregla la degeneración; esto reasigna qué
+    // ángulo va a qué eje del cielo. Son dos trabajos distintos y ninguno puede
+    // hacer el del otro.
+    mountingTransform: applyMapping,
     onView: ({ yaw, pitch }) => {
       if (!engine?.core?.observer) return;
       engine.core.observer.yaw = -yaw;
