@@ -21,6 +21,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(here, '../dist');
 const PORT = Number(process.env.PORT ?? 8080);
 
+// Qué dispositivo lleva los sensores. Lo fija el script de arranque, así que
+// mover la fuente de orientación al Guía es un flag y no una edición de código.
+// El dispositivo que corre el script es el principal (§5.2b del plan).
+const SENSOR_SOURCE = process.env.SENSOR_SOURCE ?? 'ocular';
+
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -34,6 +39,17 @@ const TYPES = {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+
+    // Cada página pregunta esto al cargar para saber si emite o sólo recibe.
+    if (url.pathname === '/link-config') {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      });
+      res.end(JSON.stringify({ sensorSource: SENSOR_SOURCE }));
+      return;
+    }
+
     const rel = url.pathname === '/' ? '/index.html' : url.pathname;
     // normalize + prefix check: no servir nada fuera de dist
     const file = join(DIST, normalize(rel));
@@ -93,5 +109,7 @@ wss.on('connection', (socket, req) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[relay] http+ws en :${PORT}  (estáticos desde ${DIST} si existen)`);
+  console.log(`[relay] http+ws en :${PORT}`);
+  console.log(`[relay] fuente de sensores: ${SENSOR_SOURCE}`);
+  console.log(`[relay] estáticos desde ${DIST} (si existen)`);
 });

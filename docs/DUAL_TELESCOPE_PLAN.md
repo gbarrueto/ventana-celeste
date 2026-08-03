@@ -161,8 +161,14 @@ Dos caminos, y conviene medir antes de elegir:
    conocido y se guarda el offset. Encaja con que el prototipo sea *mediado* — hay alguien
    operándolo que puede hacer la alineación inicial — y es inmune al metal y al interior.
 
-Recomendación provisional: si el magnetómetro no rinde en el montaje real, la alineación manual
-no es un plan B, es la práctica estándar del dominio.
+**Resuelto (2026-08-03): las dos.** El magnetómetro funciona bien, así que
+`AbsoluteOrientationSensor` da la referencia de norte de arranque. Y la **calibración de norte
+queda como funcionalidad** del producto, no como plan B: es lo que hacen los telescopios reales,
+cubre el caso de que el magnetómetro se degrade cerca del metal del tubo, y encaja con que el
+prototipo sea mediado — hay alguien que puede alinear al empezar.
+
+Falta definir la interacción de esa calibración (apuntar a algo conocido y confirmar) y dónde se
+guarda el offset.
 
 ### 5.1b · Transformación del canvas para vista newtoniana
 
@@ -215,6 +221,9 @@ mantener esa comodidad y ganar solidez, no reemplazarla por ceremonia.
 **Problema principal a evitar: compilar en el teléfono.** El build es lento en Android y es la
 razón de que `kiosk` necesite `NODE_OPTIONS=--max-old-space-size=1536`. Conviene que el teléfono
 **no** compile.
+
+Comparación detallada de stack y rutina para decidir: [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Descartados el APK y los add-ons de Termux (Boot/Widget).
 
 Ruta recomendada, de menor a mayor esfuerzo:
 
