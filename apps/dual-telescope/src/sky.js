@@ -36,7 +36,7 @@ export async function startSky({ role, statusEl, canvas }) {
     strict: false,
     onReady(stel) {
       stel.core.atmosphere.visible = false;
-      stel.core.landscapes.visible = false;
+      stel.core.landscapes.visible = true;
       stel.core.cardinals.visible = true;
       stel.core.constellations.lines_visible = true;
       stel.core.fov = cfg.fov;

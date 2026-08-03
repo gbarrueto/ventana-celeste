@@ -6,6 +6,51 @@ Termux (Boot/Widget).
 
 Aplica sobre todo a `dual-telescope`, pero la opción A sirve igual para `kiosk`.
 
+## Comandos, de un vistazo
+
+```bash
+# --- desarrollo (nada de build/push/pull) ---
+pnpm --filter @ventanaceleste/dual-telescope dev
+#   sirve por HTTPS y monta el relay en el mismo origen
+#   ocular : https://localhost:5173/           (localhost = contexto seguro)
+#   guía   : https://<ip-de-la-PC>:5173/guide.html
+#   fuente : SENSOR_SOURCE=guide pnpm ... dev
+
+# --- publicar a los dispositivos ---
+git push origin main                       # 1. primero el código
+cd apps/dual-telescope
+pnpm run pack:deploy                       # 2. arma deploy/
+PUSH=1 pnpm run publish:deploy             # 3. publica la rama de deploy
+
+# --- en el dispositivo ---
+git clone --branch deploy/dual-telescope --single-branch --depth 1 <repo> ventana
+cd ventana && ./start.sh                   # actualizar: PULL=1 ./start.sh
+```
+
+## Convención: `main` primero, deploy después
+
+**Siempre `main` antes que la rama de deploy.** El script de publicación etiqueta el commit con
+el revision de `main` del que salió (`deploy: dual-telescope desde <rev>`), y esa referencia sólo
+sirve si ese commit existe en el remoto. Publicar primero deja un paquete que apunta a un commit
+que nadie más tiene — justo cuando más se necesita saber qué versión está corriendo en el aparato.
+
+No se publican al mismo tiempo a propósito: son dos decisiones distintas. Se puede querer avanzar
+en `main` sin tocar lo que hay en el telescopio.
+
+## Desarrollo: servir desde la PC, sin build ni pull
+
+Construir, publicar y bajar en cada cambio no sirve para desarrollar. Para eso el dev server de
+Vite sirve las dos páginas y **el relay va montado sobre él**.
+
+Eso resuelve un problema que de otro modo bloquea todo: los sensores exigen **contexto seguro**,
+así que la página tiene que ir por HTTPS — y una página HTTPS **no puede abrir un WebSocket en
+claro** (mixed content). Compartiendo servidor, la página y el socket quedan en el mismo origen y
+el socket es `wss://` sin configurar nada. El certificado es autofirmado: se acepta una vez por
+dispositivo.
+
+El teléfono con sensores tiene que abrir `https://localhost:5173/`, no la IP: sólo `localhost`
+cuenta como contexto seguro sin certificado de confianza.
+
 ## Restricciones que mandan
 
 1. **No depender de Internet.** Suele haber conexión — no es una salida al desierto — pero el
@@ -172,6 +217,25 @@ Las dos siguen necesitando **un proceso corriendo** en el dispositivo principal 
 Hoy eso es Termux, lanzado a mano con `start.sh`. Si se quisiera sacar Termux del todo, habría que
 mover el relay a otro anfitrión — por ejemplo un equipo chico dedicado tipo Raspberry Pi haciendo
 de AP y servidor — lo cual cambia la topología del §2 de `Architecture.md`, no sólo el despliegue.
+
+## ⚠️ Aislamiento de clientes en el AP
+
+Observado en la práctica: **algunos puntos de acceso no dejan que dos clientes se hablen entre
+sí.** Con un teléfono haciendo de AP, la PC y un segundo teléfono conectados a él, el segundo
+teléfono no alcanzaba a `kiosk` servido desde la PC; cambiando el AP a otro teléfono, sí.
+
+Es *client isolation* (o *AP isolation*), y conviene tenerlo presente porque afecta distinto a
+cada escenario:
+
+- **Producción: no molesta.** El dispositivo principal es a la vez AP y servidor, así que el
+  tráfico va cliente↔AP, no cliente↔cliente. La topología del §2 de `Architecture.md` es inmune a
+  esto por construcción.
+- **Desarrollo: sí molesta.** Sirviendo desde la PC con los teléfonos en un AP-teléfono, la PC es
+  *otro cliente* — exactamente el caso que se bloquea. Si un dispositivo no llega a la PC y otro
+  sí, es esto y no la app.
+
+Salidas: usar un router normal en vez de un teléfono como AP, probar con otro teléfono de AP (el
+comportamiento varía por fabricante), o hacer que la PC sea el AP.
 
 ## Criterio para decidir
 

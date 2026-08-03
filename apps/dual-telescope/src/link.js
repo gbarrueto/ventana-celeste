@@ -1,25 +1,27 @@
-// Único punto donde se elige el transporte. Cambiar de WebSocket a otra cosa
-// es cambiar esta línea, no los handlers.
+// Único punto donde se elige el transporte. Cambiar de WebSocket a otra cosa es
+// cambiar esta línea, no los handlers.
 import { createMessageBus, createWebSocketTransport } from '@ventanaceleste/core';
 
-const RELAY_PORT = 8080;
+// Mismo origen que la página, siempre: en producción el relay sirve los
+// estáticos, y en desarrollo va montado sobre Vite. Eso evita el puerto
+// hardcodeado y, sobre todo, hace que con HTTPS el socket sea wss:// solo — una
+// página https no puede abrir ws:// en claro.
+const RELAY_PATH = '/relay';
+const socketUrl = () =>
+  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${RELAY_PATH}`;
 
 export function connect({ role, onStatus }) {
-  const url = `ws://${location.hostname}:${RELAY_PORT}`;
-  const bus = createMessageBus(createWebSocketTransport({ url, role, onStatus }));
-  return bus;
+  return createMessageBus(createWebSocketTransport({ url: socketUrl(), role, onStatus }));
 }
 
 // Qué rol lleva los sensores. Lo decide el servidor (lo fija el script de
 // arranque), no la página, así que cambiar la fuente no requiere editar código.
 export async function fetchLinkConfig() {
   try {
-    const res = await fetch(`${location.protocol}//${location.hostname}:${RELAY_PORT}/link-config`);
+    const res = await fetch('/link-config');
     if (!res.ok) throw new Error(String(res.status));
     return await res.json();
   } catch {
-    // Si el relay todavía no está, se asume el reparto por defecto y se reintenta
-    // cuando la conexión se establezca.
     return { sensorSource: 'ocular' };
   }
 }

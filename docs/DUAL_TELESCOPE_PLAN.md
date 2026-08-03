@@ -257,6 +257,12 @@ y el Guía conviene que arranque con `extended: false` (§4.10), que ya pide bas
 El empaquetado local sigue pendiente, y es compartido con `kiosk` (ver Pendientes en
 [`CHANGELOG.md`](CHANGELOG.md)).
 
+### 5.2e · Aislamiento de clientes en el AP
+
+Algunos AP no dejan que dos clientes se hablen entre sí. En producción no afecta —el principal es
+AP y servidor a la vez, así que el tráfico es cliente↔AP— pero **sí afecta al desarrollo**, donde
+la PC sirve y es un cliente más. Detalle y salidas en [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ### 5.3 · Rendimiento en la topología real
 
 Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`

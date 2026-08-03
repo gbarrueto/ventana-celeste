@@ -274,6 +274,44 @@ espacio logarítmico y un loop de `requestAnimationFrame` interpola con suavizad
 no filtra `e.repeat`, así que mantener la tecla da zoom continuo. Los `1..8` son cambio discreto
 de ocular, fuera del alcance del prototipo.
 
+## 8. `dual-telescope`: primer prototipo funcionando (2026-08-03)
+
+Los dos teléfonos muestran el mismo cielo. Funcionan la conexión, el apuntado coincidente entre
+ambos, y la carga de catálogos (por ahora desde los servidores remotos, §5.2d del plan).
+
+**Apuntado por vector, promovido a `core`.** `pointingMode: 'vector'` + `opticalAxis` derivan
+alt/az rotando el eje óptico por el quaternion, en vez de descomponer en ángulos de Euler. El
+motivo es medido: la descomposición asume qué eje del dispositivo corresponde a qué eje del cielo,
+y eso sólo vale cerca de una elevación — en el montaje real el eje necesario para moverse en
+azimut se desplaza con la altura hasta que en el cenit la vista deja de responder. En modo vector
+el montaje es **una constante**: qué vector apunta por el tubo, medido en `+y`. El modo Euler
+sigue siendo el default, así que `web-app` y `kiosk` no cambian.
+
+**Tres bugs de la primera prueba en el montaje, dos con la misma causa.** `core` elige modo con
+`fov < fovThreshold ? 'gyro' : 'relative'`, y se le había pasado `fovThreshold: 1e9` creyendo que
+eso forzaba el camino del quaternion. Es al revés: cualquier FOV real queda por debajo, así que
+quedaba fijo en giroscopio y el apuntado por vector no llegaba nunca a la vista. De ahí salían
+**la deriva con el aparato quieto** (integra tasas crudas) y **arriba-abajo cambiado con
+izquierda-derecha** (integra ejes crudos del dispositivo, sin corrección de montaje). El umbral va
+en `0`. El tercero era aparte: el FOV del guía no quedaba fijado desde `onReady` y había que
+re-aplicarlo tras inicializar. Y el terreno estaba apagado por un flag que yo había puesto.
+
+**Despliegue.** El dispositivo ya no necesita el repo: `pnpm run pack:deploy` arma un paquete con
+la app construida, el relay bundleado en un archivo con `ws` adentro, y `start.sh` — sólo hace
+falta Node. `pnpm run publish:deploy` lo publica en una rama huérfana por app, que el dispositivo
+clona con `--single-branch --depth 1`. Dos detalles que costaron un rato: en Windows
+`core.filemode` es `false`, así que el bit de ejecución de `start.sh` se perdía al publicar (se
+fuerza con `update-index --chmod=+x`), y el shebang apuntaba a la ruta absoluta de Termux, que no
+existe en ningún otro lado.
+
+**Desarrollo sin build/push/pull.** El relay ahora también se monta sobre el dev server de Vite,
+así que se sirve desde la PC directamente. Eso resuelve un choque real: los sensores exigen
+contexto seguro → la página va por HTTPS → y una página HTTPS no puede abrir `ws://`. Compartiendo
+servidor, página y socket quedan en el mismo origen y el socket es `wss://` solo.
+
+Ver [`DEPLOYMENT.md`](DEPLOYMENT.md) para comandos, la convención de publicar `main` antes que la
+rama de deploy, y el aislamiento de clientes de algunos AP.
+
 ## Pendientes
 
 1. **Verificación manual en dispositivo real** — parcialmente hecha (ver sección 3). En un
