@@ -1,0 +1,1 @@
+import{s as e}from"./sky-DWH18NNL.js";e({role:"ocular",canvas:document.getElementById("stel-canvas"),statusEl:document.getElementById("status")}).catch(t=>{document.getElementById("status").textContent="error: "+t.message});

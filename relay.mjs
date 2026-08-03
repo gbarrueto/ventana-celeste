@@ -3720,6 +3720,51 @@ var import_subprotocol = __toESM(require_subprotocol(), 1);
 var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
+// server/relay-core.js
+var RELAY_PATH = "/relay";
+function createRelay({ sensorSource = "ocular", log = console.log } = {}) {
+  const wss = new import_websocket_server.default({ noServer: true });
+  const byRole = /* @__PURE__ */ new Map();
+  wss.on("connection", (socket, req) => {
+    const role = new URL(req.url, "http://localhost").searchParams.get("role") ?? "anon";
+    if (!byRole.has(role)) byRole.set(role, /* @__PURE__ */ new Set());
+    byRole.get(role).add(socket);
+    log(`[relay] + ${role} (${[...byRole].map(([r, s]) => `${r}:${s.size}`).join(" ")})`);
+    socket.on("message", (data) => {
+      let payload;
+      try {
+        payload = JSON.parse(data.toString());
+      } catch {
+        return;
+      }
+      const { target, ...rest } = payload;
+      const targets = target ? [...byRole.get(target) ?? []] : [...wss.clients].filter((c) => c !== socket);
+      const frame = JSON.stringify(rest);
+      for (const client of targets) {
+        if (client.readyState === 1) client.send(frame);
+      }
+    });
+    socket.on("close", () => {
+      byRole.get(role)?.delete(socket);
+      log(`[relay] - ${role}`);
+    });
+  });
+  function handleUpgrade(req, socket, head) {
+    const { pathname } = new URL(req.url, "http://localhost");
+    if (pathname !== RELAY_PATH) return false;
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
+    return true;
+  }
+  function handleRequest(req, res) {
+    const { pathname } = new URL(req.url, "http://localhost");
+    if (pathname !== "/link-config") return false;
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ sensorSource }));
+    return true;
+  }
+  return { wss, handleUpgrade, handleRequest };
+}
+
 // server/relay.js
 var DIST = resolve(process.env.DIST ?? process.cwd(), "dist");
 var PORT = Number(process.env.PORT ?? 8080);
@@ -3733,19 +3778,12 @@ var TYPES = {
   ".png": "image/png",
   ".svg": "image/svg+xml"
 };
+var relay = createRelay({ sensorSource: SENSOR_SOURCE });
 var server = createServer(async (req, res) => {
+  if (relay.handleRequest(req, res)) return;
   try {
-    const url = new URL(req.url, "http://localhost");
-    if (url.pathname === "/link-config") {
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store"
-      });
-      res.end(JSON.stringify({ sensorSource: SENSOR_SOURCE }));
-      return;
-    }
-    const rel = url.pathname === "/" ? "/index.html" : url.pathname;
-    const file = join(DIST, normalize(rel));
+    const { pathname } = new URL(req.url, "http://localhost");
+    const file = join(DIST, normalize(pathname === "/" ? "/index.html" : pathname));
     if (!file.startsWith(DIST)) {
       res.writeHead(403).end("Prohibido");
       return;
@@ -3755,43 +3793,14 @@ var server = createServer(async (req, res) => {
     res.end(await readFile(file));
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("No encontrado. En desarrollo los est\xE1ticos los sirve Vite; este proceso es s\xF3lo el relay.");
+    res.end("No encontrado.");
   }
 });
-var wss = new import_websocket_server.default({ server });
-var byRole = /* @__PURE__ */ new Map();
-function add(role, socket) {
-  if (!byRole.has(role)) byRole.set(role, /* @__PURE__ */ new Set());
-  byRole.get(role).add(socket);
-}
-function remove(role, socket) {
-  byRole.get(role)?.delete(socket);
-}
-wss.on("connection", (socket, req) => {
-  const role = new URL(req.url, "http://localhost").searchParams.get("role") ?? "anon";
-  add(role, socket);
-  console.log(`[relay] + ${role} (${[...byRole].map(([r, s]) => `${r}:${s.size}`).join(" ")})`);
-  socket.on("message", (data) => {
-    let payload;
-    try {
-      payload = JSON.parse(data.toString());
-    } catch {
-      return;
-    }
-    const { target, ...rest } = payload;
-    const targets = target ? [...byRole.get(target) ?? []] : [...wss.clients].filter((c) => c !== socket);
-    const frame = JSON.stringify(rest);
-    for (const client of targets) {
-      if (client.readyState === 1) client.send(frame);
-    }
-  });
-  socket.on("close", () => {
-    remove(role, socket);
-    console.log(`[relay] - ${role}`);
-  });
+server.on("upgrade", (req, socket, head) => {
+  if (!relay.handleUpgrade(req, socket, head)) socket.destroy();
 });
 server.listen(PORT, () => {
   console.log(`[relay] http+ws en :${PORT}`);
   console.log(`[relay] fuente de sensores: ${SENSOR_SOURCE}`);
-  console.log(`[relay] est\xE1ticos desde ${DIST} (si existen)`);
+  console.log(`[relay] est\xE1ticos desde ${DIST}`);
 });
