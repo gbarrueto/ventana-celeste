@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ocular — dual-telescope</title>
+  <style>
+    body { margin:0; padding:16px; background:#06080f; color:#e8ecf5;
+           font-family: ui-monospace, Menlo, Consolas, monospace; font-size:13px; }
+    h1 { font-size:15px; color:#ff7a0d; margin:0 0 10px; }
+    #log { white-space:pre-wrap; background:rgba(255,255,255,.04); border-radius:8px;
+           padding:10px; min-height:40vh; border:1px solid rgba(255,255,255,.09); }
+    button { background:rgba(255,255,255,.1); color:#e8ecf5; border:1px solid rgba(255,255,255,.18);
+             border-radius:8px; padding:9px 14px; font:inherit; margin:0 6px 10px 0; }
+    .st { font-weight:700; }
+  </style>
+</head>
+<body>
+  <h1>Ocular <span class="st" id="status">…</span></h1>
+  <button id="ping">Enviar ping a guide</button>
+  <div id="log"></div>
+  <script type="module">
+    import { connect } from '/src/link.js';
+    const log = (t) => { document.getElementById('log').textContent += t + '\n'; };
+    const bus = connect({
+      role: 'ocular',
+      onStatus: (s) => { document.getElementById('status').textContent = s; log('[estado] ' + s); },
+    });
+    bus.on('ping', (v) => { log('← ping de ' + v.from + ' #' + v.n); bus.send('pong', { from: 'ocular', n: v.n }, 'guide'); });
+    bus.on('pong', (v) => log('← pong de ' + v.from + ' #' + v.n));
+    bus.start({ onConnect: () => log('[conectado al relay]') });
+    let n = 0;
+    document.getElementById('ping').onclick = () => { n++; bus.send('ping', { from: 'ocular', n }, 'guide'); log('→ ping #' + n); };
+  </script>
+</body>
+</html>

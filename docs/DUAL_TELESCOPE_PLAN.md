@@ -44,7 +44,7 @@ por nuevas y resultaron ser re-cableado.
 
 Cada paso deja el repo buildeable y algo verificable a mano.
 
-0. **Experimento de sensores con roll de 90°** (§5.1). Es lo único que bloquea el diseño.
+0. ~~Experimento de sensores con roll de 90°~~ — **HECHO** (§5.1). El Ocular queda como fuente.
 1. **Scaffold** `apps/dual-telescope`: Vite + Svelte, dos entradas, `@ventanaceleste/core` como
    dependencia de workspace. Sin lógica.
 2. **Transporte**: `createWebSocketTransport` + servidor mínimo. Criterio de éxito: un `{msg,
@@ -101,16 +101,25 @@ reintentando (mismo mecanismo que §4.7).
 
 ## 5. Lo que sigue abierto
 
-### 5.1 · Dónde viven los sensores — y la condición de contexto seguro
+### 5.1 · Dónde viven los sensores — RESUELTO
 
-**Bloqueante, y ahora es un experimento concreto, no un debate.** El Ocular va montado con un
-**roll de 90°** respecto del tubo (diseño newtoniano). Hay que **investigar cómo se comportan los
-sensores en esa orientación**: si la fusión gyro + `RelativeOrientationSensor` se degrada ahí, la
-salida es poner los sensores en el **buscador** y que ese sea la fuente de orientación.
+**Medido en dispositivo (2026-08-02), resuelto: los sensores están bien, lo que fallaba era la
+descomposición.** En el montaje del ocular el ángulo medio da **−89,8°**, o sea prácticamente
+sobre la singularidad de la descomposición Euler. Ahí las mismas muestras dan un jitter ~240×
+mayor que descompuestas fuera de la singularidad (3,877 vs 0,016 °RMS), contra una línea base de
+0,001 apoyado en la mesa. El sensor en sí es excelente.
 
-De eso dependen: los valores de `mountingTransform` de cada rol, la dirección del flujo, y si hace
-falta extender `orientation/` para exponer **roll** (hoy `core` emite solo `yaw`/`pitch`; el dato
-está en el quaternion, es superficie de API, no un problema de sensores).
+**Consecuencias:**
+- **El Ocular sigue siendo la fuente de orientación.** No hace falta mover los sensores al
+  buscador, y por lo tanto tampoco mover el servidor ni agregar HTTPS.
+- `core` ganó la opción **`mountQuaternion`**: rota el quaternion *antes* de descomponerlo.
+  `mountingTransform` no podía hacer este trabajo porque corre *después* — sobre valores ya
+  degenerados.
+- **Roll:** sigue sin necesitarse en `core` para esto. Queda pendiente decidir si el modelo dual
+  lo requiere por otro motivo (§4.4 de `Architecture.md`).
+- Pendiente menor, de ajuste y no de diseño: el pre-giro permuta qué eje sale por cada ángulo
+  (paneo E–O aparece como N–S). Eso sí es trabajo de `mountingTransform`, y el banco de pruebas
+  (`apps/orientation-lab/sky.html`) tiene toggles en vivo para encontrar la combinación.
 
 **Condición que hay que respetar en cualquiera de las dos ramas:**
 
@@ -123,8 +132,9 @@ está en el quaternion, es superficie de API, no un problema de sensores).
 > ya costó tiempo en `web-app` y en `kiosk`. Ahí volverían HTTPS y `wss://`, con certificado en
 > una IP de LAN.
 
-Hoy las respuestas encajan (sensores en el Ocular, servidor en el Ocular). Si el experimento mueve
-los sensores al buscador, **hay que mover el servidor con ellos**, no agregar HTTPS.
+Las respuestas encajan: sensores en el Ocular, servidor en el Ocular. La condición queda
+documentada por si alguna vez se mueven los sensores — habría que mover el servidor con ellos, no
+agregar HTTPS.
 
 ### 5.1b · Transformación del canvas para vista newtoniana
 
