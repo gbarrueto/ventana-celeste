@@ -60,6 +60,7 @@
         <option value="+z">+z</option><option value="-z">−z</option>
       </select>
       <label><input type="checkbox" id="invAz" /> −az</label>
+      <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
     </div>
     <div style="margin-top:5px" id="eulerOpts">
       mapeo <span class="muted">(sólo modo euler)</span>
@@ -179,6 +180,12 @@ function startController() {
   setStatus(`Corriendo. Compensación: ${$('axis').value} ${$('angle').value}°`, 'ok');
 }
 
+function applyGrid() {
+  if (!engine?.core?.lines?.azimuthal) return;
+  engine.core.lines.azimuthal.visible = $('grid').checked;
+}
+$('grid').onchange = applyGrid;
+
 function isVector() { return $('mode').value === 'vector'; }
 
 function applyMode() {
@@ -207,7 +214,13 @@ try {
     el.className = Math.abs(t) > 80 ? 'bad' : Math.abs(t) > 65 ? 'warn' : 'ok';
 
     const { alt, az } = pointingAltAz(q);
-    $('azalt').textContent = `${(az * DEG).toFixed(1)}° / ${(alt * DEG).toFixed(1)}°`;
+    const altDeg = alt * DEG;
+    const azEl = $('azalt');
+    azEl.textContent = `${(az * DEG).toFixed(1)}° / ${altDeg.toFixed(1)}°`;
+    // El azimut se vuelve indefinido en el cenit: es la degeneración real del
+    // alt-az, no un fallo del mapeo. Marcarlo para poder distinguir "estoy en el
+    // agujero" de "el mapeo está mal".
+    azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
     // En modo vector esto maneja la vista directamente. Sin el suavizado ni la
     // fusión con giroscopio de core — acá se está probando el mapeo, no la
     // fluidez.
@@ -238,6 +251,7 @@ initializeStellariumEngine({
     stel.core.cardinals.visible = true;
     stel.core.constellations.lines_visible = true;
     stel.core.fov = 1.2;
+    applyGrid();
   },
 })
   .then(() => applyMode())
