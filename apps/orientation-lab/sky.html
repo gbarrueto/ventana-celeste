@@ -62,6 +62,14 @@
       <label><input type="checkbox" id="invAz" /> −az</label>
       <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
     </div>
+    <div style="margin-top:5px">
+      sensor
+      <select id="sensorType">
+        <option value="relative" selected>relative (sin brújula)</option>
+        <option value="absolute">absolute (con magnetómetro)</option>
+      </select>
+      <label><input type="checkbox" id="clampAlt" /> limitar alt a 85°</label>
+    </div>
     <div style="margin-top:5px" id="eulerOpts">
       mapeo <span class="muted">(sólo modo euler)</span>
       <label><input type="checkbox" id="swap" /> swap</label>
@@ -204,10 +212,24 @@ $('mode').onchange = applyMode;
 
 // θ en vivo, leído directo del sensor (sin pasar por core) para que se vea
 // dónde está el montaje respecto de la singularidad.
-try {
-  const rel = new RelativeOrientationSensor({ frequency: 15 });
-  rel.addEventListener('reading', () => {
-    const q = rel.quaternion;
+let sensor = null;
+
+function startSensor() {
+  try { sensor?.stop(); } catch { /* ya detenido */ }
+  const absolute = $('sensorType').value === 'absolute';
+  const Ctor = absolute ? window.AbsoluteOrientationSensor : window.RelativeOrientationSensor;
+  if (typeof Ctor !== 'function') {
+    setStatus(`Este navegador no expone ${absolute ? 'AbsoluteOrientationSensor' : 'RelativeOrientationSensor'}.`, 'bad');
+    return;
+  }
+  // absolute añade el magnetómetro, así que el azimut queda referido al norte
+  // magnético real en vez de a un origen arbitrario. A cambio necesita
+  // calibración de brújula y se degrada cerca de metal — y el tubo es metálico.
+  sensor = new Ctor({ frequency: 15 });
+  sensor.addEventListener('error', (e) =>
+    setStatus(`${absolute ? 'Absolute' : 'Relative'}OrientationSensor: ${e.error?.message || e.error?.name || 'error'}`, 'bad'));
+  sensor.addEventListener('reading', () => {
+    const q = sensor.quaternion;
     const t = middleAngle(q);
     const el = $('theta');
     el.textContent = t.toFixed(1) + '°';
@@ -225,13 +247,19 @@ try {
     // fusión con giroscopio de core — acá se está probando el mapeo, no la
     // fluidez.
     if (isVector() && engine?.core?.observer) {
+      const LIMIT = (85 * Math.PI) / 180;
+      const used = $('clampAlt').checked ? Math.max(-LIMIT, Math.min(LIMIT, alt)) : alt;
       engine.core.observer.yaw = az;
-      engine.core.observer.pitch = alt;
-      $('yp').textContent = 'vector';
+      engine.core.observer.pitch = used;
+      $('yp').textContent = $('clampAlt').checked && used !== alt ? 'vector (alt limitada)' : 'vector';
     }
   });
-  rel.start();
-} catch { /* el panel de θ es opcional */ }
+  sensor.start();
+  setStatus(`sensor: ${absolute ? 'absolute (brújula)' : 'relative (sin brújula)'}`, 'ok');
+}
+
+$('sensorType').onchange = startSensor;
+startSensor();
 
 setStatus('cargando motor…');
 initializeStellariumEngine({

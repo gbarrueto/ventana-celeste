@@ -136,6 +136,34 @@ Las respuestas encajan: sensores en el Ocular, servidor en el Ocular. La condici
 documentada por si alguna vez se mueven los sensores — habría que mover el servidor con ellos, no
 agregar HTTPS.
 
+### 5.1a · Apuntado por vector — hallazgos en dispositivo (2026-08-03)
+
+- **Eje óptico: `+y`.** Es el vector del dispositivo que apunta por el tubo, y con él el apuntado
+  se comporta correctamente. Sustituye a todo el problema de mapeo elevación-dependiente: el
+  montaje pasa a ser **una constante**, no una reasignación de ángulos.
+- **Límite operativo ~85° de altitud.** Pasado eso se vuelve casi incontrolable. No es un defecto
+  del mapeo: es la degeneración real del alt-az, el azimut deja de estar definido en el cenit.
+  Vale evaluar **limitarlo por software** a 85° para que el instrumento se siente firme en vez de
+  errático — hay un toggle en el banco de pruebas para probarlo antes de decidir.
+- **El azimut no tiene norte.** `RelativeOrientationSensor` es giroscopio + acelerómetro, **sin
+  magnetómetro**: la gravedad ancla altitud, pero el origen del azimut es arbitrario. Por eso
+  apuntando al este puede mostrar norte. Ver §5.1d.
+
+### 5.1d · Referencia de norte (azimut absoluto)
+
+Dos caminos, y conviene medir antes de elegir:
+
+1. **`AbsoluteOrientationSensor`** — suma el magnetómetro y da norte magnético real. Costos:
+   requiere calibración de brújula, y se degrada cerca de metal. El tubo del telescopio *es*
+   metálico, así que hay que comprobar si sirve en el montaje real y no sólo sobre una mesa. Hay
+   un selector en el banco de pruebas para compararlo contra el sensor actual.
+2. **Alineación manual, una vez.** Es lo que hacen los telescopios de verdad: se apunta a algo
+   conocido y se guarda el offset. Encaja con que el prototipo sea *mediado* — hay alguien
+   operándolo que puede hacer la alineación inicial — y es inmune al metal y al interior.
+
+Recomendación provisional: si el magnetómetro no rinde en el montaje real, la alineación manual
+no es un plan B, es la práctica estándar del dominio.
+
 ### 5.1b · Transformación del canvas para vista newtoniana
 
 Pendiente, anotado para no perderlo: la vista por un newtoniano llega **rotada y con una
@@ -162,6 +190,50 @@ sola. Criterio: que actualizar siga siendo tan simple como hoy.
 
 Recordar el trap de modo: en Termux `pnpm run dev` implica modo `development`, así que la config
 que se carga es la de desarrollo (ver pendientes en [`CHANGELOG.md`](CHANGELOG.md)).
+
+### 5.2b · Qué dispositivo es la fuente de sensores (configurable)
+
+Si las pruebas de montaje no terminan de convencer, hay que poder mover la fuente de orientación
+al Secundario **sin tocar código**. Diseño propuesto, coherente con "el que corre el script es el
+principal":
+
+- El relay lee una variable de entorno (`SENSOR_SOURCE`, por defecto `ocular`) que el script de
+  arranque fija.
+- El relay la expone en un endpoint chico (`GET /link-config` → `{ "sensorSource": "ocular" }`).
+- Cada página la consulta al cargar y decide su papel: la que coincide enciende los sensores y
+  emite; la otra sólo recibe.
+
+Así el topology switch es **un flag en el script**, no una edición en dos páginas. Y respeta la
+condición de §5.1: el dispositivo con sensores es el que corre el servidor, así que se sirve a sí
+mismo por `localhost` y no hace falta HTTPS.
+
+### 5.2c · Cómo se despliega y se actualiza
+
+Hoy: Termux + `git pull` + un `.sh` que levanta todo. Es cómodo y ya está probado; el objetivo es
+mantener esa comodidad y ganar solidez, no reemplazarla por ceremonia.
+
+**Problema principal a evitar: compilar en el teléfono.** El build es lento en Android y es la
+razón de que `kiosk` necesite `NODE_OPTIONS=--max-old-space-size=1536`. Conviene que el teléfono
+**no** compile.
+
+Ruta recomendada, de menor a mayor esfuerzo:
+
+1. **Compilar en la PC, el dispositivo sólo baja artefactos.** El teléfono no necesita toolchain:
+   alcanza con Node + el relay, que ya sabe servir `dist/`. El `dist` se publica en una rama de
+   deploy o como artefacto, y el dispositivo hace `git pull` de eso. Rutina de trabajo:
+   *editar en PC → probar en PC → build → publicar → `pull` + reiniciar en el teléfono.*
+2. **`Termux:Boot`** para que el servicio levante solo al encender el dispositivo, y
+   **`Termux:Widget`** para tener un acceso de un toque en la pantalla de inicio. Elimina el paso
+   de abrir Termux y tipear.
+3. **Instalar la app como PWA** desde el propio servidor: pantalla completa, ícono propio, y sin
+   barra del navegador. Sigue necesitando el relay corriendo, así que complementa a (1) y (2), no
+   los reemplaza.
+4. **Envoltorio nativo (APK)** sólo si hace falta distribuirlo a terceros. Da la instalación más
+   sólida, pero suma build, firma y distribución — y el servidor WebSocket sigue teniendo que
+   correr en algún lado, así que no ahorra el punto (1).
+
+Criterio para elegir: cualquier alternativa tiene que dejar el ciclo de actualización tan simple
+como el actual (*push* desde la PC, *pull* en el dispositivo). Si lo complica, no vale la pena.
 
 ### 5.3 · Rendimiento en la topología real
 
