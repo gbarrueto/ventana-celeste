@@ -48,13 +48,28 @@
       <button id="apply">Aplicar</button>
     </div>
     <div style="margin-top:5px">
-      mapeo
-      <label><input type="checkbox" id="swap" /> swap yaw/pitch</label>
+      modo
+      <select id="mode">
+        <option value="vector" selected>vector (apuntado)</option>
+        <option value="euler">euler (core actual)</option>
+      </select>
+      eje óptico
+      <select id="optic">
+        <option value="+x">+x</option><option value="-x">−x</option>
+        <option value="+y">+y</option><option value="-y" selected>−y</option>
+        <option value="+z">+z</option><option value="-z">−z</option>
+      </select>
+      <label><input type="checkbox" id="invAz" /> −az</label>
+    </div>
+    <div style="margin-top:5px" id="eulerOpts">
+      mapeo <span class="muted">(sólo modo euler)</span>
+      <label><input type="checkbox" id="swap" /> swap</label>
       <label><input type="checkbox" id="invY" /> −yaw</label>
       <label><input type="checkbox" id="invP" /> −pitch</label>
     </div>
     <div class="row" style="margin-top:5px"><span class="muted">θ (gimbal)</span><span id="theta">—</span></div>
     <div class="row"><span class="muted">yaw / pitch enviados</span><span id="yp">—</span></div>
+    <div class="row"><span class="muted">az / alt (vector)</span><span id="azalt">—</span></div>
   </div>
 
   <div id="status">iniciando…</div>
@@ -85,6 +100,34 @@ function middleAngle(q) {
 
 let engine = null;
 let controller = null;
+
+// v' = q v q*. Verificado contra rotaciones conocidas.
+function rotateByQuat(q, v) {
+  const [x, y, z, w] = q;
+  const [a, b, c] = v;
+  const tx = 2 * (y * c - z * b);
+  const ty = 2 * (z * a - x * c);
+  const tz = 2 * (x * b - y * a);
+  return [a + w * tx + (y * tz - z * ty), b + w * ty + (z * tx - x * tz), c + w * tz + (x * ty - y * tx)];
+}
+
+const AXES = {
+  '+x': [1, 0, 0], '-x': [-1, 0, 0],
+  '+y': [0, 1, 0], '-y': [0, -1, 0],
+  '+z': [0, 0, 1], '-z': [0, 0, -1],
+};
+
+// El marco local del sensor tiene Z hacia arriba, así que alt/az salen directo
+// del vector de apuntado. Sin ángulos de Euler de por medio no hay convención
+// que valga sólo cerca de una elevación: la única degeneración que queda es la
+// real del alt-az, azimut indefinido en el cenit.
+function pointingAltAz(q) {
+  const v = rotateByQuat(q, AXES[$('optic').value]);
+  const n = Math.hypot(...v) || 1;
+  const alt = Math.asin(Math.max(-1, Math.min(1, v[2] / n)));
+  const az = Math.atan2(v[0] / n, v[1] / n);
+  return { alt, az: $('invAz').checked ? -az : az };
+}
 
 // Leído en cada llamada, así los toggles se aplican en vivo sin reiniciar el
 // controlador (y sin volver a calibrar).
@@ -136,17 +179,43 @@ function startController() {
   setStatus(`Corriendo. Compensación: ${$('axis').value} ${$('angle').value}°`, 'ok');
 }
 
-$('apply').onclick = startController;
+function isVector() { return $('mode').value === 'vector'; }
+
+function applyMode() {
+  $('eulerOpts').style.opacity = isVector() ? '.35' : '1';
+  if (isVector()) {
+    controller?.stop();
+    controller = null;
+    setStatus('modo vector: apuntado desde el quaternion, sin descomposición Euler', 'ok');
+  } else {
+    startController();
+  }
+}
+
+$('apply').onclick = applyMode;
+$('mode').onchange = applyMode;
 
 // θ en vivo, leído directo del sensor (sin pasar por core) para que se vea
 // dónde está el montaje respecto de la singularidad.
 try {
   const rel = new RelativeOrientationSensor({ frequency: 15 });
   rel.addEventListener('reading', () => {
-    const t = middleAngle(rel.quaternion);
+    const q = rel.quaternion;
+    const t = middleAngle(q);
     const el = $('theta');
     el.textContent = t.toFixed(1) + '°';
     el.className = Math.abs(t) > 80 ? 'bad' : Math.abs(t) > 65 ? 'warn' : 'ok';
+
+    const { alt, az } = pointingAltAz(q);
+    $('azalt').textContent = `${(az * DEG).toFixed(1)}° / ${(alt * DEG).toFixed(1)}°`;
+    // En modo vector esto maneja la vista directamente. Sin el suavizado ni la
+    // fusión con giroscopio de core — acá se está probando el mapeo, no la
+    // fluidez.
+    if (isVector() && engine?.core?.observer) {
+      engine.core.observer.yaw = az;
+      engine.core.observer.pitch = alt;
+      $('yp').textContent = 'vector';
+    }
   });
   rel.start();
 } catch { /* el panel de θ es opcional */ }
@@ -171,7 +240,7 @@ initializeStellariumEngine({
     stel.core.fov = 1.2;
   },
 })
-  .then(() => startController())
+  .then(() => applyMode())
   .catch((e) => setStatus('Motor: ' + e.message, 'bad'));
 </script>
 </body>
