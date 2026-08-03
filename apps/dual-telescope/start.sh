@@ -1,4 +1,9 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
+# Shebang portable a propósito: la ruta absoluta de Termux
+# (/data/data/com.termux/files/usr/bin/bash) sólo existe ahí, y hacía que el
+# script no se pudiera correr en ningún otro lado — ni siquiera para probarlo en
+# la PC. `env bash` funciona en Termux (termux-exec reescribe estas rutas) y
+# también en Linux/macOS/Git Bash. Si por lo que sea no arranca: `bash start.sh`.
 #
 # Arranque de dual-telescope en el dispositivo principal.
 #

@@ -53,6 +53,11 @@ await mkdir(wt, { recursive: true });
 await cp(pkg, wt, { recursive: true });
 
 gitIn(wt, 'add', '-A');
+// En Windows core.filemode suele ser false, así que git ignora el permiso del
+// disco y guardaría start.sh como 100644 — y entonces cada clon en el
+// dispositivo da "permission denied". Se fuerza el bit en el índice, que no
+// depende del sistema de archivos donde se publica.
+gitIn(wt, 'update-index', '--chmod=+x', 'start.sh');
 const dirty = gitIn(wt, 'status', '--porcelain') !== '';
 if (!dirty) {
   console.log('[publish] sin cambios respecto de la última publicación.');
