@@ -52,7 +52,27 @@ deploy/
 Verificado corriéndolo desde una carpeta vacía sin `node_modules`: sirve los estáticos y responde
 `/link-config`.
 
-Para que además baje sólo eso:
+### Crear y actualizar la rama de deploy
+
+`pnpm run publish:deploy` (en `apps/dual-telescope`) la crea la primera vez y la actualiza
+después. Usa un **worktree aparte**, así que nunca toca el working tree actual: si algo falla en
+el medio, no queda nada a medias en `main`.
+
+```bash
+pnpm run pack:deploy               # arma deploy/ desde el código actual
+pnpm run publish:deploy            # commitea en deploy/dual-telescope
+PUSH=1 pnpm run publish:deploy     # y además la sube
+```
+
+La rama es **huérfana**: no comparte ancestros con `main`, así que no arrastra la historia del
+monorepo. Verificado sobre la rama recién creada — 9 archivos, sólo `dist/`, `relay.mjs` y
+`start.sh`, sin nada de `src/`, `server/` ni `packages/`.
+
+El script vacía la rama antes de copiar, de modo que borrar un archivo del paquete también lo
+borra en la rama; y si no hay cambios respecto de la publicación anterior, no genera un commit
+vacío.
+
+Para que el dispositivo baje sólo eso:
 
 ```bash
 # una vez, en el dispositivo

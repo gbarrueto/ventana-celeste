@@ -5,3 +5,4 @@ data/
 .env.local
 .env.*.local
 deploy/
+.deploy-worktree/
