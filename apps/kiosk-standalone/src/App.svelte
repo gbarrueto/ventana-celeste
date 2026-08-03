@@ -6,6 +6,10 @@
     createOrientationController, initializeStellariumEngine,
     createKeyboardConnector,
   } from "@ventanaceleste/core";
+  // Copia única del motor en core/assets; antes se resolvía por la ruta por
+  // defecto de core, que apuntaba a la copia en public/ de esta app.
+  import engineWasmUrl from "@ventanaceleste/core/assets/stellarium-web-engine.wasm?url";
+  import engineScriptUrl from "@ventanaceleste/core/assets/stellarium-web-engine.js?url";
   import { loadConfig } from "./config";
 
   let canvasEl;
@@ -180,6 +184,8 @@
     async function initEngine() {
       await initializeStellariumEngine({
         canvas: canvasEl,
+        wasmFile: engineWasmUrl,
+        scriptUrl: engineScriptUrl,
         smalldataBaseUrl: appConfig.smallDataPath,
         bigdataBaseUrl: appConfig.bigDataPath,
         location: { cityName: "Santiago", lat: -33.45, lon: -70.67, elev: 520, mag: 17.13 },

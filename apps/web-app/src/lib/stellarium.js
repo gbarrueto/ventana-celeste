@@ -18,6 +18,11 @@ import {
   initializeStellariumEngine,
   removeStellariumEngine,
 } from '@ventanaceleste/core';
+// El motor vive una sola vez, en core/assets. `?url` hace que Vite lo emita
+// como asset y devuelva la URL final; ya no hay copia en public/ ni <script>
+// en el HTML (ensureStellariumScript inyecta el tag cuando hace falta).
+import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
+import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 
 function currentLimitMag() {
   return calculateLimitMag({
@@ -44,7 +49,8 @@ const PARANAL_UTC_OFFSET_HOURS = -3;
 export function initializeStelEngine(isTelescope = false) {
   return initializeStellariumEngine({
     canvas: document.getElementById('stel-canvas'),
-    wasmFile: 'stellarium-web-engine.wasm',
+    wasmFile: engineWasmUrl,
+    scriptUrl: engineScriptUrl,
     smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
     bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
     extended: !isTelescope,

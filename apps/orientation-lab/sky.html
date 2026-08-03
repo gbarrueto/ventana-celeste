@@ -65,6 +65,8 @@ import {
   createOrientationController,
   quaternionFromAxisAngle,
 } from '@ventanaceleste/core';
+import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
+import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 
 const $ = (id) => document.getElementById(id);
 const DEG = 180 / Math.PI;
@@ -152,8 +154,8 @@ try {
 setStatus('cargando motor…');
 initializeStellariumEngine({
   canvas: $('stel-canvas'),
-  wasmFile: '/stellarium-web-engine.wasm',
-  scriptUrl: '/stellarium-web-engine.js',
+  wasmFile: engineWasmUrl,
+  scriptUrl: engineScriptUrl,
   smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
   bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
   extended: false, // catálogos mínimos: acá sólo importa que el cielo se mueva bien
