@@ -165,10 +165,10 @@ function startController() {
   controller?.stop();
   controller = createOrientationController({
     mountQuaternion: currentMount(),
-    // Este test se queda deliberadamente en modo 'relative' (el que usa el
-    // quaternion). Con un umbral enorme nunca entra al camino de integración del
-    // giroscopio, que necesita su propia corrección de ejes y todavía no la tiene.
-    fovThreshold: 1e9,
+    // 'relative' (camino del quaternion). core compara
+    // `fov < fovThreshold ? 'gyro' : 'relative'`, así que el umbral va en 0: un
+    // valor alto forzaría giroscopio, que es justo lo contrario.
+    fovThreshold: 0,
     dynamicThreshold: 0,
     readinessGate: 'immediate',
     calibDuration: 1,

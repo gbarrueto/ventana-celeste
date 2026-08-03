@@ -43,6 +43,10 @@ export async function startSky({ role, statusEl, canvas }) {
     },
   });
 
+  // Se vuelve a fijar después de que la inicialización resolvió: setearlo sólo
+  // dentro de onReady no alcanzaba y el guía quedaba con el FOV por defecto.
+  if (engine?.core) engine.core.fov = cfg.fov;
+
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
   const { sensorSource } = await fetchLinkConfig();
   const isSource = sensorSource === role;
@@ -59,9 +63,14 @@ export async function startSky({ role, statusEl, canvas }) {
     const controller = createOrientationController({
       pointingMode: 'vector',
       opticalAxis: '+y',
-      // Se queda en el camino del quaternion: la integración del giroscopio
-      // todavía no corrige ejes con montaje rotado.
-      fovThreshold: 1e9,
+      // OJO con el sentido de la comparación: core elige modo con
+      // `fov < fovThreshold ? 'gyro' : 'relative'`, así que un umbral **alto**
+      // fuerza giroscopio, no quaternion. Con 0 nunca se cumple (el FOV siempre
+      // es positivo) y se queda en 'relative', que es el camino del quaternion —
+      // el único con la corrección de montaje. En giroscopio se integran los ejes
+      // crudos del dispositivo: deriva con el aparato quieto y, con el montaje
+      // rotado 90°, arriba-abajo e izquierda-derecha salen cambiados.
+      fovThreshold: 0,
       dynamicThreshold: 0,
       readinessGate: 'immediate',
       calibDuration: 1,
