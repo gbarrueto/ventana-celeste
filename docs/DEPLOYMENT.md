@@ -8,8 +8,9 @@ Aplica sobre todo a `dual-telescope`, pero la opción A sirve igual para `kiosk`
 
 ## Restricciones que mandan
 
-1. **100% offline.** No hay Internet en el sitio de observación: nada puede depender de un CDN,
-   de un store, ni de una URL pública.
+1. **No depender de Internet.** Suele haber conexión — no es una salida al desierto — pero el
+   sistema tiene que funcionar sin ella. O sea: se puede usar la red para *preparar* (clonar,
+   instalar, traer catálogos), nunca para *operar*.
 2. **Un teléfono hace de AP** y el otro se conecta a él.
 3. **Hace falta un proceso servidor** en uno de los dispositivos: es el que sirve los estáticos y
    hace de relay WebSocket entre los dos roles.
@@ -28,11 +29,43 @@ Aplica sobre todo a `dual-telescope`, pero la opción A sirve igual para `kiosk`
 | Dónde | Qué |
 |---|---|
 | PC | Node + pnpm, todo el toolchain, `vite build` |
-| Dispositivo principal | Node + `ws` únicamente. Sin Vite, sin Svelte, sin compilar |
+| Dispositivo principal | **Sólo Node.** `ws` va embebido en el bundle; sin Vite, sin pnpm, sin `node_modules`, sin compilar |
 | Transporte | `git pull` de un artefacto ya construido |
 
 El relay ya sirve `dist/`, así que el dispositivo no necesita nada más que ese directorio y
 `node server/relay.js` — que es lo que hace `start.sh`.
+
+### Sólo la app en el dispositivo, no el repo entero
+
+Sí, esto lo resuelve — y se puede ir bastante más lejos que "una rama con el build".
+
+El paquete de despliegue que arma `pnpm run pack:deploy` contiene exactamente tres cosas:
+
+```
+deploy/
+├── dist/       la app ya construida
+├── relay.mjs   el relay con `ws` embebido: un archivo, cero dependencias
+└── start.sh    el arranque
+```
+
+**El dispositivo no necesita el repo, ni pnpm, ni `node_modules`, ni compilar. Sólo Node.**
+Verificado corriéndolo desde una carpeta vacía sin `node_modules`: sirve los estáticos y responde
+`/link-config`.
+
+Para que además baje sólo eso:
+
+```bash
+# una vez, en el dispositivo
+git clone --branch deploy/dual-telescope --single-branch --depth 1 <repo> ventana
+# después, para actualizar
+git pull --ff-only
+```
+
+Con `--single-branch` no se traen los objetos de las otras ramas, y con `--depth 1` tampoco el
+historial. Si la rama de deploy es **huérfana** (`git checkout --orphan`), su historia es
+independiente del repo principal, así que el clon es del tamaño del paquete y nada más.
+
+Cada app tiene su propia rama de deploy, así que `kiosk` no arrastra `dual-telescope` ni al revés.
 
 ### Dónde vive el `dist`
 
@@ -40,9 +73,9 @@ Tres variantes, de menos a más ceremonia:
 
 1. **Rama de deploy** (`deploy/dual-telescope`): la PC compila y commitea sólo `dist/` ahí. El
    dispositivo hace `git pull` de esa rama. Simple, versionado, sin herramientas nuevas.
-2. **Release/artefacto** (tarball adjunto a un tag): más limpio para el repo principal, pero
-   necesita descargar y descomprimir a mano — y **descargar implica Internet**, que en el sitio no
-   hay. Sirve para preparar antes de salir, no en el campo.
+2. **Release/artefacto** (tarball adjunto a un tag): más limpio para el repo principal, pero hay
+   que descargar y descomprimir a mano. Sirve para preparar con calma, no para corregir algo en el
+   momento.
 3. **Copia directa** por USB o `scp` desde la PC. Sin Internet ni git en el medio; es la vía de
    escape cuando algo falla en el sitio.
 
@@ -51,7 +84,7 @@ Recomendada: **(1)**, con **(3)** como respaldo.
 ### Rutina de trabajo
 
 ```
-PC:          editar → probar en el navegador → pnpm build → publicar dist
+PC:          editar → probar → pnpm run pack:deploy → publicar deploy/ en su rama
 Dispositivo: PULL=1 ./start.sh
 ```
 
@@ -100,6 +133,11 @@ nueva que hoy no hace falta para nada más.
 - **En contra:** beneficio **asimétrico** — completo en el principal, parcial en el guía, salvo
   que se agregue HTTPS; y suma manifest + service worker que hay que mantener (un service worker
   mal invalidado sirve una versión vieja, que es justo el bug difícil de ver).
+
+### Decisión: pospuesto
+
+Como el proceso servidor hace falta igual, el PWA no evita ningún paso: es trabajo extra encima
+de lo mismo. Se retoma más adelante, si la comodidad de uso lo justifica.
 
 ---
 

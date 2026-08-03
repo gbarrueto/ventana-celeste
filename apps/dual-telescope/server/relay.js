@@ -13,12 +13,14 @@
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, resolve, dirname, normalize } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { extname, join, resolve, normalize } from 'node:path';
 import { WebSocketServer } from 'ws';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const DIST = resolve(here, '../dist');
+// Resuelto desde el directorio de trabajo, no desde la ubicación del archivo:
+// así el mismo código sirve tanto en el repo (`node server/relay.js` desde la
+// carpeta de la app) como en el paquete de despliegue, donde el relay queda al
+// lado de dist/. Además evita `import.meta.url`, que no sobrevive al bundleo.
+const DIST = resolve(process.env.DIST ?? process.cwd(), 'dist');
 const PORT = Number(process.env.PORT ?? 8080);
 
 // Qué dispositivo lleva los sensores. Lo fija el script de arranque, así que

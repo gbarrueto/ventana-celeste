@@ -31,14 +31,19 @@ fi
 
 if [ ! -d dist ]; then
   echo "[start] ERROR: no existe dist/." >&2
-  echo "        Este dispositivo no compila. Generá el build en la PC y publicalo," >&2
+  echo "        Este dispositivo no compila. Genera el build en la PC y publicalo," >&2
   echo "        después traelo con: PULL=1 ./start.sh   (ver docs/DEPLOYMENT.md)" >&2
   exit 1
 fi
 
-# Sin node_modules no hay 'ws'. Se instala una vez, no en cada arranque.
-if [ ! -d node_modules ] && [ ! -d ../../node_modules ]; then
-  echo "[start] ERROR: faltan dependencias. Corré 'pnpm install' una vez en el dispositivo." >&2
+# El paquete de despliegue trae relay.mjs con 'ws' ya embebido, así que el
+# dispositivo no necesita node_modules. Dentro del repo se usa el fuente.
+if [ -f relay.mjs ]; then
+  RELAY="relay.mjs"
+elif [ -f server/relay.js ]; then
+  RELAY="server/relay.js"
+else
+  echo "[start] ERROR: no encuentro el relay (ni relay.mjs ni server/relay.js)." >&2
   exit 1
 fi
 
@@ -52,4 +57,4 @@ echo "[start] guía (otro teléfono): http://$IP:$PORT/guide.html"
 echo
 
 # El relay sirve los estáticos y hace de puente entre los dos roles.
-exec node server/relay.js
+exec node "$RELAY"

@@ -244,6 +244,19 @@ Ruta recomendada, de menor a mayor esfuerzo:
 Criterio para elegir: cualquier alternativa tiene que dejar el ciclo de actualización tan simple
 como el actual (*push* desde la PC, *pull* en el dispositivo). Si lo complica, no vale la pena.
 
+### 5.2d · Catálogos: por ahora, desde los servidores remotos
+
+Todavía no hay copia local de los catálogos ni del resto de los datos, así que **para la primera
+prueba integral se usan las fuentes online**, igual que hace `kiosk` hoy (sus paths locales siguen
+comentados en la config).
+
+Esto no contradice el objetivo offline: la red se usa para *preparar*, no para *operar*. Pero
+implica dos cosas concretas para la prueba: hace falta conexión mientras se cargan los catálogos,
+y el Guía conviene que arranque con `extended: false` (§4.10), que ya pide bastante menos datos.
+
+El empaquetado local sigue pendiente, y es compartido con `kiosk` (ver Pendientes en
+[`CHANGELOG.md`](CHANGELOG.md)).
+
 ### 5.3 · Rendimiento en la topología real
 
 Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`

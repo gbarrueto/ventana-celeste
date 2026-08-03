@@ -7,13 +7,15 @@
     "dev": "vite",
     "relay": "node server/relay.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pack:deploy": "vite build && node scripts/pack-deploy.mjs"
   },
   "dependencies": {
     "@ventanaceleste/core": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "esbuild": "^0.28.1",
     "vite": "^5.4.0",
     "ws": "^8.18.0"
   }
