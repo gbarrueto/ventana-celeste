@@ -49,8 +49,8 @@ Cada paso deja el repo buildeable y algo verificable a mano.
    dependencia de workspace. Sin lógica.
 2. **Transporte**: `createWebSocketTransport` + servidor mínimo. Criterio de éxito: un `{msg,
    values}` de ida y vuelta entre dos navegadores, usando el `messageBus` sin tocarlo.
-3. **Rol con sensores**: engine + óptica + orientación + emisión.
-4. **Rol receptor**: engine + recepción + FOV fijo amplio + interpolación en el receptor.
+3. ~~**Rol con sensores**: engine + orientación + emisión~~ — **HECHO**. Modo vector, eje `+y`.
+4. ~~**Rol receptor**: engine + recepción + FOV amplio + interpolación~~ — **HECHO**.
 5. **Medir latencia y fluidez en la topología real** (teléfono como AP), *antes* de sumar
    hardware (§5.3). Es el riesgo ya documentado en `Architecture.md`.
 6. **Hardware**: cablear `createKeyboardConnector` a las teclas del lector RFID.

@@ -47,6 +47,23 @@ function quaternionMultiply(a, b) {
 }
 
 // Builds a `mountQuaternion` readably: quaternionFromAxisAngle('y', -90).
+// Rota un vector por un quaternion (v' = q v q*). Verificado contra rotaciones
+// conocidas antes de usarlo.
+export function rotateVectorByQuaternion(q, v) {
+  const [x, y, z, w] = q;
+  const [a, b, c] = v;
+  const tx = 2 * (y * c - z * b);
+  const ty = 2 * (z * a - x * c);
+  const tz = 2 * (x * b - y * a);
+  return [a + w * tx + (y * tz - z * ty), b + w * ty + (z * tx - x * tz), c + w * tz + (x * ty - y * tx)];
+}
+
+export const OPTICAL_AXES = {
+  '+x': [1, 0, 0], '-x': [-1, 0, 0],
+  '+y': [0, 1, 0], '-y': [0, -1, 0],
+  '+z': [0, 0, 1], '-z': [0, 0, -1],
+};
+
 export function quaternionFromAxisAngle(axis, degrees) {
   const half = (degrees * Math.PI) / 360;
   const s = Math.sin(half);
@@ -96,6 +113,24 @@ export function createOrientationController({
   // not set it are bit-for-bit unaffected.
   mountQuaternion = null,
 
+  // 'euler'  — descomposición Euler con convención fija (lo histórico).
+  // 'vector' — se rota el eje óptico por el quaternion y se leen alt/az del
+  //            vector resultante.
+  //
+  // Por qué existe 'vector': la descomposición Euler asume implícitamente qué eje
+  // del dispositivo corresponde a qué eje del cielo, y esa correspondencia sólo
+  // vale cerca de una elevación. Medido en el montaje: el eje de rotación que hay
+  // que usar para moverse en azimut se desplaza con la elevación, hasta que en el
+  // cenit la vista deja de responder. El modo vector no tiene convención: el
+  // montaje se reduce a *qué vector del dispositivo apunta por el tubo*, una
+  // constante. Tampoco tiene singularidad propia; la única que queda es la real
+  // del alt-az, azimut indefinido en el cenit.
+  //
+  // Por defecto 'euler', así que web-app y kiosk no cambian de comportamiento.
+  pointingMode = 'euler',
+  // Clave de OPTICAL_AXES o un vector [x, y, z]. Sólo se usa en modo 'vector'.
+  opticalAxis = '+y',
+
   getLogFov = () => 0.05,
   onDebug = () => {},
   onCoords = () => {},
@@ -134,6 +169,27 @@ export function createOrientationController({
 
     countdownTimer: null,
   };
+
+  const opticalVector = Array.isArray(opticalAxis) ? opticalAxis : OPTICAL_AXES[opticalAxis];
+  if (pointingMode === 'vector' && !opticalVector) {
+    throw new Error(`createOrientationController: opticalAxis inválido "${opticalAxis}"`);
+  }
+
+  // Único punto donde el quaternion se convierte en yaw/pitch. Los dos modos
+  // devuelven la misma forma, así que todo lo de abajo es indiferente al elegido.
+  //
+  // Nota: esto cubre el camino del quaternion (modo 'relative'). La integración
+  // del giroscopio, que se usa con FOV angosto, sigue leyendo los ejes crudos del
+  // dispositivo y necesitaría su propia corrección con un montaje rotado.
+  function quaternionToPointing(q) {
+    if (pointingMode !== 'vector') return quaternionToEuler(q);
+    const v = rotateVectorByQuaternion(q, opticalVector);
+    const n = Math.hypot(v[0], v[1], v[2]) || 1;
+    return {
+      pitch: Math.asin(Math.max(-1, Math.min(1, v[2] / n))),
+      yaw: Math.atan2(v[0] / n, v[1] / n),
+    };
+  }
 
   function emitDebug(partial) {
     onDebug(partial);
@@ -219,7 +275,7 @@ export function createOrientationController({
     persistBias(state.gyroBias);
 
     if (state.relOrientLast) {
-      const euler = quaternionToEuler(state.relOrientLast);
+      const euler = quaternionToPointing(state.relOrientLast);
       state.oldX = euler.yaw;
       state.oldY = euler.pitch;
       state.orient.yaw = euler.yaw;
@@ -355,7 +411,7 @@ export function createOrientationController({
     }
 
     if (state.relOrientLast) {
-      const euler = quaternionToEuler(state.relOrientLast);
+      const euler = quaternionToPointing(state.relOrientLast);
       state.oldX = euler.yaw;
       state.oldY = euler.pitch;
       state.orient.yaw = euler.yaw;
@@ -398,7 +454,7 @@ export function createOrientationController({
   function transitionToMode(newMode) {
     if (newMode === 'gyro' && state.currentMode === 'relative') {
       if (state.relOrientLast) {
-        const euler = quaternionToEuler(state.relOrientLast);
+        const euler = quaternionToPointing(state.relOrientLast);
         state.orient.pitch = euler.pitch;
         state.orient.yaw = euler.yaw;
         state.oldX = euler.yaw;
@@ -406,7 +462,7 @@ export function createOrientationController({
       }
     } else if (newMode === 'relative' && state.currentMode === 'gyro') {
       if (state.relOrientLast) {
-        const euler = quaternionToEuler(state.relOrientLast);
+        const euler = quaternionToPointing(state.relOrientLast);
         state.oldX = unwrapAngle(euler.yaw, state.oldX);
         state.oldY = euler.pitch;
       }
@@ -484,7 +540,7 @@ export function createOrientationController({
     state.rawDynamicY = null;
 
     if (state.currentMode === 'relative' && state.relOrientLast) {
-      const euler = quaternionToEuler(state.relOrientLast);
+      const euler = quaternionToPointing(state.relOrientLast);
       state.orient.pitch = euler.pitch;
       state.orient.yaw = euler.yaw;
       emitDebug({ activeSource: 'relative-orientation' });
@@ -513,7 +569,7 @@ export function createOrientationController({
     const deltaV = currentV - state.lastV;
     if (!(deltaV > 0.000001 && state.relOrientLast && state.lastV < fovThreshold)) return;
 
-    const euler = quaternionToEuler(state.relOrientLast);
+    const euler = quaternionToPointing(state.relOrientLast);
     const f = (v) => Math.max(0, 1.0 - Math.pow(v / fovThreshold, 2.5));
     const fLast = f(state.lastV);
     const fCurr = f(currentV);
