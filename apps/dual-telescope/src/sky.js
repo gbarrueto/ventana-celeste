@@ -6,6 +6,7 @@ import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.was
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
 import { createFocuser, aplicarBlur } from './focuser.js';
+import { cargarAjustes, crearPanel } from './panel.js';
 
 // El guía simula un tubo buscador: campo amplio y fijo. El ocular va bastante
 // más cerrado, que es el punto del instrumento.
@@ -19,36 +20,34 @@ const ROLE = {
 const SMALL = 'https://smalldata.ventanaceleste.com/';
 const BIG = 'https://bigdata.ventanaceleste.com/';
 
-// Ajustables desde la URL, porque el teléfono del ocular queda dentro del tubo y
-// no se le puede poner un panel de controles: se abre con el valor y listo.
-//   ?smooth=0.15   suavizado del seguimiento (1 = crudo, más chico = más suave)
-//   ?canvas=0.5    fracción de alto de pantalla que ocupa la vista
-//   ?rot=90        rotación del canvas en grados
-function param(nombre, porDefecto) {
-  const v = parseFloat(new URLSearchParams(location.search).get(nombre));
-  return Number.isFinite(v) ? v : porDefecto;
-}
-
 // El ocular físico es chico y queda abajo, y el teléfono va rotado en el tubo.
 // Se calcula en JS y no en CSS porque al rotar 90° hay que **intercambiar** ancho
 // y alto: el canvas se dibuja apaisado y la rotación lo pone como se ve por el
 // ocular.
-function acomodarOcular(canvas, fraccion, rotacion) {
+//
+// Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
+// valores, sin volver a registrar listeners.
+function acomodarOcular(canvas, ajustes) {
+  const mira = document.querySelector('.crosshair');
   const aplicar = () => {
-    const altoArea = window.innerHeight * fraccion;
+    const altoArea = window.innerHeight * ajustes.canvas;
     const anchoArea = window.innerWidth;
-    const rotado = Math.abs(rotacion % 180) === 90;
+    const rotado = Math.abs(ajustes.rot % 180) === 90;
     canvas.style.position = 'fixed';
     canvas.style.left = '50%';
     canvas.style.top = `${window.innerHeight - altoArea / 2}px`;
     canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
     canvas.style.height = `${rotado ? anchoArea : altoArea}px`;
-    canvas.style.transform = `translate(-50%, -50%) rotate(${rotacion}deg)`;
+    canvas.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
     canvas.style.transformOrigin = 'center';
+    // La mira va al centro de la vista, no a un porcentaje fijo: si cambia
+    // cuánto ocupa el canvas, tiene que seguirlo.
+    if (mira) mira.style.top = `${window.innerHeight - altoArea / 2}px`;
   };
   aplicar();
   window.addEventListener('resize', aplicar);
   window.addEventListener('orientationchange', aplicar);
+  return aplicar;
 }
 
 export async function startSky({ role, statusEl, canvas }) {
@@ -81,8 +80,34 @@ export async function startSky({ role, statusEl, canvas }) {
   if (engine?.core) engine.core.fov = cfg.fov;
 
   // Sólo el ocular va montado en el tubo; el guía se mira de frente.
+  //
+  // El panel de ajustes ocupa la parte de arriba, que es la que queda tapada por
+  // el tubo: se ve y se toca mientras se arma, y desaparece de la vista una vez
+  // montado. Los valores quedan guardados, así que se ajusta una vez.
+  const ajustes = cargarAjustes();
+  let controller = null;
+  let focuser = null;
+  let panel = null;
+
   if (role === 'ocular') {
-    acomodarOcular(canvas, param('canvas', 0.5), param('rot', 90));
+    const reacomodar = acomodarOcular(canvas, ajustes);
+    panel = crearPanel({
+      ajustes,
+      onChange: (clave) => {
+        if (clave === 'smooth') controller?.setSmoothing({ relative: ajustes.smooth, gyro: ajustes.smooth });
+        else { reacomodar(); panel.acomodar(ajustes.canvas); }
+      },
+      onPair: async (btn) => {
+        try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
+      },
+    });
+    panel.acomodar(ajustes.canvas);
+    // El estado colgaba abajo a la izquierda, o sea encima de la vista. Dentro
+    // del panel queda en la zona tapada, que es donde no molesta.
+    if (statusEl) {
+      statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
+      panel.raiz.appendChild(statusEl);
+    }
   }
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
@@ -98,7 +123,7 @@ export async function startSky({ role, statusEl, canvas }) {
   if (isSource) {
     // Modo vector y eje óptico +y: medido en el montaje. Sustituye al mapeo
     // dependiente de la elevación por una constante (§5.1a).
-    const controller = createOrientationController({
+    controller = createOrientationController({
       pointingMode: 'vector',
       opticalAxis: '+y',
       // OJO con el sentido de la comparación: core elige modo con
@@ -113,9 +138,10 @@ export async function startSky({ role, statusEl, canvas }) {
       readinessGate: 'immediate',
       calibDuration: 1,
       // Con zoom alto un temblor de la mano se amplifica, así que hace falta
-      // bastante más suavizado que el 0.5 que traía por defecto. Ajustable con
-      // ?smooth= para encontrar el punto entre realismo y usabilidad.
-      smoothing: { relative: param('smooth', 0.18), gyro: param('smooth', 0.18) },
+      // bastante más suavizado que el 0.5 que traía por defecto. El deslizador del
+      // panel lo cambia en vivo, que es la única forma razonable de encontrar el
+      // punto entre realismo y usabilidad: se prueba apuntando a algo.
+      smoothing: { relative: ajustes.smooth, gyro: ajustes.smooth },
       onView: ({ yaw, pitch }) => {
         apply(yaw, pitch);
         bus.sendThrottled('pose', { yaw, pitch }, other, 20);
@@ -154,7 +180,7 @@ export async function startSky({ role, statusEl, canvas }) {
   // El hardware vive en el ocular, así que sólo ese rol lo abre. El guía no
   // enfoca: en un tubo guía la imagen está siempre nítida.
   if (role === 'ocular') {
-    const focuser = createFocuser({
+    focuser = createFocuser({
       onBlur: ({ blur, position }) => {
         aplicarBlur(canvas, blur);
         // El guía es el dispositivo que queda a mano, así que le mandamos el
@@ -163,24 +189,16 @@ export async function startSky({ role, statusEl, canvas }) {
         bus.sendThrottled('focus', { blur, position }, other, 100);
       },
       onStatus: ({ connected, message }) => {
-        say(`${cfg.label} · ${message}`);
+        panel?.setEstado(`enfocador: ${message}`);
         bus.send('focusStatus', { connected, message }, other);
       },
     });
 
-    // Sin gesto: si ya se emparejó en este origen, arranca solo.
+    // Sin gesto: si ya se emparejó en este origen, arranca solo. El botón de
+    // emparejar sólo aparece si eso falla — hace falta una vez en la vida del
+    // equipo, con el teléfono en la mano, y después el permiso queda.
     const auto = await focuser.autoConnect();
-    if (!auto) {
-      // Sólo hace falta una vez en la vida del equipo, y con el teléfono en la
-      // mano. Después de esto el permiso queda para este origen.
-      const btn = document.createElement('button');
-      btn.textContent = 'Emparejar enfocador';
-      btn.className = 'pair-btn';
-      btn.onclick = async () => {
-        try { await focuser.pair(); btn.remove(); } catch (e) { say(`enfocador: ${e.message}`); }
-      };
-      document.body.appendChild(btn);
-    }
+    panel?.mostrarPair(!auto);
 
     window.addEventListener('beforeunload', () => focuser.stop());
   } else {

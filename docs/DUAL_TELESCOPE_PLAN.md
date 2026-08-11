@@ -350,18 +350,24 @@ elevado a un exponente, de modo que cerca del foco la imagen mejora rápido y le
   apunta a su canvas y no se toca nada más.
 - El cambio de ocular por RFID todavía no está cableado; `setEyepiece()` ya lo espera.
 
-### 5.7 · Suavizado y disposición del canvas — ajustables desde la URL
+### 5.7 · Suavizado y disposición del canvas — panel de ajustes
 
-El teléfono del ocular queda dentro del tubo, así que no puede tener un panel de controles: los
-dos parámetros se pasan al abrir la página.
+La vista ocupa la mitad de abajo de la pantalla, así que la mitad de arriba queda tapada por el
+tubo una vez montado el teléfono. Ahí va el panel de ajustes: se ve y se toca mientras se arma,
+y desaparece en cuanto el equipo está montado, sin robarle nada a la vista.
 
-| Parámetro | Por defecto | Qué hace |
+| Ajuste | Por defecto | Qué hace |
 |---|---|---|
-| `?smooth=` | `0.18` | Fracción del error corregida por lectura. `1` = crudo, más chico = más suave y más retrasado |
-| `?canvas=` | `0.5` | Fracción del alto de pantalla que ocupa la vista, abajo |
-| `?rot=` | `90` | Rotación del canvas, en grados |
+| suavizado | `0.18` | Fracción del error corregida por lectura. `1` = crudo, más chico = más suave y más retrasado |
+| vista | `50 %` | Fracción del alto de pantalla que ocupa la vista, abajo |
+| rotación | `90°` | Rotación del canvas. Los cuatro valores están como botones para encontrar el que coincide con el montaje |
 
-Ejemplo: `http://localhost:8080/?smooth=0.12&canvas=0.45`
+Los valores se guardan en `localStorage`: se ajusta una vez y sobrevive a recargas y apagones.
+
+Esto reemplaza a una primera versión que los pasaba por URL (`?smooth=…&canvas=…`). No servía:
+los teléfonos de prueba suelen estar sin conexión y sin forma cómoda de recibir un link, y
+escribir esa cadena a mano es peor que mover un deslizador. El panel además permite ajustar
+**mirando el resultado**, que es la única manera de calibrar suavizado.
 
 **Sobre el suavizado.** Con zoom alto un temblor de la mano se amplifica, y la vista salta. Algo
 de suavizado es *más* realista, no menos —un telescopio real tiene inercia— pero de más el
@@ -381,6 +387,11 @@ apaisado y la rotación lo deja como se ve por el ocular. Se recalcula al rotar 
 
 Ojo que esto es la **disposición física**, distinta de la transformación de imagen newtoniana de
 §5.1b (rotación + reflexión respecto de lo que se ve a ojo desnudo), que sigue pendiente.
+
+Al panel se mudaron también el estado del enlace —que colgaba abajo a la izquierda, o sea encima
+de la vista— y el botón de emparejar el enfocador, que sólo aparece cuando la reconexión sin gesto
+no encontró nada autorizado. La mira dejó de estar en un porcentaje fijo y se centra en el área de
+la vista, así que sigue al deslizador.
 
 ### 5.3 · Rendimiento en la topología real
 
