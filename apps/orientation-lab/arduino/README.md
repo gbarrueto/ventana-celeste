@@ -37,11 +37,12 @@ descarta caminos sin tocar el hardware:
 | Si dice | Entonces |
 |---|---|
 | Web Serial **sí** | Plan A sirve. Es el más simple, ir con ese |
-
-> Medido el 2026-08-11 en el teléfono de prueba: **Web Serial no está disponible**. Confirma lo
-> que se sospechaba y descarta el Plan A en Android.
 | Web Serial **no**, WebUSB **sí** | Saltar al Plan B |
 | las dos **no** | Plan C (gamepad), que funciona seguro |
+
+> **Medido el 2026-08-11 en el teléfono de prueba: Web Serial NO está disponible.** Confirma lo que
+> se sospechaba y descarta el Plan A en Android. Queda igual el sketch, porque en el navegador de
+> escritorio sí existe y sirve para probar la placa desde la PC.
 
 También conviene anotar el user agent que muestra: si algún día cambia el navegador del
 dispositivo, esto explica por qué cambió el resultado.
