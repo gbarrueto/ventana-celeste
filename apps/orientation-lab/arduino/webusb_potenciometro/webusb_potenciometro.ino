@@ -40,6 +40,11 @@ void loop() {
   if (ahora - ultimoMs < INTERVALO_MS) return;
   ultimoMs = ahora;
 
+  // La libreria descarta lo que se escriba mientras el navegador no se haya
+  // anunciado (el equivalente a DTR). Sin este guard el sketch "anda" pero no
+  // llega nada, que es indistinguible de un problema de hardware.
+  if (!Salida) return;
+
   int valor = analogRead(PIN_POT);
   if (abs(valor - ultimoEnviado) < BANDA_MUERTA) return;
   ultimoEnviado = valor;

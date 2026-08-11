@@ -37,6 +37,9 @@ descarta caminos sin tocar el hardware:
 | Si dice | Entonces |
 |---|---|
 | Web Serial **sí** | Plan A sirve. Es el más simple, ir con ese |
+
+> Medido el 2026-08-11 en el teléfono de prueba: **Web Serial no está disponible**. Confirma lo
+> que se sospechaba y descarta el Plan A en Android.
 | Web Serial **no**, WebUSB **sí** | Saltar al Plan B |
 | las dos **no** | Plan C (gamepad), que funciona seguro |
 
@@ -61,10 +64,18 @@ dispositivo, esto explica por qué cambió el resultado.
 2. Cargar `webusb_potenciometro/webusb_potenciometro.ino`.
 3. En `io.html`, botón **WebUSB** y elegir la placa.
 
-**Bien:** muestra fabricante, producto y los IDs de vendor/producto.
-**Mal:** *"unable to claim interface"* → no es el sketch: el sistema ya tomó el dispositivo con su
-propio driver y no lo suelta. Es el fallo típico de esta vía y es motivo suficiente para pasar al
-Plan C.
+El botón ahora **abre el dispositivo y lee**, no sólo lo enumera: reclama la interfaz que tenga un
+endpoint bulk de entrada, manda el control transfer que anuncia al host (equivalente a DTR — la
+librería de Arduino no emite nada hasta recibirlo) y muestra lo que llega.
+
+**Bien:** lista las interfaces con sus endpoints y después aparecen `P:512`, `P:640`… al girar.
+**Mal, y qué significa cada uno:**
+
+| Mensaje | Qué pasa |
+|---|---|
+| aparece el producto pero **no llega nada** al girar | Antes era el propio probe, que sólo enumeraba. Si sigue pasando: revisar que el sketch tenga el guard `if (!Salida) return;` y que se haya cargado la versión WebUSB |
+| `unable to claim interface` | El sistema tomó el dispositivo con su driver y no lo suelta. No es el sketch. Motivo suficiente para pasar al Plan C |
+| `sin endpoint bulk de entrada` | La placa no está exponiendo la interfaz WebUSB: casi seguro se cargó otro sketch |
 
 ## Plan C — HID gamepad
 

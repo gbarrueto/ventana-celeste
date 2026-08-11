@@ -86,13 +86,70 @@ $('bSerial').onclick = async () => {
   } catch (e) { log('Web Serial: ' + e.name + ' — ' + e.message); }
 };
 
+// Enumerar el dispositivo no es leerlo: hay que abrirlo, reclamar la interfaz,
+// avisar que el host esta presente (equivalente a DTR) y recien ahi pedir datos.
+// La version anterior de este boton solo enumeraba, asi que mover el
+// potenciometro no podia hacer nada.
+let usbDevice = null;
+let usbLeyendo = false;
+
+async function usbLeer() {
+  const dev = await navigator.usb.requestDevice({ filters: [] });
+  usbDevice = dev;
+  await dev.open();
+  if (dev.configuration === null) await dev.selectConfiguration(1);
+
+  // Se busca la interfaz con un endpoint bulk de entrada en vez de hardcodear
+  // numeros: cambian segun la placa y la libreria.
+  const mapa = [];
+  let iface = null;
+  let epIn = null;
+  for (const it of dev.configuration.interfaces) {
+    for (const alt of it.alternates) {
+      const eps = alt.endpoints.map((e) => e.direction + '/' + e.type + '/' + e.endpointNumber).join(' ');
+      mapa.push('  iface ' + it.interfaceNumber + ' clase ' + alt.interfaceClass + ': ' + (eps || '(sin endpoints)'));
+      const bulkIn = alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
+      if (bulkIn && iface === null) { iface = it.interfaceNumber; epIn = bulkIn.endpointNumber; }
+    }
+  }
+  log('WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' + (dev.productName || '?') + '\n' + mapa.join('\n'));
+  if (iface === null) throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB');
+
+  await dev.claimInterface(iface);
+  try { await dev.selectAlternateInterface(iface, 0); } catch { /* no todas lo necesitan */ }
+
+  // 0x22 = SET_CONTROL_LINE_STATE, valor 1 = DTR. La libreria WebUSB de Arduino
+  // no manda nada hasta que el host se anuncia asi.
+  await dev.controlTransferOut({
+    requestType: 'class', recipient: 'interface', request: 0x22, value: 0x01, index: iface,
+  });
+
+  usbLeyendo = true;
+  document.getElementById('bUsb').textContent = 'Detener WebUSB';
+  let acc = '';
+  while (usbLeyendo) {
+    const r = await dev.transferIn(epIn, 64);
+    if (r.status !== 'ok' || !r.data || !r.data.byteLength) continue;
+    acc = (acc + new TextDecoder().decode(r.data)).slice(-300);
+    log('WebUSB iface ' + iface + ' ep ' + epIn + ' - recibiendo:\n' + acc);
+  }
+}
+
 $('bUsb').onclick = async () => {
   if (!('usb' in navigator)) return log('navigator.usb no existe en este navegador.');
+  if (usbLeyendo) {
+    usbLeyendo = false;
+    document.getElementById('bUsb').textContent = 'WebUSB';
+    try { await usbDevice?.close(); } catch { /* ya cerrado */ }
+    return;
+  }
   try {
-    const dev = await navigator.usb.requestDevice({ filters: [] });
-    log(`WebUSB OK:\n  ${dev.manufacturerName ?? '?'} ${dev.productName ?? '?'}\n` +
-        `  vendorId 0x${dev.vendorId.toString(16)} productId 0x${dev.productId.toString(16)}`);
-  } catch (e) { log('WebUSB: ' + e.name + ' — ' + e.message); }
+    await usbLeer();
+  } catch (e) {
+    usbLeyendo = false;
+    document.getElementById('bUsb').textContent = 'WebUSB';
+    log('WebUSB: ' + e.name + ' - ' + e.message);
+  }
 };
 
 $('bGp').onclick = () => {
