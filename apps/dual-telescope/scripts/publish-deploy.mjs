@@ -8,8 +8,10 @@
 // que no hay riesgo de dejarlo a medias si algo falla en el medio.
 //
 // Uso:
-//   pnpm run publish:deploy           # commitea en la rama local
-//   PUSH=1 pnpm run publish:deploy    # y además la sube
+//   pnpm run publish:deploy              # commitea en la rama local
+//   pnpm run publish:deploy -- --push    # y además la sube
+//   PUSH=1 pnpm run publish:deploy       # equivalente, pero no funciona en
+//                                        # PowerShell (usar --push ahí)
 import { execFileSync } from 'node:child_process';
 import { cp, mkdir, rm, readdir, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -67,7 +69,8 @@ if (!dirty) {
   console.log(`[publish] commit en ${BRANCH} (fuente: ${rev})`);
 }
 
-if (process.env.PUSH === '1') {
+const push = process.env.PUSH === '1' || process.argv.includes('--push');
+if (push) {
   gitIn(wt, 'push', '-u', 'origin', BRANCH);
   console.log('[publish] subido a origin.');
 } else {

@@ -20,7 +20,7 @@ pnpm --filter @ventanaceleste/dual-telescope dev
 git push origin main                       # 1. primero el código
 cd apps/dual-telescope
 pnpm run pack:deploy                       # 2. arma deploy/
-PUSH=1 pnpm run publish:deploy             # 3. publica la rama de deploy
+pnpm run publish:deploy -- --push          # 3. publica la rama de deploy
 
 # --- en el dispositivo ---
 git clone --branch deploy/dual-telescope --single-branch --depth 1 <repo> ventana
@@ -106,8 +106,12 @@ el medio, no queda nada a medias en `main`.
 ```bash
 pnpm run pack:deploy               # arma deploy/ desde el código actual
 pnpm run publish:deploy            # commitea en deploy/dual-telescope
-PUSH=1 pnpm run publish:deploy     # y además la sube
+pnpm run publish:deploy -- --push  # y además la sube
 ```
+
+(`--push` funciona en cualquier shell, incluida PowerShell. `PUSH=1
+pnpm run publish:deploy` también sirve, pero sólo en bash — en PowerShell
+`VAR=1 comando` no es sintaxis válida.)
 
 La rama es **huérfana**: no comparte ancestros con `main`, así que no arrastra la historia del
 monorepo. Verificado sobre la rama recién creada — 9 archivos, sólo `dist/`, `relay.mjs` y
