@@ -68,9 +68,9 @@ exactamente como ya funciona en `kiosk`: tarjetas distintas en una ranura que la
 re-cablea `createKeyboardConnector`.
 
 **Pendiente de medir, no de suponer:** que Web Serial no exista en Chrome para Android es algo que
-se dijo acá pero **nunca se verificó** — venía como suposición del plan original y quedó sin
+se dijo aquí pero **nunca se verificó** — venía como suposición del plan original y quedó sin
 comprobar cuando se decidió que el RFID no lo necesitaba. Para el **potenciómetro** vuelve a
-importar, así que hay un probe (`apps/orientation-lab/io.html`) que lo contesta en el aparato real
+importar, así que hay un probe (`apps/device-lab/io.html`) que lo contesta en el aparato real
 en vez de por memoria. Ver §5.4.
 
 **4.5 · Una app, dos páginas.** Como `web-app` con su build multipágina. Comparten stores, engine
@@ -124,7 +124,7 @@ mayor que descompuestas fuera de la singularidad (3,877 vs 0,016 °RMS), contra 
   lo requiere por otro motivo (§4.4 de `Architecture.md`).
 - Pendiente menor, de ajuste y no de diseño: el pre-giro permuta qué eje sale por cada ángulo
   (paneo E–O aparece como N–S). Eso sí es trabajo de `mountingTransform`, y el banco de pruebas
-  (`apps/orientation-lab/sky.html`) tiene toggles en vivo para encontrar la combinación.
+  (`apps/device-lab/sky.html`) tiene toggles en vivo para encontrar la combinación.
 
 **Condición que hay que respetar en cualquiera de las dos ramas:**
 
@@ -285,7 +285,7 @@ Caminos posibles en un **Leonardo** (ATmega32u4, USB nativo: puede ser HID o CDC
 | **HID gamepad** | un eje analógico, que es exactamente esto | Funciona seguro, pero es disfrazarse de joystick |
 | **HID teclado** | eventos discretos | Ya funciona — se queda para el RFID |
 
-`apps/orientation-lab/io.html` contesta las tres primeras **en el teléfono**: muestra qué APIs
+`apps/device-lab/io.html` contesta las tres primeras **en el teléfono**: muestra qué APIs
 existen, pide permiso de verdad y, si hay gamepad, grafica los ejes en vivo. Es la misma disciplina
 que con el roll: medir en el aparato antes de diseñar alrededor.
 

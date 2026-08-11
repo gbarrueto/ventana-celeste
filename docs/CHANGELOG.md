@@ -312,6 +312,34 @@ servidor, página y socket quedan en el mismo origen y el socket es `wss://` sol
 Ver [`DEPLOYMENT.md`](DEPLOYMENT.md) para comandos, la convención de publicar `main` antes que la
 rama de deploy, y el aislamiento de clientes de algunos AP.
 
+## 9. Entrada del potenciómetro: WebUSB (2026-08-11)
+
+**El enfocador va por WebUSB.** Se evaluaron tres caminos y el resultado lo decidió la medición,
+no la preferencia:
+
+| Camino | Resultado |
+|---|---|
+| **Web Serial** | **No existe** en Chrome para Android. Confirma la sospecha que estaba sin verificar en el plan desde el principio |
+| **WebUSB** | **Funciona.** El valor llega y sigue al potenciómetro en tiempo real |
+| **HID gamepad** | No hizo falta probarlo |
+
+El teclado se queda para el RFID, que es discreto. El potenciómetro no lo es: es un valor
+**absoluto**, y codificarlo como teclas obligaba a mandar `+`/`-` —que lo vuelve relativo y se
+desincroniza— o una tecla por escalón. WebUSB manda el número y listo.
+
+**Dos fallos propios en el camino, los dos silenciosos.** El primero: el probe sólo *enumeraba* el
+dispositivo, no lo abría ni leía, así que mover el potenciómetro no podía hacer nada. El segundo,
+más interesante: un Leonardo con el sketch WebUSB expone **tres** interfaces —CDC control, CDC
+datos y la de WebUSB— y el probe reclamaba *la primera con endpoint bulk de entrada*, que es la de
+CDC. Nadie le escribe a esa. Hay que quedarse con la **vendor-specific (clase 255)**. El sketch
+tenía además su propia versión del problema: escribía sin esperar a que el host se anunciara, y la
+librería descarta todo hasta ese momento. Las tres cosas se ven igual desde afuera —"no llega
+nada"— e igual a un problema de hardware.
+
+**`orientation-lab` pasó a llamarse `device-lab`**, que es lo que realmente es: ya no sólo mide
+orientación. Tiene barra de navegación entre las tres pruebas (Orientación / Cielo / Hardware) y
+quedó un solo sketch, el de WebUSB.
+
 ## Pendientes
 
 1. **Verificación manual en dispositivo real** — parcialmente hecha (ver sección 3). En un

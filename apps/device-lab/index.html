@@ -32,9 +32,24 @@
     .banner.bad { background: rgba(255,107,107,.15); border: 1px solid #ff6b6b; }
     .banner.warn { background: rgba(255,209,102,.13); border: 1px solid #ffd166; color: #ffd166; }
     .hint { font-size: 11px; color: rgba(232,236,245,.45); margin-top: 6px; }
+    .lab-nav { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex;
+      align-items: center; gap: 4px; padding: 6px 10px; background: rgba(6,8,15,.92);
+      border-bottom: 1px solid rgba(255,255,255,.12); font-size: 12px; }
+    .lab-brand { color: #ff7a0d; font-weight: 700; letter-spacing: .08em; margin-right: 8px; }
+    .lab-nav a { color: rgba(232,236,245,.62); text-decoration: none; padding: 5px 10px;
+      border-radius: 7px; }
+    .lab-nav a.on { color: #e8ecf5; background: rgba(255,255,255,.12); }
+    .lab-pad { height: 36px; }
   </style>
 </head>
 <body>
+  <nav class="lab-nav">
+    <span class="lab-brand">DEVICE LAB</span>
+    <a href="/index.html" data-p="/index.html">Orientación</a>
+    <a href="/sky.html" data-p="/sky.html">Cielo</a>
+    <a href="/io.html" data-p="/io.html">Hardware</a>
+  </nav>
+  <div class="lab-pad"></div>
   <h1>ORIENTATION LAB</h1>
   <div id="fatal" class="banner bad" hidden></div>
 
@@ -45,7 +60,7 @@
     <div class="hint">
       `core` extrae solo dos ángulos del quaternion y nunca calcula este. La descomposición
       se vuelve degenerada cuando |θ| → 90°: los otros dos dejan de ser independientes.
-      Si el ruido dispara acá, el problema es la matemática, no el sensor.
+      Si el ruido dispara aquí, el problema es la matemática, no el sensor.
     </div>
   </div>
 
@@ -201,7 +216,7 @@ function render() {
   tEl.textContent = fmt(theta, 1) + '°';
   tEl.className = 'big ' + (absT > 80 ? 'bad' : absT > 65 ? 'warn' : 'ok');
   $('thetaState').textContent = absT > 80
-    ? 'ZONA SINGULAR — yaw y pitch no son confiables acá'
+    ? 'ZONA SINGULAR — yaw y pitch no son confiables aquí'
     : absT > 65 ? 'acercándose a la zona singular' : 'lejos de la singularidad';
 
   $('yawRaw').textContent = fmt(rawYaw, 2) + '°';
@@ -282,6 +297,14 @@ try {
 } catch (err) {
   fatal('No se pudieron iniciar los sensores: ' + err.message);
 }
+</script>
+<script>
+  // Marca la pestaña actual sin depender de rutas absolutas.
+  for (const a of document.querySelectorAll('.lab-nav a')) {
+    if (a.dataset.p === location.pathname || (location.pathname === '/' && a.dataset.p === '/index.html')) {
+      a.classList.add('on');
+    }
+  }
 </script>
 </body>
 </html>

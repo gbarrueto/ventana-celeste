@@ -1,9 +1,16 @@
 # Sketches de prueba — entrada del potenciómetro
 
-Tres sketches para **Arduino Leonardo**, uno por cada camino posible. La idea es probarlos en
-orden y **parar en el primero que funcione en el teléfono**: no hace falta que anden los tres.
+Sketch para **Arduino Leonardo**: manda la posición del potenciómetro por **WebUSB**.
 
-La página que los recibe es [`../io.html`](../io.html) (IO Probe).
+Se probaron tres caminos y este es el que quedó. Los otros dos se descartaron con medición, no por
+preferencia:
+
+- **Web Serial** — no existe en Chrome para Android (medido el 2026-08-11). Servía en escritorio,
+  pero la app corre en el teléfono.
+- **HID gamepad** — habría funcionado, pero disfrazar un potenciómetro de joystick sólo tenía
+  sentido si no quedaba nada mejor. WebUSB manda el número directamente.
+
+La página que lo recibe es [`../io.html`](../io.html) (pestaña **Hardware**).
 
 ## Antes de empezar
 
@@ -20,7 +27,7 @@ Si al girar el valor va al revés, se invierten los dos extremos. No hay que toc
 **Levantar la página de prueba**, desde la raíz del repo:
 
 ```bash
-pnpm --filter @ventanaceleste/orientation-lab dev
+pnpm --filter @ventanaceleste/device-lab dev
 ```
 
 Se abre en el **teléfono** (no en la PC, que es justamente lo que se quiere comprobar):
@@ -31,35 +38,23 @@ cables OTG baratos no arranca, y eso se nota porque el LED de la placa queda apa
 
 ## Lo primero: mirar el cuadro de disponibilidad
 
-Antes de cargar ningún sketch, abrí `io.html` y mirá la tarjeta **DISPONIBILIDAD**. Eso ya
+Antes de cargar ningún sketch, abre `io.html` y mira la tarjeta **DISPONIBILIDAD**. Eso ya
 descarta caminos sin tocar el hardware:
 
 | Si dice | Entonces |
 |---|---|
-| Web Serial **sí** | Plan A sirve. Es el más simple, ir con ese |
-| Web Serial **no**, WebUSB **sí** | Saltar al Plan B |
-| las dos **no** | Plan C (gamepad), que funciona seguro |
+| WebUSB **sí** | Es el camino elegido |
+| WebUSB **no** | Habría que reabrir la evaluación: el más probable de vuelta sería HID gamepad |
 
-> **Medido el 2026-08-11 en el teléfono de prueba: Web Serial NO está disponible.** Confirma lo que
-> se sospechaba y descarta el Plan A en Android. Queda igual el sketch, porque en el navegador de
-> escritorio sí existe y sirve para probar la placa desde la PC.
+> **Medido el 2026-08-11 en el teléfono de prueba: Web Serial NO está disponible**, WebUSB sí.
+> Eso es lo que decidió el camino.
 
 También conviene anotar el user agent que muestra: si algún día cambia el navegador del
 dispositivo, esto explica por qué cambió el resultado.
 
 ---
 
-## Plan A — Web Serial
-
-1. Cargar `serial_potenciometro/serial_potenciometro.ino`.
-2. En `io.html`, botón **Web Serial**.
-3. Elegir el Leonardo en el diálogo de permiso.
-4. Girar el potenciómetro durante los 3 segundos que lee.
-
-**Bien:** aparecen líneas `P:512`, `P:640`… cambiando al girar.
-**Mal:** *"navigator.serial no existe"* → el navegador no implementa la API; pasar al Plan B.
-
-## Plan B — WebUSB
+## Puesta en marcha
 
 1. Instalar la librería **WebUSB** (Arduino IDE → Gestor de librerías).
 2. Cargar `webusb_potenciometro/webusb_potenciometro.ino`.
@@ -75,7 +70,7 @@ librería de Arduino no emite nada hasta recibirlo) y muestra lo que llega.
 | Mensaje | Qué pasa |
 |---|---|
 | aparece el producto pero **no llega nada** al girar | Antes era el propio probe, que sólo enumeraba. Si sigue pasando: revisar que el sketch tenga el guard `if (!Salida) return;` y que se haya cargado la versión WebUSB |
-| `unable to claim interface` | El sistema tomó el dispositivo con su driver y no lo suelta. No es el sketch. Motivo suficiente para pasar al Plan C |
+| `unable to claim interface` | El sistema tomó el dispositivo con su driver y no lo suelta. No es el sketch |
 | `sin endpoint bulk de entrada` | La placa no está exponiendo la interfaz WebUSB: casi seguro se cargó otro sketch |
 | dice `NO vendor-specific` al elegir interfaz | Se reclamó la de CDC en vez de la de WebUSB. No debería pasar ya, pero si pasa el sketch cargado no es el WebUSB |
 
@@ -91,21 +86,11 @@ Que aparezcan tres interfaces es lo normal: la placa expone el puerto serie *y a
 WebUSB. Por eso la selección no puede ser "el primer bulk de entrada que aparezca" — ese es el de
 CDC, al que no le escribe nadie, y entonces no llega nada aunque el resto esté perfecto.
 
-## Plan C — HID gamepad
-
-1. Instalar la librería **Joystick** de MHeironimus (Gestor de librerías → "ArduinoJoystickLibrary").
-2. Cargar `gamepad_potenciometro/gamepad_potenciometro.ino`.
-3. En `io.html`, mirar la tarjeta **EJES DE GAMEPAD**. **Girar el potenciómetro**: los navegadores
-   no muestran un mando hasta que hay actividad, así que si no se toca nada parece que no está.
-
-**Bien:** aparece el nombre del dispositivo y una barra que sigue al potenciómetro.
-**Mal:** no aparece nunca aun girando → el teléfono no lo reconoce como mando.
-
 ---
 
 ## Detalles de los sketches que conviene conocer
 
-Los tres comparten dos decisiones, y ninguna es cosmética:
+Dos decisiones del sketch que no son cosméticas:
 
 - **Tope de 20 ms entre envíos.** 50 Hz alcanza de sobra para un enfocador. Mandar más rápido
   sólo llena el canal, que ya nos costó tiempo en `web-app`.
@@ -117,10 +102,6 @@ ESP32, 12 bits), y **por eso el valor crudo no debería llegar a la app**: se no
 el borde, con mínimo y máximo de configuración. Cambiar de potenciómetro pasa a ser dos números,
 no tocar lógica. Ver §5.4 de [`../../../docs/DUAL_TELESCOPE_PLAN.md`](../../../docs/DUAL_TELESCOPE_PLAN.md).
 
-## Qué reportar
+## Estado
 
-Con saber esto alcanza para elegir y seguir:
-
-1. Qué dice el cuadro de disponibilidad (las cuatro filas).
-2. Cuál de los tres planes llegó a mostrar el valor cambiando.
-3. Si alguno falló, con qué mensaje exacto.
+**Funcionando** (2026-08-11): el valor llega y sigue al potenciómetro en tiempo real.

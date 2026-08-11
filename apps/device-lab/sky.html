@@ -10,7 +10,7 @@
     html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #e8ecf5;
                  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
     #stel-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    .panel { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 10;
+    .panel { position: fixed; left: 8px; right: 8px; top: 44px; z-index: 10;
              background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
              border-radius: 10px; padding: 9px 11px; }
     .row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
@@ -29,9 +29,23 @@
     #status { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 10;
               background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
               border-radius: 10px; padding: 9px 11px; }
+    .lab-nav { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex;
+      align-items: center; gap: 4px; padding: 6px 10px; background: rgba(6,8,15,.92);
+      border-bottom: 1px solid rgba(255,255,255,.12); font-size: 12px; }
+    .lab-brand { color: #ff7a0d; font-weight: 700; letter-spacing: .08em; margin-right: 8px; }
+    .lab-nav a { color: rgba(232,236,245,.62); text-decoration: none; padding: 5px 10px;
+      border-radius: 7px; }
+    .lab-nav a.on { color: #e8ecf5; background: rgba(255,255,255,.12); }
+    .lab-pad { height: 36px; }
   </style>
 </head>
 <body>
+  <nav class="lab-nav">
+    <span class="lab-brand">DEVICE LAB</span>
+    <a href="/index.html" data-p="/index.html">Orientación</a>
+    <a href="/sky.html" data-p="/sky.html">Cielo</a>
+    <a href="/io.html" data-p="/io.html">Hardware</a>
+  </nav>
   <canvas id="stel-canvas"></canvas>
   <div class="crosshair"></div>
 
@@ -244,7 +258,7 @@ function startSensor() {
     // agujero" de "el mapeo está mal".
     azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
     // En modo vector esto maneja la vista directamente. Sin el suavizado ni la
-    // fusión con giroscopio de core — acá se está probando el mapeo, no la
+    // fusión con giroscopio de core — aquí se está probando el mapeo, no la
     // fluidez.
     if (isVector() && engine?.core?.observer) {
       const LIMIT = (85 * Math.PI) / 180;
@@ -268,7 +282,7 @@ initializeStellariumEngine({
   scriptUrl: engineScriptUrl,
   smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
   bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
-  extended: false, // catálogos mínimos: acá sólo importa que el cielo se mueva bien
+  extended: false, // catálogos mínimos: aquí sólo importa que el cielo se mueva bien
   location: { lat: -24.6272, lon: -70.4042, elev: 2635 },
   time: { offsetHours: -3 },
   strict: false,
@@ -284,6 +298,14 @@ initializeStellariumEngine({
 })
   .then(() => applyMode())
   .catch((e) => setStatus('Motor: ' + e.message, 'bad'));
+</script>
+<script>
+  // Marca la pestaña actual sin depender de rutas absolutas.
+  for (const a of document.querySelectorAll('.lab-nav a')) {
+    if (a.dataset.p === location.pathname || (location.pathname === '/' && a.dataset.p === '/index.html')) {
+      a.classList.add('on');
+    }
+  }
 </script>
 </body>
 </html>
