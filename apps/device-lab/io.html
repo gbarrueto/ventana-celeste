@@ -64,6 +64,16 @@
   </div>
 
   <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">RECONEXION SIN GESTO</h2>
+    <div class="row"><span>ya autorizado en este origen</span><span id="autorizados">—</span></div>
+    <div class="row"><span class="muted">origen actual</span><span class="muted" id="origen">—</span></div>
+    <button id="bAuto">Reconectar sin tocar permiso</button>
+    <div class="muted" style="margin-top:6px">
+      Emparejar una vez con <b>WebUSB</b>, recargar la pagina y probar este boton: si lee sin pedir
+      permiso, el telefono puede ir dentro del telescopio.
+    </div>
+  </div>
+  <div class="card">
     <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">EJES DE GAMEPAD (en vivo)</h2>
     <div id="axes" class="muted">sin gamepad detectado — movelo para que aparezca</div>
   </div>
@@ -79,6 +89,7 @@ mark($('usb'), 'usb' in navigator);
 mark($('ble'), 'bluetooth' in navigator);
 mark($('gp'), typeof navigator.getGamepads === 'function');
 $('ua').textContent = navigator.userAgent.slice(0, 60);
+$('origen').textContent = location.origin;
 
 $('bSerial').onclick = async () => {
   if (!('serial' in navigator)) return log('navigator.serial no existe en este navegador.');
@@ -108,8 +119,10 @@ $('bSerial').onclick = async () => {
 let usbDevice = null;
 let usbLeyendo = false;
 
-async function usbLeer() {
-  const dev = await navigator.usb.requestDevice({ filters: [] });
+async function usbLeer(devicePrevio) {
+  // Sin argumento hace falta un gesto del usuario (requestDevice).
+  // Con uno ya autorizado no: eso es lo que permite reconectar solo.
+  const dev = devicePrevio ?? await navigator.usb.requestDevice({ filters: [] });
   usbDevice = dev;
   await dev.open();
   if (dev.configuration === null) await dev.selectConfiguration(1);
@@ -207,6 +220,63 @@ function pollAxes() {
   requestAnimationFrame(pollAxes);
 }
 pollAxes();
+
+// --- Reconexion sin gesto -----------------------------------------------
+// El telefono del ocular queda dentro del telescopio: tocar un boton para dar
+// permiso no es viable en uso normal. requestDevice() exige gesto, pero
+// getDevices() devuelve lo ya autorizado para este origen y no lo exige. Asi el
+// permiso se da una sola vez, con el telefono en la mano, y despues cada arranque
+// reconecta solo.
+//
+// El permiso va atado al ORIGEN: hay que emparejar en la misma URL que se use
+// despues. Emparejar en el dev server y esperar que valga en produccion no
+// funciona.
+async function revisarAutorizados() {
+  const el = document.getElementById('autorizados');
+  if (!('usb' in navigator)) { el.textContent = 'WebUSB no disponible'; el.className = 'bad'; return []; }
+  const devs = await navigator.usb.getDevices();
+  if (!devs.length) {
+    el.textContent = 'ninguno todavia — hace falta emparejar una vez con el boton WebUSB';
+    el.className = 'warn';
+  } else {
+    el.textContent = devs.map((d) => (d.productName || 'sin nombre')).join(', ') + ' — reconecta sin tocar nada';
+    el.className = 'ok';
+  }
+  return devs;
+}
+
+document.getElementById('bAuto').onclick = async () => {
+  const devs = await revisarAutorizados();
+  if (!devs.length) return log('Nada autorizado para este origen. Emparejar primero con WebUSB.');
+  if (usbLeyendo) return log('Ya esta leyendo.');
+  try {
+    log('Reconectando sin gesto a ' + (devs[0].productName || 'dispositivo') + '…');
+    await usbLeer(devs[0]);
+  } catch (e) {
+    usbLeyendo = false;
+    document.getElementById('bUsb').textContent = 'WebUSB';
+    log('Reconexion: ' + e.name + ' - ' + e.message);
+  }
+};
+
+// Enchufarlo despues de abrir la pagina tambien cuenta como evento sin gesto.
+if ('usb' in navigator) {
+  navigator.usb.addEventListener('connect', async (e) => {
+    log('Dispositivo conectado: ' + (e.device.productName || '?') + ' — intentando leer sin gesto…');
+    await revisarAutorizados();
+    if (!usbLeyendo) {
+      try { await usbLeer(e.device); } catch (err) { log('auto: ' + err.name + ' - ' + err.message); }
+    }
+  });
+  navigator.usb.addEventListener('disconnect', () => {
+    usbLeyendo = false;
+    document.getElementById('bUsb').textContent = 'WebUSB';
+    log('Dispositivo desconectado.');
+    revisarAutorizados();
+  });
+  revisarAutorizados();
+}
+
 </script>
 <script>
   // Marca la pestaña actual sin depender de rutas absolutas.

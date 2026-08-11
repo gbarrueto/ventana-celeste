@@ -297,6 +297,39 @@ reales rara vez llegan a los extremos, así que conviene una **calibración deli
 —igual que la de norte— y **normalizar en el borde**: la placa o el conector mapean a `0..1` y la
 app nunca ve el ADC. Cambiar de potenciómetro pasa a ser dos números en config.
 
+### 5.5 · Emparejar el enfocador con el teléfono dentro del telescopio
+
+El teléfono del ocular queda **físicamente inaccesible** una vez montado, así que "tocar un botón
+para dar permiso" no sirve como parte del uso normal.
+
+WebUSB tiene las dos piezas necesarias:
+
+- `requestDevice()` **exige un gesto** del usuario. Se usa **una sola vez**, con el teléfono en la
+  mano, antes de montarlo.
+- `getDevices()` devuelve lo ya autorizado para ese origen y **no exige gesto**. Es lo que permite
+  que cada arranque reconecte solo.
+- El evento `usb.connect` también dispara sin gesto, así que enchufar la placa con la app ya
+  abierta alcanza para que empiece a leer.
+
+**La condición que hay que respetar: el permiso va atado al origen.** Hay que emparejar en la
+**misma URL que se usa después** — o sea `http://localhost:<puerto>` en el dispositivo, no el dev
+server por IP. Emparejar en desarrollo y esperar que valga en producción no funciona; es la misma
+regla de origen que ya apareció con Protobject, en otra forma.
+
+**Procedimiento:**
+
+1. Con el teléfono accesible, abrir la app **en la URL de producción**.
+2. Emparejar una vez (el único toque que hace falta en la vida del equipo).
+3. Recargar y confirmar que reconecta sin pedir nada.
+4. Recién ahí montarlo.
+
+**Diagnóstico sin desarmar:** el estado del enfocador tiene que verse desde el guía, que sí está a
+mano. Si el permiso se pierde (por ejemplo al borrar datos del sitio), hay que poder enterarse sin
+sacar el teléfono del tubo.
+
+Verificable en `apps/device-lab/io.html`, tarjeta **RECONEXIÓN SIN GESTO**: muestra el origen
+actual, qué hay autorizado para ese origen, y reconecta sin pedir permiso.
+
 ### 5.3 · Rendimiento en la topología real
 
 Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`
