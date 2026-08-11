@@ -127,6 +127,14 @@ export function createOrientationController({
   // del alt-az, azimut indefinido en el cenit.
   //
   // Por defecto 'euler', así que web-app y kiosk no cambian de comportamiento.
+  // Suavizado del seguimiento, como fracción del error corregida por lectura.
+  // 1 = sin suavizado (la vista salta a la lectura cruda); más chico = más
+  // suave y más retrasado. Importa sobre todo con zoom alto, donde un temblor
+  // de la mano se amplifica: el telescopio real tiene inercia, así que algo de
+  // suavizado es *más* realista, pero de más vuelve el instrumento pastoso.
+  // Los valores por defecto son los que tenían web-app y kiosk hardcodeados.
+  smoothing = { relative: 0.5, gyro: 0.1 },
+
   pointingMode = 'euler',
   // Clave de OPTICAL_AXES o un vector [x, y, z]. Sólo se usa en modo 'vector'.
   opticalAxis = '+y',
@@ -169,6 +177,11 @@ export function createOrientationController({
 
     countdownTimer: null,
   };
+
+  // Copia mutable: se puede ajustar en caliente sin reconstruir el controlador,
+  // que es lo que permite calibrar el equilibrio realismo/usabilidad en el
+  // aparato en vez de a ciegas.
+  const suavizado = { relative: 0.5, gyro: 0.1, ...smoothing };
 
   const opticalVector = Array.isArray(opticalAxis) ? opticalAxis : OPTICAL_AXES[opticalAxis];
   if (pointingMode === 'vector' && !opticalVector) {
@@ -438,7 +451,7 @@ export function createOrientationController({
 
     emitDebug({ activeSensorMode: state.currentMode });
 
-    const sensitivity = state.currentMode === 'gyro' ? 0.1 : 0.5;
+    const sensitivity = state.currentMode === 'gyro' ? suavizado.gyro : suavizado.relative;
     if (state.oldX === null || state.oldY === null) {
       state.oldX = yaw;
       state.oldY = pitch;
@@ -648,5 +661,13 @@ export function createOrientationController({
     try { state.relSensor?.stop(); } catch { /* no-op */ }
   }
 
-  return { start, stop, startCalibration, cancelCalibration };
+  return {
+    start,
+    stop,
+    startCalibration,
+    cancelCalibration,
+    // Ajuste en caliente. Acepta uno solo de los dos.
+    setSmoothing(partial) { Object.assign(suavizado, partial); },
+    getSmoothing() { return { ...suavizado }; },
+  };
 }

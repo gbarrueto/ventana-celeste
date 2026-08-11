@@ -350,6 +350,38 @@ elevado a un exponente, de modo que cerca del foco la imagen mejora rápido y le
   apunta a su canvas y no se toca nada más.
 - El cambio de ocular por RFID todavía no está cableado; `setEyepiece()` ya lo espera.
 
+### 5.7 · Suavizado y disposición del canvas — ajustables desde la URL
+
+El teléfono del ocular queda dentro del tubo, así que no puede tener un panel de controles: los
+dos parámetros se pasan al abrir la página.
+
+| Parámetro | Por defecto | Qué hace |
+|---|---|---|
+| `?smooth=` | `0.18` | Fracción del error corregida por lectura. `1` = crudo, más chico = más suave y más retrasado |
+| `?canvas=` | `0.5` | Fracción del alto de pantalla que ocupa la vista, abajo |
+| `?rot=` | `90` | Rotación del canvas, en grados |
+
+Ejemplo: `http://localhost:8080/?smooth=0.12&canvas=0.45`
+
+**Sobre el suavizado.** Con zoom alto un temblor de la mano se amplifica, y la vista salta. Algo
+de suavizado es *más* realista, no menos —un telescopio real tiene inercia— pero de más el
+instrumento se vuelve pastoso y deja de responder. De ahí que sea ajustable: el punto justo se
+encuentra en el aparato, no razonando. Como referencia, el tiempo en cubrir el 90 % de un
+movimiento a 30 Hz: `0.5` → ~110 ms (lo que traían `web-app` y `kiosk`), `0.25` → ~270 ms,
+`0.15` → ~470 ms.
+
+En `core` esto dejó de estar hardcodeado: es la opción `smoothing` (`{ relative, gyro }`), con los
+valores viejos como default, así que `web-app` y `kiosk` no cambian. Además hay
+`setSmoothing()` para ajustarlo en caliente sin reconstruir el controlador.
+
+**Sobre la disposición.** El ocular físico es chico y queda en la parte de abajo, y el teléfono va
+rotado dentro del tubo. La vista ocupa la mitad inferior de la pantalla y se rota 90°. El cálculo
+va en JS y no en CSS porque al rotar 90° hay que **intercambiar** ancho y alto: el canvas se dibuja
+apaisado y la rotación lo deja como se ve por el ocular. Se recalcula al rotar o redimensionar.
+
+Ojo que esto es la **disposición física**, distinta de la transformación de imagen newtoniana de
+§5.1b (rotación + reflexión respecto de lo que se ve a ojo desnudo), que sigue pendiente.
+
 ### 5.3 · Rendimiento en la topología real
 
 Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`

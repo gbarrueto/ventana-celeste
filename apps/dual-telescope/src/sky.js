@@ -19,6 +19,38 @@ const ROLE = {
 const SMALL = 'https://smalldata.ventanaceleste.com/';
 const BIG = 'https://bigdata.ventanaceleste.com/';
 
+// Ajustables desde la URL, porque el teléfono del ocular queda dentro del tubo y
+// no se le puede poner un panel de controles: se abre con el valor y listo.
+//   ?smooth=0.15   suavizado del seguimiento (1 = crudo, más chico = más suave)
+//   ?canvas=0.5    fracción de alto de pantalla que ocupa la vista
+//   ?rot=90        rotación del canvas en grados
+function param(nombre, porDefecto) {
+  const v = parseFloat(new URLSearchParams(location.search).get(nombre));
+  return Number.isFinite(v) ? v : porDefecto;
+}
+
+// El ocular físico es chico y queda abajo, y el teléfono va rotado en el tubo.
+// Se calcula en JS y no en CSS porque al rotar 90° hay que **intercambiar** ancho
+// y alto: el canvas se dibuja apaisado y la rotación lo pone como se ve por el
+// ocular.
+function acomodarOcular(canvas, fraccion, rotacion) {
+  const aplicar = () => {
+    const altoArea = window.innerHeight * fraccion;
+    const anchoArea = window.innerWidth;
+    const rotado = Math.abs(rotacion % 180) === 90;
+    canvas.style.position = 'fixed';
+    canvas.style.left = '50%';
+    canvas.style.top = `${window.innerHeight - altoArea / 2}px`;
+    canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
+    canvas.style.height = `${rotado ? anchoArea : altoArea}px`;
+    canvas.style.transform = `translate(-50%, -50%) rotate(${rotacion}deg)`;
+    canvas.style.transformOrigin = 'center';
+  };
+  aplicar();
+  window.addEventListener('resize', aplicar);
+  window.addEventListener('orientationchange', aplicar);
+}
+
 export async function startSky({ role, statusEl, canvas }) {
   const cfg = ROLE[role];
   const other = role === 'ocular' ? 'guide' : 'ocular';
@@ -48,6 +80,11 @@ export async function startSky({ role, statusEl, canvas }) {
   // dentro de onReady no alcanzaba y el guía quedaba con el FOV por defecto.
   if (engine?.core) engine.core.fov = cfg.fov;
 
+  // Sólo el ocular va montado en el tubo; el guía se mira de frente.
+  if (role === 'ocular') {
+    acomodarOcular(canvas, param('canvas', 0.5), param('rot', 90));
+  }
+
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
   const { sensorSource } = await fetchLinkConfig();
   const isSource = sensorSource === role;
@@ -75,6 +112,10 @@ export async function startSky({ role, statusEl, canvas }) {
       dynamicThreshold: 0,
       readinessGate: 'immediate',
       calibDuration: 1,
+      // Con zoom alto un temblor de la mano se amplifica, así que hace falta
+      // bastante más suavizado que el 0.5 que traía por defecto. Ajustable con
+      // ?smooth= para encontrar el punto entre realismo y usabilidad.
+      smoothing: { relative: param('smooth', 0.18), gyro: param('smooth', 0.18) },
       onView: ({ yaw, pitch }) => {
         apply(yaw, pitch);
         bus.sendThrottled('pose', { yaw, pitch }, other, 20);
