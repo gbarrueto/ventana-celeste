@@ -18,6 +18,7 @@ export default defineConfig({
       input: {
         main: resolve(here, 'index.html'),
         sky: resolve(here, 'sky.html'),
+        io: resolve(here, 'io.html'),
       },
     },
   },

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>IO Probe — Orientation Lab</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:14px 14px 40px; background:#06080f; color:#e8ecf5;
+           font-family: ui-monospace, Menlo, Consolas, monospace; font-size:13px; line-height:1.5; }
+    h1 { font-size:15px; color:#ff7a0d; margin:0 0 4px; letter-spacing:.04em; }
+    p.sub { color:rgba(232,236,245,.55); margin:0 0 14px; }
+    .card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
+            border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+    .row { display:flex; justify-content:space-between; gap:10px; padding:3px 0; align-items:baseline; }
+    .ok { color:#3ec46d; } .bad { color:#ff6b6b; } .warn { color:#ffd166; }
+    .muted { color:rgba(232,236,245,.5); font-size:11px; }
+    button { background:rgba(255,255,255,.1); color:#e8ecf5; border:1px solid rgba(255,255,255,.18);
+             border-radius:8px; padding:9px 14px; font:inherit; margin:6px 6px 0 0; }
+    #log { white-space:pre-wrap; font-size:11px; color:rgba(232,236,245,.75); margin-top:8px; }
+    .bar { height:8px; background:rgba(255,255,255,.1); border-radius:4px; overflow:hidden; margin-top:4px; }
+    .bar > div { height:100%; background:#ff7a0d; width:0%; }
+  </style>
+</head>
+<body>
+  <h1>IO PROBE</h1>
+  <p class="sub">Qué caminos de entrada existen <b>en este dispositivo</b>. Abrilo en el teléfono, no en la PC.</p>
+
+  <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">DISPONIBILIDAD</h2>
+    <div class="row"><span>contexto seguro</span><span id="secure">—</span></div>
+    <div class="row"><span>Web Serial <span class="muted">navigator.serial</span></span><span id="serial">—</span></div>
+    <div class="row"><span>WebUSB <span class="muted">navigator.usb</span></span><span id="usb">—</span></div>
+    <div class="row"><span>Web Bluetooth <span class="muted">navigator.bluetooth</span></span><span id="ble">—</span></div>
+    <div class="row"><span>Gamepad API <span class="muted">getGamepads</span></span><span id="gp">—</span></div>
+    <div class="row"><span class="muted">user agent</span><span class="muted" id="ua">—</span></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">PROBAR EN VIVO</h2>
+    <button id="bSerial">Web Serial</button>
+    <button id="bUsb">WebUSB</button>
+    <button id="bGp">Gamepad</button>
+    <div class="muted" style="margin-top:6px">
+      Conectá el Leonardo por USB (OTG) antes de probar. Cada botón pide permiso y muestra qué contesta.
+    </div>
+    <div id="log">—</div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">EJES DE GAMEPAD (en vivo)</h2>
+    <div id="axes" class="muted">sin gamepad detectado — movelo para que aparezca</div>
+  </div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const log = (t) => { $('log').textContent = t; };
+const mark = (el, ok, txt) => { el.textContent = txt ?? (ok ? 'sí' : 'no'); el.className = ok ? 'ok' : 'bad'; };
+
+mark($('secure'), window.isSecureContext);
+mark($('serial'), 'serial' in navigator);
+mark($('usb'), 'usb' in navigator);
+mark($('ble'), 'bluetooth' in navigator);
+mark($('gp'), typeof navigator.getGamepads === 'function');
+$('ua').textContent = navigator.userAgent.slice(0, 60);
+
+$('bSerial').onclick = async () => {
+  if (!('serial' in navigator)) return log('navigator.serial no existe en este navegador.');
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    log('Web Serial: puerto abierto. Leyendo 3 s…');
+    const reader = port.readable.getReader();
+    const t = setTimeout(() => reader.cancel(), 3000);
+    let acc = '';
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        acc += new TextDecoder().decode(value);
+        log('Web Serial recibiendo:\n' + acc.slice(-200));
+      }
+    } finally { clearTimeout(t); reader.releaseLock(); await port.close(); }
+    log('Web Serial OK. Último dato:\n' + (acc.slice(-200) || '(nada recibido)'));
+  } catch (e) { log('Web Serial: ' + e.name + ' — ' + e.message); }
+};
+
+$('bUsb').onclick = async () => {
+  if (!('usb' in navigator)) return log('navigator.usb no existe en este navegador.');
+  try {
+    const dev = await navigator.usb.requestDevice({ filters: [] });
+    log(`WebUSB OK:\n  ${dev.manufacturerName ?? '?'} ${dev.productName ?? '?'}\n` +
+        `  vendorId 0x${dev.vendorId.toString(16)} productId 0x${dev.productId.toString(16)}`);
+  } catch (e) { log('WebUSB: ' + e.name + ' — ' + e.message); }
+};
+
+$('bGp').onclick = () => {
+  const pads = [...(navigator.getGamepads?.() ?? [])].filter(Boolean);
+  log(pads.length
+    ? pads.map((p) => `Gamepad: ${p.id}\n  ejes: ${p.axes.length}  botones: ${p.buttons.length}`).join('\n')
+    : 'Ningún gamepad visible. En la mayoría de los navegadores hay que mover un eje o apretar un botón para que aparezca.');
+};
+
+// Los ejes en vivo son la prueba real de si un potenciómetro sirve por esta vía.
+function pollAxes() {
+  const pads = [...(navigator.getGamepads?.() ?? [])].filter(Boolean);
+  if (!pads.length) {
+    $('axes').className = 'muted';
+    $('axes').textContent = 'sin gamepad detectado — movelo para que aparezca';
+  } else {
+    $('axes').className = '';
+    $('axes').innerHTML = pads.map((p) => `<div class="muted">${p.id}</div>` + p.axes.map((v, i) =>
+      `<div class="row"><span>eje ${i}</span><span>${v.toFixed(3)}</span></div>
+       <div class="bar"><div style="width:${((v + 1) / 2 * 100).toFixed(1)}%"></div></div>`).join('')).join('');
+  }
+  requestAnimationFrame(pollAxes);
+}
+pollAxes();
+</script>
+</body>
+</html>

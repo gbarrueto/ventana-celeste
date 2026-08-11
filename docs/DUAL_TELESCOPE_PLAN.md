@@ -63,10 +63,15 @@ Cada paso deja el repo buildeable y algo verificable a mano.
 **elimina el requisito de HTTPS** que el plan original anticipaba — con una condición importante,
 en §5.1.
 
-**4.3 · No se usa Web Serial.** Era una suposición heredada, no un requisito. El lector RFID es
-una placa que **manda una pulsación de tecla**, exactamente como ya funciona en `kiosk`: tarjetas
-distintas en una ranura que las lee. Se re-cablea `createKeyboardConnector` y se **archiva**
-`createSerialConnector`. Hay que corregir `Architecture.md`, que habla de Serial.
+**4.3 · El RFID va por pulsación de tecla.** El lector es una placa que **manda una tecla**,
+exactamente como ya funciona en `kiosk`: tarjetas distintas en una ranura que las lee. Se
+re-cablea `createKeyboardConnector`.
+
+**Pendiente de medir, no de suponer:** que Web Serial no exista en Chrome para Android es algo que
+se dijo acá pero **nunca se verificó** — venía como suposición del plan original y quedó sin
+comprobar cuando se decidió que el RFID no lo necesitaba. Para el **potenciómetro** vuelve a
+importar, así que hay un probe (`apps/orientation-lab/io.html`) que lo contesta en el aparato real
+en vez de por memoria. Ver §5.4.
 
 **4.5 · Una app, dos páginas.** Como `web-app` con su build multipágina. Comparten stores, engine
 y óptica; difieren en qué conectan.
@@ -262,6 +267,35 @@ El empaquetado local sigue pendiente, y es compartido con `kiosk` (ver Pendiente
 Algunos AP no dejan que dos clientes se hablen entre sí. En producción no afecta —el principal es
 AP y servidor a la vez, así que el tráfico es cliente↔AP— pero **sí afecta al desarrollo**, donde
 la PC sirve y es un cliente más. Detalle y salidas en [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+### 5.4 · Entrada continua del potenciómetro — a medir antes de elegir
+
+El RFID encaja con teclas: es discreto, una tarjeta es un evento. El **potenciómetro no**: es un
+valor **absoluto y continuo**, y codificarlo como teclas obliga a elegir entre mandar `+`/`-`
+—que lo convierte en relativo, así que se desincroniza si se pierde un evento o se recarga la
+página— o una tecla por escalón, que es grueso. Se pierde justamente su virtud: que la posición
+física de la perilla *es* el valor de foco, y no pueden discrepar. Para un enfocador eso importa.
+
+Caminos posibles en un **Leonardo** (ATmega32u4, USB nativo: puede ser HID o CDC):
+
+| Vía | Qué da | Estado |
+|---|---|---|
+| **Web Serial** | el número, directo | **A MEDIR.** Se asumió que no existe en Android; nunca se comprobó |
+| **WebUSB** | datos arbitrarios; Arduino tiene librería WebUSB para el 32u4 | A medir; sí existe en Chrome Android |
+| **HID gamepad** | un eje analógico, que es exactamente esto | Funciona seguro, pero es disfrazarse de joystick |
+| **HID teclado** | eventos discretos | Ya funciona — se queda para el RFID |
+
+`apps/orientation-lab/io.html` contesta las tres primeras **en el teléfono**: muestra qué APIs
+existen, pide permiso de verdad y, si hay gamepad, grafica los ejes en vivo. Es la misma disciplina
+que con el roll: medir en el aparato antes de diseñar alrededor.
+
+**Rango del ADC:** no hace falta autodetección, y además sería contraproducente. Sólo puede
+aprender de los valores que ya vio, así que hasta que alguien recorra todo el recorrido el mapeo
+está mal — y *cambia* mientras se explora. En un enfocador eso mueve el punto de foco bajo la mano
+del usuario. Los rangos sí varían entre placas (10 bits en AVR, 12 en ESP32) y los potenciómetros
+reales rara vez llegan a los extremos, así que conviene una **calibración deliberada y guardada**
+—igual que la de norte— y **normalizar en el borde**: la placa o el conector mapean a `0..1` y la
+app nunca ve el ADC. Cambiar de potenciómetro pasa a ser dos números en config.
 
 ### 5.3 · Rendimiento en la topología real
 
