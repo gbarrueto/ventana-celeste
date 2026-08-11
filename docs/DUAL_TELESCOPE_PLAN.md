@@ -330,6 +330,26 @@ sacar el teléfono del tubo.
 Verificable en `apps/device-lab/io.html`, tarjeta **RECONEXIÓN SIN GESTO**: muestra el origen
 actual, qué hay autorizado para ese origen, y reconecta sin pedir permiso.
 
+### 5.6 · Enfocador — estado
+
+Cableado y funcionando de punta a punta: potenciómetro → WebUSB → desenfoque sobre el canvas del
+cielo, sólo en el ocular. El guía recibe el estado (`focus` y `focusStatus`) para poder
+diagnosticar sin sacar el teléfono del tubo.
+
+**Modelo:** el punto de foco depende del ocular (`PUNTOS_DE_FOCO` en `src/focuser.js`), así que
+cambiar de ocular desenfoca aunque nadie toque el potenciómetro — que es lo que pasa de verdad y
+lo que se quiere que la persona note. El desenfoque crece con la distancia al punto de foco,
+elevado a un exponente, de modo que cerca del foco la imagen mejora rápido y lejos satura.
+
+**Lo que falta:**
+- Los valores de `PUNTOS_DE_FOCO` son provisionales: hay que medirlos contra el hardware real.
+- Los efectos de seeing están **apagados**. Hoy el desenfoque se aplica como filtro CSS
+  directamente sobre el canvas del cielo, porque con los efectos apagados el pipeline WebGL de
+  turbulencia de `web-app` no aportaría nada más que código muerto — y ese overlay igual necesita
+  una reescritura. `aplicarBlur()` es el punto donde eso cambia: cuando el overlay se traiga, se
+  apunta a su canvas y no se toca nada más.
+- El cambio de ocular por RFID todavía no está cableado; `setEyepiece()` ya lo espera.
+
 ### 5.3 · Rendimiento en la topología real
 
 Dos motores WASM y un teléfono haciendo de AP. Hay un riesgo ya documentado en `Architecture.md`

@@ -5,6 +5,7 @@ import { initializeStellariumEngine, createOrientationController } from '@ventan
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
+import { createFocuser, aplicarBlur } from './focuser.js';
 
 // El guía simula un tubo buscador: campo amplio y fijo. El ocular va bastante
 // más cerrado, que es el punto del instrumento.
@@ -106,6 +107,46 @@ export async function startSky({ role, statusEl, canvas }) {
     };
     requestAnimationFrame(step);
     say(`${cfg.label} · recibiendo de ${sensorSource}`);
+  }
+
+  // --- Enfocador -------------------------------------------------------
+  // El hardware vive en el ocular, así que sólo ese rol lo abre. El guía no
+  // enfoca: en un tubo guía la imagen está siempre nítida.
+  if (role === 'ocular') {
+    const focuser = createFocuser({
+      onBlur: ({ blur, position }) => {
+        aplicarBlur(canvas, blur);
+        // El guía es el dispositivo que queda a mano, así que le mandamos el
+        // estado: con el ocular dentro del telescopio, es la única forma de ver
+        // qué está pasando sin desarmarlo.
+        bus.sendThrottled('focus', { blur, position }, other, 100);
+      },
+      onStatus: ({ connected, message }) => {
+        say(`${cfg.label} · ${message}`);
+        bus.send('focusStatus', { connected, message }, other);
+      },
+    });
+
+    // Sin gesto: si ya se emparejó en este origen, arranca solo.
+    const auto = await focuser.autoConnect();
+    if (!auto) {
+      // Sólo hace falta una vez en la vida del equipo, y con el teléfono en la
+      // mano. Después de esto el permiso queda para este origen.
+      const btn = document.createElement('button');
+      btn.textContent = 'Emparejar enfocador';
+      btn.className = 'pair-btn';
+      btn.onclick = async () => {
+        try { await focuser.pair(); btn.remove(); } catch (e) { say(`enfocador: ${e.message}`); }
+      };
+      document.body.appendChild(btn);
+    }
+
+    window.addEventListener('beforeunload', () => focuser.stop());
+  } else {
+    // El guía sólo refleja el estado, para poder diagnosticar sin sacar el
+    // teléfono del tubo.
+    bus.on('focus', ({ blur }) => say(`${cfg.label} · enfoque ${blur.toFixed(1)}px`));
+    bus.on('focusStatus', ({ message }) => say(`${cfg.label} · enfocador: ${message}`));
   }
 
   bus.start({ onConnect: () => say(`${cfg.label} · conectado`) });
