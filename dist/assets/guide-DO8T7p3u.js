@@ -1,1 +1,0 @@
-import{s as e}from"./sky-CeY0g1Ug.js";e({role:"guide",canvas:document.getElementById("stel-canvas"),statusEl:document.getElementById("status")}).catch(t=>{document.getElementById("status").textContent="error: "+t.message});
