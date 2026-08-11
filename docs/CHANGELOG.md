@@ -46,10 +46,13 @@ misma dirección que el teléfono y Protobject nunca empareja los dos peers. Ver
 2. **Verificar `kiosk` contra hardware real** — el Arduino y el dispositivo instalado. En
    navegador ya funciona (orientación, y zoom continuo simulado por teclado, ver sección 7), pero
    nunca se probó con las placas. Le corresponde también su propio `DEVELOPMENT.md`.
-3. **Arrancar `dual-telescope`** — plan de construcción, inventario de qué se re-cablea y lista
-   de decisiones abiertas en [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md). Los cuatro
-   bloqueantes (dirección de la orientación, contexto seguro/HTTPS, viabilidad de Web Serial en
-   Android, y si hace falta roll) hay que resolverlos antes de escribir código.
+3. **Seguir con `dual-telescope`** — los dos roles ya muestran el mismo cielo (sección 8) y la
+   entrada del potenciómetro ya tiene camino (sección 9). Los cuatro bloqueantes originales están
+   resueltos: la orientación la lee el ocular, no hace falta HTTPS porque sensores y servidor
+   viven en el mismo dispositivo, Web Serial quedó descartado por medición a favor de WebUSB, y
+   el roll no se necesita. Lo que sigue: medir latencia en la topología real, el enfocador sobre
+   el canvas de seeing, y la referencia de norte. Ver
+   [`DUAL_TELESCOPE_PLAN.md`](DUAL_TELESCOPE_PLAN.md).
 
 Detalle del resto de pendientes más abajo.
 
