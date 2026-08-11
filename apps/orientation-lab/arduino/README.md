@@ -77,6 +77,19 @@ librería de Arduino no emite nada hasta recibirlo) y muestra lo que llega.
 | aparece el producto pero **no llega nada** al girar | Antes era el propio probe, que sólo enumeraba. Si sigue pasando: revisar que el sketch tenga el guard `if (!Salida) return;` y que se haya cargado la versión WebUSB |
 | `unable to claim interface` | El sistema tomó el dispositivo con su driver y no lo suelta. No es el sketch. Motivo suficiente para pasar al Plan C |
 | `sin endpoint bulk de entrada` | La placa no está exponiendo la interfaz WebUSB: casi seguro se cargó otro sketch |
+| dice `NO vendor-specific` al elegir interfaz | Se reclamó la de CDC en vez de la de WebUSB. No debería pasar ya, pero si pasa el sketch cargado no es el WebUSB |
+
+**Cómo se ve un Leonardo con el sketch WebUSB cargado** (medido, 2026-08-11):
+
+```
+iface 0 clase 2  : in/interrupt/1        <- CDC control
+iface 1 clase 10 : out/bulk/2 in/bulk/3  <- CDC datos (el puerto serie de siempre)
+iface 2 clase 255: out/bulk/4 in/bulk/5  <- WebUSB  ← esta es la que hay que usar
+```
+
+Que aparezcan tres interfaces es lo normal: la placa expone el puerto serie *y además* el de
+WebUSB. Por eso la selección no puede ser "el primer bulk de entrada que aparezca" — ese es el de
+CDC, al que no le escribe nadie, y entonces no llega nada aunque el resto esté perfecto.
 
 ## Plan C — HID gamepad
 

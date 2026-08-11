@@ -104,16 +104,34 @@ async function usbLeer() {
   const mapa = [];
   let iface = null;
   let epIn = null;
+  let vendorElegido = false;
   for (const it of dev.configuration.interfaces) {
     for (const alt of it.alternates) {
       const eps = alt.endpoints.map((e) => e.direction + '/' + e.type + '/' + e.endpointNumber).join(' ');
       mapa.push('  iface ' + it.interfaceNumber + ' clase ' + alt.interfaceClass + ': ' + (eps || '(sin endpoints)'));
       const bulkIn = alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
-      if (bulkIn && iface === null) { iface = it.interfaceNumber; epIn = bulkIn.endpointNumber; }
+      if (!bulkIn) continue;
+      // Hay que quedarse con la interfaz **vendor-specific** (clase 255): es la
+      // que expone la libreria WebUSB. Un Leonardo presenta ademas las dos de
+      // CDC (clases 2 y 10), y la de datos CDC tambien tiene un bulk IN — quedarse
+      // con "el primero que aparezca" reclama esa, que no escribe nadie, y no
+      // llega nada aunque todo lo demas este bien.
+      const esVendor = alt.interfaceClass === 255;
+      if (iface === null || (esVendor && !vendorElegido)) {
+        iface = it.interfaceNumber;
+        epIn = bulkIn.endpointNumber;
+        vendorElegido = esVendor;
+      }
     }
   }
-  log('WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' + (dev.productName || '?') + '\n' + mapa.join('\n'));
-  if (iface === null) throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB');
+  const resumen = 'WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' +
+    (dev.productName || '?') + '\n' + mapa.join('\n');
+  if (iface === null) { log(resumen); throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB'); }
+  // Decir cual se eligio y por que: si cae en CDC en vez de la vendor-specific,
+  // no llega nada y desde afuera parece un problema de hardware.
+  log(resumen + '\n  -> uso iface ' + iface + ' ep ' + epIn +
+    (vendorElegido ? ' (vendor-specific: la de WebUSB)'
+                   : ' (NO vendor-specific, probablemente CDC: revisar que este cargado el sketch WebUSB)'));
 
   await dev.claimInterface(iface);
   try { await dev.selectAlternateInterface(iface, 0); } catch { /* no todas lo necesitan */ }
