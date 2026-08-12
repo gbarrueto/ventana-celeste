@@ -6,4 +6,10 @@ Issues live in GitHub Issues on `gbarrueto/ventana-celeste` (uses the `gh` CLI).
 
 ### Domain docs
 
-Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Reference docs live in `docs/` (see `docs/README.md` for the index) plus `docs/adr/`. There is no
+root `CONTEXT.md`. See `docs/agents/domain.md`.
+
+### Documentation style
+
+Writing any `.md` in this repo: follow `.claude/skills/docs-style/SKILL.md`. Reference docs describe
+what exists; anything pending goes in `docs/pendientes.md`.

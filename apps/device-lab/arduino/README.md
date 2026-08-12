@@ -98,9 +98,8 @@ Dos decisiones del sketch que no son cosméticas:
   ruido de forma continua aunque nadie toque nada. 4 sobre 1024 es ~0,4% del recorrido.
 
 El rango es `0..1023` porque el Leonardo tiene ADC de 10 bits. Otras placas dan otro rango (el
-ESP32, 12 bits), y **por eso el valor crudo no debería llegar a la app**: se normaliza a `0..1` en
-el borde, con mínimo y máximo de configuración. Cambiar de potenciómetro pasa a ser dos números,
-no tocar lógica. Ver §5.4 de [`../../../docs/DUAL_TELESCOPE_PLAN.md`](../../../docs/DUAL_TELESCOPE_PLAN.md).
+ESP32, 12 bits). El valor crudo no llega a la app: se normaliza a `0..1` en el borde, con mínimo y
+máximo de configuración, en `apps/dual-telescope/src/focuser.js`.
 
 ## Estado
 

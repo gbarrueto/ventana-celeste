@@ -1,8 +1,8 @@
 // Relay de producción: sirve dist/ y hace de puente entre Ocular y Guía.
 //
-// Corre en el dispositivo principal (el mismo que lleva los sensores, §5.1 del
-// plan). En desarrollo no se usa: ahí el relay va enganchado al dev server de
-// Vite para compartir su HTTPS (ver vite.config.js y docs/DEPLOYMENT.md).
+// Corre en el dispositivo principal, que por defecto es el mismo que lleva los
+// sensores. En desarrollo no se usa: ahí el relay va enganchado al dev server de
+// Vite para compartir su HTTPS (ver vite.config.js y docs/deployment.md).
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve, normalize } from 'node:path';
