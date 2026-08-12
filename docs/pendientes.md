@@ -125,6 +125,18 @@ Copiar una IP a mano en el teléfono guía en cada arranque es el paso más lent
 Opciones a evaluar: QR en la pantalla del principal, mDNS con un nombre fijo, o una página de
 arranque en el guía que descubra al principal.
 
+### Rama de deploy y comandos de build para kiosk
+
+`dual-telescope` tiene `pack:deploy`, `publish:deploy`, una rama de deploy huérfana y un paquete sin
+dependencias. `kiosk-standalone` no tiene nada de eso: se arranca en Termux con `pnpm run dev`, o
+sea que el dispositivo necesita el repo completo, `node_modules` y compilar en Android.
+
+Replicar el esquema de `dual-telescope`. `kiosk` no necesita relay, así que el paquete es `dist/`
+más un servidor de estáticos y el script de arranque.
+
+Resuelve además dos pendientes que hoy dependen de esto: [modo `development` en
+Termux](#kiosk-en-termux-corre-en-modo-development) y el empaquetado de catálogos locales.
+
 ### Empaquetado de catálogos locales
 
 `kiosk` y `dual-telescope` en deploy siguen apuntando a los servidores remotos. Los paths locales
@@ -149,13 +161,20 @@ Dos motores WASM y un teléfono haciendo de punto de acceso. Sin medición sobre
 
 ### Instalación como PWA
 
-Evaluado y pospuesto. Daría ícono propio, pantalla completa y arranque de un toque, pero no evita
-ningún paso: el proceso relay hace falta igual.
+Pospuesto para los prototipos actuales, donde no evita ningún paso: el proceso relay hace falta
+igual y el beneficio es asimétrico. Un service worker exige contexto seguro, así que el dispositivo
+principal, servido por `localhost`, podría instalarse, y el guía, que recibe la página por IP de LAN
+sobre HTTP plano, no. Igualarlos exige HTTPS con certificado en una IP de LAN, o sea `mkcert` y su
+CA instalada en los dos teléfonos.
 
-El beneficio es asimétrico. Un service worker exige contexto seguro: el dispositivo principal se
-sirve por `localhost` y podría instalarse; el guía recibe la página por IP de LAN sobre HTTP plano y
-no. Igualarlos exige HTTPS con certificado en una IP de LAN, o sea `mkcert` y su CA instalada en los
-dos teléfonos.
+**No es un descarte.** Las versiones futuras de hogar y educativa se instalan en dispositivos de
+terceros, sin montaje físico, sin relay y sin punto de acceso propio. Ahí el PWA pasa a ser el
+mecanismo de distribución, no una comodidad: ícono, pantalla completa, arranque de un toque y
+funcionamiento sin conexión.
+
+Eso cambia el orden de las decisiones. Las apps futuras se sirven por HTTPS desde un dominio, con lo
+cual la restricción de contexto seguro desaparece y con ella la asimetría. Conviene revisar esto
+antes de diseñar esas versiones, no después.
 
 ## Aplicaciones
 
