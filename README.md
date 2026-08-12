@@ -6,14 +6,31 @@ llegan como entrada externa desde hardware.
 
 Monorepo pnpm con cuatro prototipos y un paquete compartido.
 
-## Prototipos
+## Ejes del proyecto
 
-| App | Qué es | Dispositivos |
+El proyecto se despliega en cuatro ejes, según quién opera el instrumento y dónde.
+
+| Eje | Para | Estado |
 |---|---|---|
-| `web-app` | Visor en pantalla grande, teléfono como tubo y control. Emparejado por QR. | 2, por WebRTC |
-| `kiosk-standalone` | Instalación fija. Sensores y pantalla en el mismo dispositivo, entrada por Arduino. | 1 |
-| `dual-telescope` | Prototipo mediado. Un teléfono dentro del ocular, otro como tubo buscador. | 2, por WebSocket |
-| `device-lab` | Banco de pruebas de sensores y hardware. No es un producto. | 1 |
+| **No mediado** | Museo. La persona visitante usa el instrumento sola. | En pruebas. Ya probado en museo, en segunda fase iterativa. |
+| **Mediado** | Eventos y exposiciones. Móvil y flexible, requiere una persona experta que guíe. | En desarrollo de un MVP para su primera prueba en museo. |
+| **Hogar** | Distribuible y accesible. | Esbozo. Sin planificar. |
+| **Educativo** | Colegios y educadores. | Esbozo. Sin planificar. |
+
+## Aplicaciones
+
+| App | Eje | Qué es | Dispositivos |
+|---|---|---|---|
+| `web-app` | Núcleo y demo del proyecto completo | Visor en pantalla grande, teléfono como tubo y control. Emparejado por QR. | 2, por WebRTC |
+| `kiosk-standalone` | No mediado | Instalación fija. Sensores y pantalla en el mismo dispositivo, entrada por Arduino. | 1 |
+| `dual-telescope` | Mediado | Un teléfono dentro del ocular, otro como tubo buscador. | 2, por WebSocket |
+| `device-lab` | — | Banco de pruebas de sensores y hardware. No es un producto. | 1 |
+
+`web-app` es el núcleo: la versión más completa y la que se muestra como demostración del proyecto
+entero. Su trabajo actual es mantenimiento, búsqueda de bugs y mejoras de interfaz.
+
+Los ejes de hogar y educativo no tienen todavía una app. Ver
+[pendientes.md](docs/pendientes.md) para lo que hay que decidir antes de diseñarlos.
 
 `packages/core` (`@ventanaceleste/core`) tiene lo compartido: motor, orientación, comunicación,
 tiempo, óptica, conectores de hardware y configuración.

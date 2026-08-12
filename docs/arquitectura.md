@@ -133,6 +133,17 @@ MPC) y `bigdata` (surveys DSS y Gaia).
 No están en el repo ni se espera que estén en las máquinas de desarrollo. Sólo los equipos de
 deploy de los prototipos los tienen en local.
 
+Los dominios `smalldata.ventanaceleste.com` y `bigdata.ventanaceleste.com` son de Alessio Bellino,
+gestor del proyecto, y están hosteados en Cloudflare.
+
+### Ubicación por defecto
+
+Las apps arrancan en Paranal (`lat -24.6272`, `lon -70.4042`, `elev 2635`), con offset horario `-3`,
+hora continental de Chile sin horario de verano.
+
+Es un observatorio de referencia en el país y el sitio con la mejor calidad de cielo, así que
+funciona como punto de partida conocido donde el cielo se ve en todo su esplendor.
+
 ## Herramientas
 
 - pnpm 11 con workspaces. `shellEmulator: true` en `pnpm-workspace.yaml` hace que los prefijos

@@ -1,7 +1,12 @@
-# Orientación, tiempo y comunicación
+# Módulos de core
 
-Tres módulos de `@ventanaceleste/core`. Ninguno toca el DOM ni asume framework: son factorías con
-callbacks, y el cableado a la UI vive en cada app.
+Todo lo que exporta `@ventanaceleste/core`, salvo el arranque del motor, que está en
+[stellarium-web-engine.md](stellarium-web-engine.md).
+
+Ningún módulo toca el DOM ni asume framework: son factorías con callbacks, y el cableado a la UI
+vive en cada app. Todo lo público sale de `src/index.js`.
+
+Los términos de astronomía y óptica están en [glosario.md](glosario.md).
 
 ---
 
@@ -316,3 +321,128 @@ arranque con la variable `SENSOR_SOURCE`, y cada página lo consulta al cargar c
 
 Corre en dos modos con la misma lógica: como proceso propio en producción (`server/relay.js`, que
 además sirve `dist/`) y montado sobre Vite en desarrollo.
+
+---
+
+# Óptica
+
+`packages/core/src/telescope/Telescope.js`
+
+Matemática del instrumento y de la calidad del cielo. Las funciones son puras y no requieren
+instancia: cualquier app las usa con los números que ya tenga. `Telescope` es una clase opcional que
+envuelve las mismas funciones para las apps que quieran mantener el estado como objeto.
+
+Vocabulario en [glosario.md](glosario.md).
+
+## Aumento y campo
+
+| Función | Devuelve |
+|---|---|
+| `computeMagnification(focalLength, eyepieceFocalLength)` | Aumento. `null` si la focal del ocular no es positiva. |
+| `computeFovFromEyepiece(focalLength, eyepieceFocalLength, projectionConstant = 100)` | FOV en radianes. |
+
+Distancias focales en milímetros. `projectionConstant` es el campo aparente asumido del ocular, en
+grados.
+
+## Slider de modo simple
+
+El modo simple de `web-app` expone el zoom como un deslizador lineal, pero el FOV útil abarca varios
+órdenes de magnitud. El mapeo es exponencial para que el recorrido del deslizador se sienta parejo.
+
+| Función | Uso |
+|---|---|
+| `sliderToFov(valor, { minFov, maxFov, maxSlider = 150 })` | Posición del deslizador a FOV. |
+| `fovToSlider(fov, { minFov, maxFov, maxSlider = 150 })` | Inversa. |
+
+## Magnitud límite
+
+```js
+calculateLimitMag({ aperture, magnification, telescopeType, sqmReading, ... })
+```
+
+Devuelve la magnitud del objeto más débil visible, redondeada a un decimal. Es el valor que se
+escribe en `core.display_limit_mag`.
+
+| Parámetro | Por defecto | Describe |
+|---|---|---|
+| `aperture` | — | Apertura en mm. Instrumento. |
+| `magnification` | — | Aumento. Instrumento. |
+| `telescopeType` | `REFRACTOR` | `TelescopeType.REFLECTOR`, `REFRACTOR` o `CATADIOPTRIC`. Fija la obstrucción central y las pérdidas por reflexión. |
+| `coatingReflectivity` | `88` | Reflectividad del tratamiento, en porcentaje. Instrumento. |
+| `cleanliness` | `0` | Suciedad de la óptica, de 0 a 1. Instrumento. |
+| `sqmReading` | — | Brillo del fondo de cielo. Cielo. |
+| `extinction` | `0.3` | Extinción atmosférica. Cielo. |
+| `seeingDiskDiameter` | `1` | Seeing en segundos de arco. Cielo. |
+| `zenithDistanceDeg` | `30` | Distancia cenital del objeto. Cielo. |
+| `starColorIndex` | `0` | Índice de color del objeto. |
+| `observerExperience` | `3` | Experiencia del observador, de 1 a 9. Observador. |
+| `observerPupil` | `7` | Diámetro de pupila en mm. Observador. |
+
+Sólo los cuatro primeros describen el telescopio. El resto describe el cielo y a quien mira, que es
+por qué el mismo instrumento da resultados distintos según la noche.
+
+La fórmula es la de Schaefer para magnitud límite telescópica, trasladada del código original sin
+cambios. `computeNELM()` deriva la magnitud límite a ojo desnudo a partir del SQM.
+
+## Contaminación lumínica
+
+| Función | Uso |
+|---|---|
+| `magToBortle(magArcsec2)` | SQM a escala Bortle, de 1 a 9. |
+| `bortleToMag(bortle)` | Bortle a un SQM dentro del rango de esa clase. |
+
+`bortleToMag()` devuelve un valor aleatorio dentro del rango de la clase, así que no es la inversa
+exacta de `magToBortle()` y dos llamadas con el mismo argumento no coinciden.
+
+## Clase `Telescope`
+
+Guarda apertura, focal, tipo y estado del ocular montado, más las coordenadas apuntadas
+(`ra`, `dec`, `alt`, `az`). `setEyepieceFocalLength()` recalcula el aumento.
+
+---
+
+# Conectores de hardware
+
+`packages/core/src/io/connectors.js`
+
+Contrato de lo que alimenta a una app con entrada externa. Qué hardware hay difiere por app, así que
+`core` sólo define la forma y las integraciones concretas viven donde está el hardware.
+
+```js
+{ isSupported(): boolean, connect(): Promise<void>|void, disconnect(): Promise<void>|void }
+```
+
+`createKeyboardConnector({ bindings, onError })` mapea eventos `keydown` a acciones. `bindings` es un
+objeto de tecla en minúscula a función. Es lo que usa `kiosk-standalone`, donde el Arduino actúa
+como teclado USB.
+
+`createSerialConnector()` es un stub que lanza error. Se escribió cuando se suponía que Web Serial
+era el camino para el potenciómetro y el RFID. Web Serial no está disponible en Android, y el
+enfocador de `dual-telescope` usa WebUSB en `apps/dual-telescope/src/focuser.js`.
+
+---
+
+# Configuración
+
+`packages/core/src/config/loadConfig.js`
+
+```js
+const config = await loadConfig({
+  development: () => import('./config.dev.js'),
+  production: () => import('./config.prod.js'),
+});
+```
+
+Elige un módulo de configuración según `import.meta.env.MODE` de Vite. Los loaders son funciones que
+devuelven un `import()` dinámico, así que los archivos no usados no entran al bundle.
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| `mode` | `import.meta.env.MODE` | Modo a resolver. |
+| `fallbackMode` | `'production'` | Modo usado si no hay loader para el actual. |
+| `verbose` | `true` | Loguea el modo elegido. |
+
+Sin loader para el modo actual ni para el de respaldo, lanza error.
+
+No asume nombres de modo ni rutas: `kiosk-standalone` tiene un modo `dev-device` que no tendría
+sentido en otra app.

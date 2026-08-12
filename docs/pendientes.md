@@ -176,6 +176,24 @@ Eso cambia el orden de las decisiones. Las apps futuras se sirven por HTTPS desd
 cual la restricción de contexto seguro desaparece y con ella la asimetría. Conviene revisar esto
 antes de diseñar esas versiones, no después.
 
+## Documentación
+
+### Documentar el hardware físico
+
+No hay ningún documento del montaje. `apps/device-lab/arduino/README.md` cubre sólo el sketch del
+potenciómetro.
+
+Falta: qué telescopio, cómo se monta cada teléfono, qué oculares, el lector RFID, el cableado y qué
+placa lleva cada prototipo. Para un proyecto figital es la mitad ausente de la documentación.
+
+### Elegir licencia
+
+El repo no tiene archivo de licencia, lo cual por defecto significa todos los derechos reservados.
+Decisión de Alessio Bellino como gestor del proyecto.
+
+Stellarium Web Engine, redistribuido en `packages/core/assets/`, es MIT y arrastra una obligación de
+atribución que hoy no está cubierta.
+
 ## Aplicaciones
 
 ### Portar el overlay de seeing a dual-telescope
