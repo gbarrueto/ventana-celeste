@@ -35,6 +35,8 @@ export const AJUSTES_POR_DEFECTO = {
   fov: 0.05,
   // Zona dinámica del zoom activada.
   dyn: false,
+  // De qué lado del canvas se ancla el panel: 'arriba' o 'abajo'.
+  lado: 'arriba',
 };
 
 export function cargarAjustes() {
@@ -151,11 +153,32 @@ export function crearPanel({ ajustes, onChange, onPair }) {
   botonPair.onclick = () => onPair?.(botonPair);
   caja.appendChild(botonPair);
 
+  // Barra fija arriba de todo: con la vista en un extremo el hueco de ese lado es
+  // cero y la caja se recorta al mínimo, así que estos dos botones tienen que
+  // seguir alcanzables sin scrollear.
+  const barra = document.createElement('div');
+  barra.className = 'op-barra';
+
+  // Cambiar de lado es lo que permite ver el canvas mientras se lo ajusta: el
+  // hueco libre depende de dónde esté la vista, y con la vista al medio los dos
+  // huecos son chicos.
+  const lado = document.createElement('button');
+  lado.className = 'op-cerrar';
+  const pintarLado = () => { lado.textContent = ajustes.lado === 'arriba' ? '↓ abajo' : '↑ arriba'; };
+  pintarLado();
+  lado.onclick = () => {
+    ajustes.lado = ajustes.lado === 'arriba' ? 'abajo' : 'arriba';
+    pintarLado();
+    guardar(ajustes);
+    onChange('lado', ajustes);
+  };
+
   const cerrar = document.createElement('button');
   cerrar.className = 'op-cerrar';
   cerrar.textContent = 'Cerrar';
   cerrar.onclick = () => capa.classList.remove('abierta');
-  caja.appendChild(cerrar);
+  barra.append(lado, cerrar);
+  caja.prepend(barra);
 
   document.body.append(abridor, capa);
 
@@ -163,5 +186,19 @@ export function crearPanel({ ajustes, onChange, onPair }) {
     caja,
     setEstado(texto) { estado.textContent = texto; },
     mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
+
+    // Ancla el panel en el hueco que deja la vista y le limita el alto a ese
+    // hueco, así no puede taparla. Si no entra, scrollea adentro.
+    acomodar({ arriba, abajo }) {
+      const enArriba = ajustes.lado === 'arriba';
+      // El mínimo deja ver la barra: desde ahí se puede mandar el panel al otro
+      // lado aunque de este no quede hueco.
+      const hueco = Math.max(76, enArriba ? arriba : abajo);
+      caja.style.top = enArriba ? '0px' : 'auto';
+      caja.style.bottom = enArriba ? 'auto' : '0px';
+      caja.style.maxHeight = `${hueco}px`;
+      abridor.style.top = enArriba ? '8px' : 'auto';
+      abridor.style.bottom = enArriba ? 'auto' : '8px';
+    },
   };
 }

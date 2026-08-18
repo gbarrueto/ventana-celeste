@@ -24,13 +24,20 @@
     .op-abridor { position:fixed; left:8px; top:8px; z-index:40; width:34px; height:34px;
       border-radius:50%; border:1px solid rgba(255,255,255,.18); font:inherit; font-size:15px;
       background:rgba(6,8,15,.55); color:rgba(232,236,245,.7); padding:0; }
-    .op-capa { position:fixed; inset:0; z-index:50; display:none;
-      background:rgba(0,0,0,.55); align-items:center; justify-content:center; }
-    .op-capa.abierta { display:flex; }
-    .op-caja { width:min(340px, 92vw); max-height:88vh; overflow-y:auto;
-      box-sizing:border-box; padding:14px; border-radius:12px;
-      display:flex; flex-direction:column; gap:10px;
-      background:#080b13; border:1px solid rgba(255,255,255,.14); }
+    /* Sin fondo oscuro: el canvas tiene que verse mientras se ajusta rotación,
+       posición y zoom. La capa sigue cubriendo la pantalla sólo para cerrar al
+       tocar afuera. El alto de la caja lo fija panel.acomodar() según el hueco
+       que deje la vista. */
+    .op-capa { position:fixed; inset:0; z-index:50; display:none; }
+    .op-capa.abierta { display:block; }
+    .op-caja { position:absolute; left:50%; transform:translateX(-50%);
+      width:min(340px, 96vw); overflow-y:auto;
+      box-sizing:border-box; padding:12px; border-radius:12px;
+      display:flex; flex-direction:column; gap:8px;
+      background:rgba(8,11,19,.94); border:1px solid rgba(255,255,255,.14); }
+    .op-barra { display:flex; gap:8px; position:sticky; top:0; z-index:1;
+      padding-bottom:8px; background:rgba(8,11,19,.94); }
+    .op-barra button { flex:1; }
     .op-row { display:grid; grid-template-columns:74px 1fr 46px; align-items:center; gap:10px; }
     .op-row > span:first-child { color:rgba(232,236,245,.55); }
     .op-row b { text-align:right; font-variant-numeric:tabular-nums; color:#ff7a0d; }

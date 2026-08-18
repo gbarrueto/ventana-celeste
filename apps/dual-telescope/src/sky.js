@@ -27,7 +27,7 @@ const BIG = 'https://bigdata.ventanaceleste.com/';
 //
 // Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
 // valores, sin volver a registrar listeners.
-function acomodarOcular(canvas, ajustes) {
+function acomodarOcular(canvas, ajustes, onGeometria = () => {}) {
   const mira = document.querySelector('.crosshair');
   const aplicar = () => {
     const altoArea = window.innerHeight * FRACCION_VISTA;
@@ -44,6 +44,12 @@ function acomodarOcular(canvas, ajustes) {
     canvas.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
     canvas.style.transformOrigin = 'center';
     if (mira) mira.style.top = `${centro}px`;
+    // Rotado o no, la huella vertical en pantalla es siempre `altoArea`: al rotar
+    // 90° o 270° se intercambian ancho y alto del elemento y del recuadro.
+    onGeometria({
+      arriba: centro - altoArea / 2,
+      abajo: window.innerHeight - (centro + altoArea / 2),
+    });
   };
   aplicar();
   window.addEventListener('resize', aplicar);
@@ -100,7 +106,9 @@ export async function startSky({ role, statusEl, canvas }) {
   // en un popover porque la vista puede moverse a cualquier altura de la
   // pantalla y una franja fija terminaría chocando con ella.
   if (role === 'ocular') {
-    const reacomodar = acomodarOcular(canvas, ajustes);
+    // El panel se ancla en el hueco que deja la vista, así que cada vez que la
+    // vista se mueve hay que recalcularlo.
+    const reacomodar = acomodarOcular(canvas, ajustes, (g) => panel?.acomodar(g));
     panel = crearPanel({
       ajustes,
       onChange: (clave) => {
@@ -118,6 +126,8 @@ export async function startSky({ role, statusEl, canvas }) {
       statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
       panel.caja.appendChild(statusEl);
     }
+    // La primera pasada corrió antes de que el panel existiera.
+    reacomodar();
   }
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
