@@ -4,6 +4,76 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-18 — Orientación del ocular y zona dinámica
+
+Sesión sobre el montaje real del teléfono en el tubo. Verificado en el aparato: la calibración
+funciona y la zona dinámica se comporta como corresponde.
+
+### Tasas del giroscopio derivadas del quaternion
+
+El camino del giroscopio integraba los ejes crudos del dispositivo, asumiendo que `gyro.z` es
+acimut y `gyro.x` es altura. Eso sólo vale con el aparato derecho, y la correspondencia además
+depende de la elevación, así que ninguna permutación fija de ejes la arregla. Es el mismo error que
+la descomposición Euler tenía para la posición, y la razón de que `mountingTransform` no pudiera
+corregirlo: se aplica a la salida de los dos caminos por igual.
+
+En modo `'vector'`, la velocidad angular se lleva al marco del mundo con el mismo quaternion del
+apuntado y las tasas salen por proyección:
+
+```
+d(altura)/dt = wx·cos(az) − wy·sin(az)
+d(acimut)/dt = tan(alt)·(wx·sin(az) + wy·cos(az)) − wz
+```
+
+Derivadas de las mismas expresiones que dan la posición, así que posición y tasa quedan consistentes
+y un cambio de modo no salta. Reutiliza `rotateVectorByQuaternion` y `opticalAxis`; el escalado por
+zoom, la deadzone, el suavizado y la mezcla al salir de la zona no se tocaron.
+
+`zenithRateGuardDeg`, 85° por defecto, topa la amplificación de la tasa de acimut cerca del cenit.
+No es un tope de apuntado.
+
+En modo `'euler'` se mantiene la integración por ejes crudos, así que `web-app` y `kiosk` no cambian.
+
+Verificado con un script Node contra rotaciones conocidas y contra la derivada numérica del apuntado
+con un montaje rotado 40° en z y 25° en x, que es el caso donde la versión anterior fallaba.
+
+### Calibración con el aparato quieto
+
+La calibración de `dual-telescope` corría con `readinessGate: 'immediate'`, o sea que promediaba el
+bias mientras se manipulaba el teléfono. El bias es el cero del sensor y se mide quieto; con
+movimiento adentro, la integración del giroscopio acumula una velocidad que no existe.
+
+Pasa a `'stillness'`, que es la situación del teléfono ya montado, con 2 segundos de muestreo. El
+bias se persiste, porque recalibrar en cada arranque con el teléfono dentro del telescopio no es
+viable, y el panel gana un botón para rehacerla. El aviso de calibración va en pantalla y fuera del
+panel: una calibración que no arranca porque el aparato se mueve se ve igual que un cuelgue.
+
+### Corrección de deriva revivida
+
+`blendTowardRelativeOnZoomIn()` devuelve la vista a la lectura absoluta al salir de la zona
+dinámica, y se activaba con `lastV < fovThreshold`. `dual-telescope` usa `fovThreshold: 0` para
+quedarse en el camino del quaternion, así que nunca se cumplía y lo acumulado en la zona dinámica no
+volvía jamás a una referencia absoluta.
+
+El límite pasa a ser el mayor entre `fovThreshold` y `dynamicThreshold`: por debajo de cualquiera de
+los dos hubo integración, y por lo tanto deriva que corregir. `kiosk` (0.2) y `web-app` (0.8)
+conservan su límite anterior, que en ambas es el mayor.
+
+### Montaje y panel del ocular
+
+- Rotación del canvas a 270°, la posición física real del teléfono.
+- El alto de la vista queda fijo en 50 %, medido contra el ocular. Deja de ser un ajuste.
+- Altura invertida y acimut sin tocar, medido en el montaje. Va en `mountingTransform`.
+- La vista se puede desplazar a lo largo de la pantalla, para iterar el calce sin volver a montar.
+- El panel de ajustes pasa a un popover anclado arriba o abajo de la vista, con el alto limitado al
+  hueco libre, así no puede taparla. Un botón lo manda al otro lado.
+- Deslizador de zoom. El controlador ahora recibe `getLogFov` real; antes quedaba en el valor por
+  defecto y el zoom no influía en nada.
+- `setDynamicThreshold()` en `core` permite entrar y salir de la zona dinámica sin reconstruir el
+  controlador.
+
+El panel del ocular es de depuración, no interfaz de producto, igual que el de `kiosk`.
+
 ## 2026-08-12 — Documentación
 
 Reescritura completa del set de documentación. La anterior quedó en `old-docs/`, fuera de git.

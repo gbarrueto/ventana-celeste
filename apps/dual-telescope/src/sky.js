@@ -27,7 +27,7 @@ const BIG = 'https://bigdata.ventanaceleste.com/';
 //
 // Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
 // valores, sin volver a registrar listeners.
-function acomodarOcular(canvas, ajustes) {
+function acomodarOcular(canvas, ajustes, onGeometria = () => {}) {
   const mira = document.querySelector('.crosshair');
   const aplicar = () => {
     const altoArea = window.innerHeight * FRACCION_VISTA;
@@ -44,6 +44,12 @@ function acomodarOcular(canvas, ajustes) {
     canvas.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
     canvas.style.transformOrigin = 'center';
     if (mira) mira.style.top = `${centro}px`;
+    // Rotado o no, la huella vertical en pantalla es siempre `altoArea`: al rotar
+    // 90° o 270° se intercambian ancho y alto del elemento y del recuadro.
+    onGeometria({
+      arriba: centro - altoArea / 2,
+      abajo: window.innerHeight - (centro + altoArea / 2),
+    });
   };
   aplicar();
   window.addEventListener('resize', aplicar);
@@ -51,10 +57,28 @@ function acomodarOcular(canvas, ajustes) {
   return aplicar;
 }
 
+// Aviso de calibración, fuera del panel a propósito: el panel arranca cerrado, y
+// una calibración que no arranca porque el aparato no se queda quieto se ve igual
+// que un cuelgue si no se avisa.
+function crearAvisoCalibracion() {
+  const el = document.createElement('div');
+  el.className = 'calib-aviso';
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  return el;
+}
+
 export async function startSky({ role, statusEl, canvas }) {
   const cfg = ROLE[role];
   const other = role === 'ocular' ? 'guide' : 'ocular';
   const say = (t) => { if (statusEl) statusEl.textContent = t; };
+
+  const avisoCalib = crearAvisoCalibracion();
+  const mostrarCalibracion = (visible) => {
+    avisoCalib.style.display = visible ? 'block' : 'none';
+    if (visible && !avisoCalib.textContent) avisoCalib.textContent = 'calibrando…';
+  };
+  const textoCalibracion = (t) => { avisoCalib.textContent = t; };
 
   // Antes de arrancar el motor: el ocular retoma el zoom guardado, no el del rol.
   const ajustes = cargarAjustes();
@@ -100,7 +124,9 @@ export async function startSky({ role, statusEl, canvas }) {
   // en un popover porque la vista puede moverse a cualquier altura de la
   // pantalla y una franja fija terminaría chocando con ella.
   if (role === 'ocular') {
-    const reacomodar = acomodarOcular(canvas, ajustes);
+    // El panel se ancla en el hueco que deja la vista, así que cada vez que la
+    // vista se mueve hay que recalcularlo.
+    const reacomodar = acomodarOcular(canvas, ajustes, (g) => panel?.acomodar(g));
     panel = crearPanel({
       ajustes,
       onChange: (clave) => {
@@ -112,12 +138,16 @@ export async function startSky({ role, statusEl, canvas }) {
       onPair: async (btn) => {
         try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
       },
+      // El bias queda guardado, así que sin esto no habría forma de rehacerlo.
+      onRecalibrar: () => controller?.startCalibration(),
     });
     // El estado colgaba abajo a la izquierda, o sea encima de la vista.
     if (statusEl) {
       statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
       panel.caja.appendChild(statusEl);
     }
+    // La primera pasada corrió antes de que el panel existiera.
+    reacomodar();
   }
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
@@ -160,8 +190,22 @@ export async function startSky({ role, statusEl, canvas }) {
       // porque se aplica sólo en la salida, sin tocar el estado interno de
       // continuidad de ángulos.
       mountingTransform: (yaw, pitch) => ({ yaw, pitch: -pitch }),
-      readinessGate: 'immediate',
-      calibDuration: 1,
+      // La calibración corría con 'immediate', o sea apenas los sensores estaban
+      // listos: promediaba el bias mientras se manipulaba el teléfono, y un bias
+      // con movimiento adentro hace que la zona dinámica integre una velocidad
+      // que no existe. Con 'stillness' espera a que el aparato se quede quieto,
+      // que es exactamente la situación del teléfono ya montado en el tubo.
+      readinessGate: 'stillness',
+      stillnessHoldSeconds: 2,
+      calibDuration: 2,
+      // El teléfono queda dentro del telescopio, así que recalibrar en cada
+      // arranque no es viable. Se guarda y el panel tiene un botón para rehacerla.
+      persistBiasKey: 'dual-telescope:gyro-bias',
+      onCalibrationVisibility: (visible) => mostrarCalibracion(visible),
+      onDebug: ({ preCalibStatus, preCalibCountdown }) => {
+        if (preCalibStatus === 'moving') textoCalibracion('mantén el telescopio quieto');
+        else if (preCalibStatus === 'countdown') textoCalibracion(`calibrando en ${Math.max(0, preCalibCountdown)}…`);
+      },
       // Con zoom alto un temblor de la mano se amplifica, así que hace falta
       // bastante más suavizado que el 0.5 que traía por defecto. El deslizador del
       // panel lo cambia en vivo, que es la única forma razonable de encontrar el

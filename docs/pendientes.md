@@ -8,40 +8,16 @@ trabajo futuro va aquí.
 
 ## Orientación
 
-### Verificar que dual-telescope realmente reutiliza el módulo de orientación
+### Encender la zona dinámica por defecto
 
-El seguimiento en `dual-telescope` es notoriamente peor que el de `kiosk`, que ya funcionaba bien
-con suavizado.
+La zona dinámica quedó verificada en el aparato, pero sigue apagada al arrancar y se enciende desde
+el panel de depuración. Falta decidir el valor de `dynamicThreshold` para el ocular y dejarlo como
+default, con lo cual el toggle del panel deja de ser necesario.
 
-`dual-telescope` sí llama a `createOrientationController` de core, pero con dos opciones que apagan
-mecanismos completos:
+Depende de comparar el seguimiento contra `kiosk` con las dos en la misma configuración.
 
-| Opción | kiosk | dual-telescope | Efecto en dual-telescope |
-|---|---|---|---|
-| `fovThreshold` | `0.2` (default) | `0` | `requiredMode` nunca da `'gyro'`. Sin conmutación de modo. |
-| `dynamicThreshold` | `0.06` (default) | `0` | `inDynamicZone` nunca es verdadero. La zona dinámica queda muerta. |
-
-Con FOV de ocular en `0.05` rad, `kiosk` entra en la zona dinámica e integra el giroscopio escalado
-por zoom, con `dynamicSmoothingFactor` a `0.15`. `dual-telescope` corre sólo el camino del
-quaternion con suavizado exponencial.
-
-Ambos ceros se pusieron para escapar de un bug: en modo giroscopio se integran los ejes crudos del
-dispositivo, y con el montaje rotado 90° eso daba deriva con el aparato quieto y ejes cambiados.
-
-Determinar si la diferencia de calidad viene de ahí, y si la zona dinámica se puede recuperar
-corrigiendo los ejes en vez de apagándola. Relacionado con [corrección de ejes en el camino del
-giroscopio](#corrección-de-ejes-en-el-camino-del-giroscopio).
-
-- `packages/core/src/orientation/controller.js`
 - `apps/dual-telescope/src/sky.js`
 - `apps/kiosk-standalone/src/App.svelte`
-
-### Corrección de ejes en el camino del giroscopio
-
-`quaternionToPointing()` corrige el montaje sólo en el camino del quaternion. La integración del
-giroscopio lee los ejes crudos del dispositivo (`gyroSensor.x`, `.z`) y no tiene equivalente.
-
-Con el teléfono rotado en el tubo, esos ejes no corresponden a altura y acimut.
 
 ### Transformación de imagen newtoniana
 
@@ -69,23 +45,48 @@ Debería resolverse en un solo punto en vez de en cada app.
 En alt-az el acimut es indefinido en el cenit. Un tope por software evita la degeneración a costa
 de impedir apuntar al cenit.
 
-Sin decidir.
+Sin decidir. Distinto de `zenithRateGuardDeg`, que ya existe y sólo topa cuánto se amplifica la
+tasa de acimut cerca del cenit, sin limitar a dónde se puede apuntar.
 
 ## Hardware
 
-### Evaluar WebUSB frente a reconexiones
+### Reconectar el enfocador al reenchufar el cable
 
-WebUSB funciona y reconecta sin gesto del usuario mediante `getDevices()`, lo cual permite que el
-teléfono viva dentro del tubo.
+Medido: la conexión sobrevive a refrescos de página, a cerrar el navegador y a desconectar un pin.
+Sólo se corta al desenchufar el USB de la placa.
 
-Falta medir con qué frecuencia se cae la conexión en uso real. Si requiere reconexiones constantes,
-no es viable y hay que volver al enfoque de teclado HID, que es lo que ya usa `kiosk` con el
-Arduino como teclado USB.
+El permiso de WebUSB no se pierde al desenchufar, así que reenchufar debería curarse solo. No lo
+hace por tres huecos en `focuser.js`:
 
-Web Serial no es una alternativa: medido en el dispositivo, no está disponible en Android.
+- No hay listener de `navigator.usb` para `connect`. `autoConnect()` llama a `getDevices()` una sola
+  vez al arrancar y si no hay nada, se rinde.
+- No hay listener de `disconnect`, así que el estado nunca se limpia.
+- Cuando `transferIn` rechaza por desconexión, `leyendo` queda en `true` y el getter `connected`
+  sigue diciendo que está conectado.
+
+El origen del ocular es `http://localhost:8080`, porque el dispositivo se sirve a sí mismo, así que
+el permiso no depende de la IP. Sólo lo rompería cambiar el puerto.
+
+Queda por verificar aparte si Android muestra su propio diálogo de permiso al reenchufar, y si la
+casilla de usar por defecto lo suprime. Ese es el límite real, y no depende de WebUSB.
+
+Si aun así requiere intervención constante, la alternativa es el teclado HID, que es lo que ya usa
+`kiosk`. Web Serial no lo es: medido en el dispositivo, no está disponible en Android.
 
 - `apps/dual-telescope/src/focuser.js`
 - `apps/device-lab/io.html`
+
+### Mover el enfocador al dispositivo de control
+
+El USB no se delega: quien tiene el cable tiene el dispositivo, así que el guía no puede abrir una
+placa enchufada al ocular. Lo que sí se delega sobre el relay es el control, porque reabrir un
+dispositivo ya autorizado usa `getDevices()` y no exige gesto. El emparejamiento inicial no, porque
+`requestDevice()` necesita activación de usuario real sobre esa página.
+
+Con el tercer dispositivo de control de la fase siguiente, conviene enchufar el Arduino ahí en vez
+de al ocular. El potenciómetro está en el tubo pero el cable puede correr hasta el control, y así el
+teléfono del ocular queda como pantalla pura, sin hardware ni permisos. Encaja con el eje mediado:
+hay una persona experta operando.
 
 ### Medir los puntos de foco reales
 
@@ -226,6 +227,9 @@ original de core, nunca diseñado.
 
 Ninguna app tiene suite de tests. Toda la verificación es manual: build, arranque del dev server y
 scripts Node ad-hoc para los módulos de matemática.
+
+Hay un candidato concreto a primer test: el script que verifica las tasas del giroscopio contra
+rotaciones conocidas y contra la derivada numérica del apuntado. Hoy vive fuera del repo.
 
 ### Temporal por polyfill
 
