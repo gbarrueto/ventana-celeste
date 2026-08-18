@@ -287,17 +287,20 @@ export async function startSky({ role, statusEl, canvas }) {
         // qué está pasando sin desarmarlo.
         bus.sendThrottled('focus', { blur, position }, other, 100);
       },
-      onStatus: ({ connected, message }) => {
+      onStatus: ({ connected, message, requierePairing }) => {
         panel?.setEstado(`enfocador: ${message}`);
+        // El botón de emparejar se decidía sólo al arrancar, así que cuando
+        // Chrome revocaba el permiso había que recargar la página para que
+        // reapareciera. Ahora sigue al estado.
+        panel?.mostrarPair(requierePairing);
         bus.send('focusStatus', { connected, message }, other);
       },
     });
 
-    // Sin gesto: si ya se emparejó en este origen, arranca solo. El botón de
-    // emparejar sólo aparece si eso falla — hace falta una vez en la vida del
-    // equipo, con el teléfono en la mano, y después el permiso queda.
-    const auto = await focuser.autoConnect();
-    panel?.mostrarPair(!auto);
+    // Sin gesto: si hay un permiso vigente para este origen, arranca solo. El
+    // botón de emparejar lo maneja onStatus, porque el permiso puede caerse en
+    // cualquier momento y no sólo al arrancar.
+    await focuser.autoConnect();
 
     window.addEventListener('beforeunload', () => focuser.stop());
   } else {

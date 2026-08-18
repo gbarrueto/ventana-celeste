@@ -152,8 +152,15 @@ async function usbLeer(devicePrevio) {
       }
     }
   }
+  // El numero de serie decide si el permiso sobrevive a desenchufar el cable.
+  // Chrome revoca el permiso al desconectar cualquier dispositivo que no lo
+  // reporte, y ahi getDevices() vuelve vacio y no llega evento 'connect': hay
+  // que volver a emparejar con gesto. Con numero de serie, el permiso persiste.
+  const serie = dev.serialNumber
+    ? 'serie "' + dev.serialNumber + '" -> el permiso PERSISTE al desenchufar'
+    : 'SIN numero de serie -> Chrome revoca el permiso al desenchufar';
   const resumen = 'WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' +
-    (dev.productName || '?') + '\n' + mapa.join('\n');
+    (dev.productName || '?') + '\n  ' + serie + '\n' + mapa.join('\n');
   if (iface === null) { log(resumen); throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB'); }
   // Decir cual se eligio y por que: si cae en CDC en vez de la vendor-specific,
   // no llega nada y desde afuera parece un problema de hardware.

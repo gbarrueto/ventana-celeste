@@ -90,13 +90,13 @@ export function createFocuser({
   // enfocador muerto hasta recargar, que es justo lo que no se puede hacer con
   // el teléfono montado.
 
-  function reportar(connected, message) {
+  function reportar(connected, message, extra = {}) {
     // Sin deduplicar, el reintento periódico emitiría un mensaje cada dos
     // segundos, y `onStatus` viaja por el relay hasta el guía.
     const clave = `${connected}:${message}`;
     if (clave === ultimoEstado) return;
     ultimoEstado = clave;
-    onStatus({ connected, message });
+    onStatus({ connected, message, requierePairing: false, ...extra });
   }
 
   function programarReintento() {
@@ -121,7 +121,11 @@ export function createFocuser({
     try {
       const devs = await navigator.usb.getDevices();
       if (!devs.length) {
-        reportar(false, 'enfocador sin emparejar');
+        // Chrome revoca el permiso al desenchufar un dispositivo que no reporta
+        // número de serie, así que acá no hay nada que reabrir y tampoco va a
+        // llegar un evento `connect`. La única salida es volver a emparejar con
+        // gesto, y para eso el botón tiene que reaparecer solo.
+        reportar(false, 'enfocador sin emparejar', { requierePairing: true });
         programarReintento();
         return;
       }

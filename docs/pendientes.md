@@ -33,15 +33,23 @@ se puede apuntar.
 
 ## Hardware
 
-### Verificar la reconexión del enfocador en el aparato
+### Número de serie USB en la placa
 
-La reconexión está implementada y verificada contra un WebUSB simulado: caída del cable, evento
-`connect`, evento perdido cubierto por el reintento, y `stop()`.
+El enfocador no puede reconectarse solo, y la causa no está en la aplicación: **Chrome revoca el
+permiso de WebUSB al desconectar un dispositivo que no reporta número de serie**. Ahí `getDevices()`
+vuelve vacío y no llega evento `connect`, así que no hay nada que reabrir. Con número de serie, el
+permiso persiste y la reconexión automática funciona.
 
-Falta el hardware. El punto que decide es si **Android muestra su propio diálogo de permiso al
-reenchufar**, por debajo de WebUSB, y si la casilla de usar por defecto lo suprime. Si aparece cada
-vez, el límite no es de la aplicación y hay que ir al teclado HID.
+El comportamiento es idéntico al desenchufar el cable y al pulsar el botón de reinicio de la placa,
+porque los dos hacen que el dispositivo se reenumere.
 
+Qué falta: comprobar si el Leonardo reporta número de serie, y si no, hacer que lo reporte desde el
+sketch. `io.html` de `device-lab` ya lo muestra al abrir el dispositivo.
+
+Si la placa no puede reportarlo, la reconexión automática por WebUSB no es alcanzable y corresponde
+ir al [plan B](#plan-b-enfocador-por-teclado).
+
+- `apps/device-lab/arduino/webusb_potenciometro/`
 - `apps/dual-telescope/src/focuser.js`
 
 ### Plan B: enfocador por teclado
