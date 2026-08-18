@@ -12,7 +12,8 @@
     "publish:deploy": "node scripts/publish-deploy.mjs"
   },
   "dependencies": {
-    "@ventanaceleste/core": "workspace:*"
+    "@ventanaceleste/core": "workspace:*",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^1.2.0",

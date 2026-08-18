@@ -72,6 +72,8 @@ pnpm -r build          # compila las cuatro
 | Ocular | `https://localhost:5173/` |
 | Guía | `https://<ip-de-la-PC>:5173/guide.html` |
 
+Las dos las imprime el dev server al arrancar, con el rol al lado y resueltas al puerto real.
+
 Publicación a los dispositivos, detallada en [docs/deployment.md](docs/deployment.md):
 
 ```bash

@@ -28,6 +28,15 @@ Vite sirve las dos páginas por HTTPS y el relay va montado sobre el mismo servi
 | Ocular | `https://localhost:5173/` |
 | Guía | `https://<ip-de-la-PC>:5173/guide.html` |
 
+Las dos las imprime el dev server al arrancar, con el rol al lado y ya resueltas al puerto real:
+
+```
+  ➜  Local:   https://localhost:5173/
+  ➜  Network: https://10.41.174.80:5173/
+  ➜  Ocular : https://localhost:5173/
+  ➜  Guía   : https://10.41.174.80:5173/guide.html
+```
+
 El teléfono con sensores abre `localhost`, no la IP: sólo `localhost` es contexto seguro sin un
 certificado de confianza. El certificado de `@vitejs/plugin-basic-ssl` es autofirmado y se acepta
 una vez por dispositivo.
@@ -109,6 +118,23 @@ PULL=1 ./start.sh
 El script no compila. Si falta `dist/`, aborta con un mensaje.
 
 Usa `relay.mjs` si existe, y `server/relay.js` si se corre dentro del repo.
+
+### Emparejar con el guía
+
+El relay imprime al arrancar la URL de cada rol, con una línea por interfaz de red:
+
+```
+  Ocular (este equipo): http://localhost:8080/
+  Guía (otro teléfono): http://192.168.43.1:8080/guide.html   [ap0]
+```
+
+Las direcciones salen de `os.networkInterfaces()` de Node. `ip route get` y `hostname -i` no
+sirven: en Termux devuelven una dirección de loopback, inalcanzable desde el otro teléfono aunque
+este equipo sea el punto de acceso.
+
+El panel de depuración del ocular muestra esa misma URL como QR, que es la vía práctica en el
+montaje. Con varias interfaces, tocar el QR recorre las direcciones: cuál alcanza al guía depende
+de a qué red esté conectado.
 
 El shebang es `#!/usr/bin/env bash`. La ruta absoluta de Termux sólo existe en Termux e impedía
 correr el script en cualquier otro lado.

@@ -22,6 +22,6 @@ export async function fetchLinkConfig() {
     if (!res.ok) throw new Error(String(res.status));
     return await res.json();
   } catch {
-    return { sensorSource: 'ocular' };
+    return { sensorSource: 'ocular', addresses: [] };
   }
 }

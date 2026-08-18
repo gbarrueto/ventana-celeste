@@ -4,6 +4,114 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-18 — Montaje, orientación y emparejamiento
+
+Sesión sobre el montaje real del teléfono en el tubo. Verificado en el aparato: la calibración
+funciona y la zona dinámica se comporta como corresponde.
+
+### Tasas del giroscopio derivadas del quaternion
+
+El camino del giroscopio integraba los ejes crudos del dispositivo, asumiendo que `gyro.z` es
+acimut y `gyro.x` es altura. Eso sólo vale con el aparato derecho, y la correspondencia además
+depende de la elevación, así que ninguna permutación fija de ejes la arregla. Es el mismo error que
+la descomposición Euler tenía para la posición, y la razón de que `mountingTransform` no pudiera
+corregirlo: se aplica a la salida de los dos caminos por igual.
+
+En modo `'vector'`, la velocidad angular se lleva al marco del mundo con el mismo quaternion del
+apuntado y las tasas salen por proyección:
+
+```
+d(altura)/dt = wx·cos(az) − wy·sin(az)
+d(acimut)/dt = tan(alt)·(wx·sin(az) + wy·cos(az)) − wz
+```
+
+Derivadas de las mismas expresiones que dan la posición, así que posición y tasa quedan consistentes
+y un cambio de modo no salta. Reutiliza `rotateVectorByQuaternion` y `opticalAxis`; el escalado por
+zoom, la deadzone, el suavizado y la mezcla al salir de la zona no se tocaron.
+
+`zenithRateGuardDeg`, 85° por defecto, topa la amplificación de la tasa de acimut cerca del cenit.
+No es un tope de apuntado.
+
+En modo `'euler'` se mantiene la integración por ejes crudos, así que `web-app` y `kiosk` no cambian.
+
+Verificado con un script Node contra rotaciones conocidas y contra la derivada numérica del apuntado
+con un montaje rotado 40° en z y 25° en x, que es el caso donde la versión anterior fallaba.
+
+### Calibración con el aparato quieto
+
+La calibración de `dual-telescope` corría con `readinessGate: 'immediate'`, o sea que promediaba el
+bias mientras se manipulaba el teléfono. El bias es el cero del sensor y se mide quieto; con
+movimiento adentro, la integración del giroscopio acumula una velocidad que no existe.
+
+Pasa a `'stillness'`, que es la situación del teléfono ya montado, con 2 segundos de muestreo. El
+bias se persiste, porque recalibrar en cada arranque con el teléfono dentro del telescopio no es
+viable, y el panel gana un botón para rehacerla. El aviso de calibración va en pantalla y fuera del
+panel: una calibración que no arranca porque el aparato se mueve se ve igual que un cuelgue.
+
+### Corrección de deriva revivida
+
+`blendTowardRelativeOnZoomIn()` devuelve la vista a la lectura absoluta al salir de la zona
+dinámica, y se activaba con `lastV < fovThreshold`. `dual-telescope` usa `fovThreshold: 0` para
+quedarse en el camino del quaternion, así que nunca se cumplía y lo acumulado en la zona dinámica no
+volvía jamás a una referencia absoluta.
+
+El límite pasa a ser el mayor entre `fovThreshold` y `dynamicThreshold`: por debajo de cualquiera de
+los dos hubo integración, y por lo tanto deriva que corregir. `kiosk` (0.2) y `web-app` (0.8)
+conservan su límite anterior, que en ambas es el mayor.
+
+### Montaje del ocular
+
+- Rotación del canvas a 270°, la posición física real del teléfono.
+- El alto de la vista queda fijo en 50 %, medido contra el ocular. Deja de ser un ajuste.
+- Altura invertida y acimut sin tocar, medido en el montaje. Va en `mountingTransform`, que es el
+  ajuste que cambia con cada prototipo.
+- La vista se puede desplazar a lo largo de la pantalla, para iterar el calce sin volver a montar.
+- Deslizador de zoom. El controlador ahora recibe `getLogFov` real; antes quedaba en el valor por
+  defecto y el zoom no influía en nada.
+
+### Montaje del guía
+
+La UI del guía reutiliza la del ocular parametrizada por rol, en vez de existir dos veces. La vista
+se recorta y queda arriba, con el tamaño ajustable, que es el reparto inverso al del ocular: allá el
+tamaño es fijo y la posición móvil.
+
+En pantalla de escritorio el guía va a pantalla completa. El recorte existe por la ubicación física
+del teléfono y no tiene sentido cuando se deja el guía abierto en el monitor durante el desarrollo.
+
+Qué controles aparecen depende del rol y de si lleva los sensores, así que el panel se arma después
+de `fetchLinkConfig()`. Una clave de `localStorage` por rol: en desarrollo las dos páginas se abren
+en el mismo navegador, o sea el mismo origen.
+
+El CSS de la UI estaba duplicado en los dos HTML y pasó a `src/ui.css`.
+
+### Emparejamiento
+
+- El dev server imprime las dos URLs con el rol al lado, ya resueltas al puerto real, así que
+  `/guide.html` deja de escribirse a mano.
+- La IPv4 de LAN del principal se detecta con `os.networkInterfaces()` y se publica en
+  `/link-config`. El panel del ocular la muestra como QR, oculto detrás de un interruptor porque un
+  código legible ocupa casi todo el panel.
+- Se publican todas las interfaces: el teléfono puede tener a la vez la del punto de acceso y una de
+  wifi, y tocar el QR las recorre.
+- `start.sh` dejó de adivinar la IP. `ip route get` y `hostname -i` devuelven loopback en Termux, o
+  sea una dirección que el guía no puede alcanzar aunque este equipo sea el punto de acceso.
+
+El QR se genera con `qrcode-generator`, sin dependencias y empaquetada local. `web-app` la carga de
+un CDN, lo cual acá no sirve.
+
+### El panel es de depuración
+
+No es interfaz de producto, igual que el de `kiosk`. Los controles que existían para encontrar un
+valor desaparecieron al encontrarlo: el suavizado quedó en `0.10` y la zona dinámica activa con
+umbral `0.06`, ambos como constantes en el código.
+
+Sacarlos de los ajustes era la parte que importaba: mientras vivieran ahí se guardaban en
+`localStorage`, y un valor viejo guardado le habría ganado al del código sin que se notara.
+
+`setSmoothing()` y `setDynamicThreshold()` en `core` permiten cambiarlos en caliente. Hoy no los usa
+ninguna app; existen porque encontrar estos valores exige moverlos con el instrumento apuntando a
+algo, y eso hará falta otra vez con el próximo montaje.
+
 ## 2026-08-12 — Documentación
 
 Reescritura completa del set de documentación. La anterior quedó en `old-docs/`, fuera de git.

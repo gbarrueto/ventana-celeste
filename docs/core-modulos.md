@@ -28,7 +28,7 @@ import { createOrientationController } from '@ventanaceleste/core';
 const controller = createOrientationController({
   pointingMode: 'vector',
   opticalAxis: '+y',
-  smoothing: { relative: 0.18, gyro: 0.18 },
+  smoothing: { relative: 0.10, gyro: 0.10 },
   onView: ({ yaw, pitch }) => { /* escribir en el motor */ },
   onError: (e) => { /* superficie visible */ },
 });
@@ -48,13 +48,17 @@ La compuerta decide cuándo empezar a muestrear:
 
 | `readinessGate` | Comportamiento | Dónde se usa |
 |---|---|---|
-| `'stillness'` | Espera a que el dispositivo deje de moverse durante `stillnessHoldSeconds`. | `kiosk-standalone` (default) |
+| `'stillness'` | Espera a que el dispositivo deje de moverse durante `stillnessHoldSeconds`. | `kiosk-standalone` (default), `dual-telescope` |
 | `'countdown'` | Temporizador fijo de `countdownSeconds`, sin mirar el movimiento. | `web-app` |
-| `'immediate'` | Sin compuerta. | `dual-telescope` |
+| `'immediate'` | Sin compuerta. | Ninguna app |
 
 La calibración promedia `gyroFreq × calibDuration` muestras del giroscopio para obtener el bias.
 Con `persistBiasKey`, el resultado se guarda en `localStorage` y en arranques siguientes se salta la
 calibración.
+
+El bias es el cero del sensor, así que se mide con el aparato quieto. Muestrear mientras se lo
+manipula deja movimiento real dentro del promedio, y la integración del giroscopio pasa a acumular
+una velocidad que no existe.
 
 ## Opciones
 
@@ -77,6 +81,7 @@ calibración.
 |---|---|---|
 | `pointingMode` | `'euler'` | `'euler'` o `'vector'`. Ver [Modos de apuntado](#modos-de-apuntado). |
 | `opticalAxis` | `'+y'` | Clave de `OPTICAL_AXES` o vector `[x, y, z]`. Sólo en modo `'vector'`. |
+| `zenithRateGuardDeg` | `85` | Altura a la que se topa la amplificación de la tasa de acimut. Sólo en modo `'vector'`. |
 | `mountQuaternion` | `null` | Rotación aplicada al quaternion crudo antes de descomponerlo. Se construye con `quaternionFromAxisAngle()`. |
 | `mountingTransform` | identidad | `(yaw, pitch) => ({ yaw, pitch })`, aplicada sólo en la salida. |
 
@@ -114,6 +119,8 @@ propio callback.
 | `cancelCalibration()` | Aborta y pasa a corriendo con el bias que haya. |
 | `setSmoothing(partial)` | Ajuste en caliente. Acepta uno solo de los dos ejes. |
 | `getSmoothing()` | Copia de los valores actuales. |
+| `setDynamicThreshold(v)` | Activa o desactiva la zona dinámica en caliente. `0` la desactiva. |
+| `getDynamicThreshold()` | Valor actual. |
 
 ## Modos de apuntado
 
@@ -125,6 +132,28 @@ responder.
 **`'vector'`** rota el eje óptico por el quaternion y lee alt/az del vector resultante. El montaje
 se reduce a qué vector del dispositivo apunta por el tubo, que es una constante. La única
 singularidad que queda es la real del alt-az: acimut indefinido en el cenit.
+
+El modo también determina de dónde salen las **tasas** de acimut y altura que integra el
+giroscopio, no sólo la posición:
+
+| Modo | Tasas |
+|---|---|
+| `'euler'` | Ejes crudos del dispositivo: `gyro.z` es acimut y `gyro.x` es altura. |
+| `'vector'` | La velocidad angular se lleva al marco del mundo con el mismo quaternion del apuntado y se proyecta. |
+
+En modo `'vector'`, con ω ya en el marco del mundo:
+
+```
+d(altura)/dt = wx·cos(az) − wy·sin(az)
+d(acimut)/dt = tan(alt)·(wx·sin(az) + wy·cos(az)) − wz
+```
+
+Salen de derivar las mismas expresiones que dan la posición, `yaw = atan2(vx, vy)` y
+`pitch = asin(vz)`, así que posición y tasa quedan consistentes y un cambio de modo no salta.
+
+`tan(alt)` se topa en `zenithRateGuardDeg`, porque cerca del cenit la tasa de acimut diverge. Con
+el valor por defecto, a 85° el factor es 11.4 y ahí se queda. No es un tope de apuntado: la vista
+puede pasar del cenit, lo que se limita es cuánto se amplifica el giro.
 
 `'euler'` es el default, así que `web-app` y `kiosk` no cambian de comportamiento.
 
@@ -144,6 +173,14 @@ La zona dinámica es un tercer camino, independiente del modo: con `fov < dynami
 integra el giroscopio escalado por el zoom, para que un movimiento pequeño de la mano recorra menos
 cielo cuanto más cerrado esté el campo. `dynamicThreshold` de `0` la desactiva por completo.
 
+`setDynamicThreshold()` y `setSmoothing()` los cambian en caliente, sin reconstruir el controlador.
+Ninguna app los usa hoy: existen porque encontrar estos dos valores exige moverlos con el
+instrumento apuntando a algo, y una vez encontrados se fijan en código.
+
+El límite por debajo del cual se considera que hubo integración del giroscopio es el mayor entre
+`fovThreshold` y `dynamicThreshold`. Mirar sólo `fovThreshold` dejaba la corrección de deriva
+muerta en cualquier app que lo pusiera en `0` para quedarse en el camino del quaternion.
+
 Al salir de la zona dinámica hacia campos más amplios, `blendTowardRelativeOnZoomIn()` mezcla
 gradualmente hacia la lectura del quaternion en vez de saltar.
 
@@ -151,12 +188,12 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 
 | Opción | `web-app` | `kiosk-standalone` | `dual-telescope` |
 |---|---|---|---|
-| `readinessGate` | `'countdown'` | `'stillness'` | `'immediate'` |
+| `readinessGate` | `'countdown'` | `'stillness'` | `'stillness'` |
 | `pointingMode` | `'euler'` | `'euler'` | `'vector'` |
 | `fovThreshold` | `0.8` | `0.2` | `0` |
-| `dynamicThreshold` | default | default | `0` |
-| `smoothing` | default | default | `0.18` en ambos ejes |
-| `persistBiasKey` | — | `astrovis_gyro_bias` | — |
+| `dynamicThreshold` | default | default | `0.06` |
+| `smoothing` | default | default | `0.10` en ambos ejes |
+| `persistBiasKey` | — | `astrovis_gyro_bias` | `dual-telescope:gyro-bias` |
 
 ## Utilidades exportadas
 
@@ -315,9 +352,16 @@ sin traducción. Un mensaje sin `target` va a todos los clientes menos el emisor
 Ambas devuelven `false` cuando la ruta no les corresponde, lo cual permite montar el relay sobre el
 dev server de Vite sin romper su WebSocket de HMR.
 
-`/link-config` devuelve `{ sensorSource }`, que es qué rol lleva los sensores. Lo fija el script de
-arranque con la variable `SENSOR_SOURCE`, y cada página lo consulta al cargar con
+`/link-config` devuelve `{ sensorSource, addresses }`, y cada página lo consulta al cargar con
 `fetchLinkConfig()`.
+
+`sensorSource` es qué rol lleva los sensores, y lo fija el script de arranque con la variable
+`SENSOR_SOURCE`. `addresses` son las IPv4 de LAN del equipo, sacadas de `os.networkInterfaces()`,
+para que el ocular pueda mostrar la URL del guía como QR.
+
+Van sólo las direcciones y no la URL completa: el protocolo y el puerto los sabe la página, así que
+la URL se arma del lado del cliente y queda bien tanto sobre el servidor de Vite en desarrollo como
+en producción, sin que el relay tenga que saber en cuál de los dos está.
 
 Corre en dos modos con la misma lógica: como proceso propio en producción (`server/relay.js`, que
 además sirve `dist/`) y montado sobre Vite en desarrollo.

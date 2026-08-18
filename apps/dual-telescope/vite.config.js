@@ -28,6 +28,27 @@ function devRelay() {
       // Vite ya usa este servidor para su WebSocket de HMR: sólo se toma
       // RELAY_PATH y el resto se deja pasar.
       server.httpServer?.on('upgrade', (req, socket, head) => relay.handleUpgrade(req, socket, head));
+
+      // Vite imprime sus URLs sin distinguir roles, y el guía vive en
+      // /guide.html, que había que escribir a mano cada vez. Se agregan las dos
+      // con el rol al lado.
+      //
+      // El ocular va por localhost porque los sensores exigen contexto seguro y
+      // sólo localhost lo es sin certificado de confianza. El guía necesita la
+      // dirección de red, porque se abre desde el otro dispositivo.
+      const original = server.printUrls.bind(server);
+      server.printUrls = () => {
+        original();
+        const { local = [], network = [] } = server.resolvedUrls ?? {};
+        const linea = (rol, url) => server.config.logger.info(
+          `  \x1b[32m➜\x1b[0m  \x1b[1m${rol}\x1b[0m: \x1b[36m${url}\x1b[0m`,
+        );
+        if (local[0]) linea('Ocular ', local[0]);
+        for (const u of network) linea('Guía   ', `${u.replace(/\/$/, '')}/guide.html`);
+        if (!network.length) {
+          server.config.logger.warn('  Guía: sin dirección de red. Hace falta `server.host`.');
+        }
+      };
     },
   };
 }
