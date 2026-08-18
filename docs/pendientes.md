@@ -33,31 +33,28 @@ se puede apuntar.
 
 ## Hardware
 
-### Reconectar el enfocador al reenchufar el cable
+### Verificar la reconexión del enfocador en el aparato
 
-Medido: la conexión sobrevive a refrescos de página, a cerrar el navegador y a desconectar un pin.
-Sólo se corta al desenchufar el USB de la placa.
+La reconexión está implementada y verificada contra un WebUSB simulado: caída del cable, evento
+`connect`, evento perdido cubierto por el reintento, y `stop()`.
 
-El permiso de WebUSB no se pierde al desenchufar, así que reenchufar debería curarse solo. No lo
-hace por tres huecos en `focuser.js`:
-
-- No hay listener de `navigator.usb` para `connect`. `autoConnect()` llama a `getDevices()` una sola
-  vez al arrancar y si no hay nada, se rinde.
-- No hay listener de `disconnect`, así que el estado nunca se limpia.
-- Cuando `transferIn` rechaza por desconexión, `leyendo` queda en `true` y el getter `connected`
-  sigue diciendo que está conectado.
-
-El origen del ocular es `http://localhost:8080`, porque el dispositivo se sirve a sí mismo, así que
-el permiso no depende de la IP. Sólo lo rompería cambiar el puerto.
-
-Queda por verificar aparte si Android muestra su propio diálogo de permiso al reenchufar, y si la
-casilla de usar por defecto lo suprime. Ese es el límite real, y no depende de WebUSB.
-
-Si aun así requiere intervención constante, la alternativa es el teclado HID, que es lo que ya usa
-`kiosk`. Web Serial no lo es: medido en el dispositivo, no está disponible en Android.
+Falta el hardware. El punto que decide es si **Android muestra su propio diálogo de permiso al
+reenchufar**, por debajo de WebUSB, y si la casilla de usar por defecto lo suprime. Si aparece cada
+vez, el límite no es de la aplicación y hay que ir al teclado HID.
 
 - `apps/dual-telescope/src/focuser.js`
-- `apps/device-lab/io.html`
+
+### Plan B: enfocador por teclado
+
+Si la reconexión por WebUSB resulta poco fiable en uso real, la alternativa es que el Arduino actúe
+como teclado USB, que es lo que ya hace `kiosk` y no requiere permisos ni reconexión.
+
+Cambia el modelo de datos, no sólo el transporte. El potenciómetro entrega una **posición absoluta**
+y un teclado entrega **eventos discretos**, así que el enfoque pasaría a acumularse por pasos. Con
+eso la posición del software puede quedar desfasada de la del mando físico, y haría falta o bien una
+tecla de puesta a cero, o bien un mando sin posición absoluta, como un encoder rotatorio.
+
+`createKeyboardConnector()` en `core` ya cubre el mapeo de teclas a acciones.
 
 ### Mover el enfocador al dispositivo de control
 
