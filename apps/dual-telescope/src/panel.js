@@ -1,57 +1,75 @@
-// Panel de ajustes del ocular.
+// Panel de ajustes, compartido por los dos roles.
 //
 // Es un panel de **depuración**, no interfaz de producto. Igual que el de kiosk:
 // existe para calibrar el montaje y probar hipótesis en el aparato, y no debería
 // llegar a una instalación real. Que hoy sea útil no lo convierte en una
 // funcionalidad.
 //
-// Vive en un popover: el canvas puede moverse a lo largo de la pantalla, así que
-// cualquier franja fija termina chocando con él. Cerrado deja sólo un botón
-// chico; abierto tapa todo, que es lo correcto porque mientras se ajusta se está
-// mirando el teléfono, no el ocular.
+// Los dos roles necesitan lo mismo con otra configuración, así que el panel se
+// arma según el rol en vez de existir dos veces. Qué controles aparecen depende
+// de qué puede cambiar cada uno:
 //
-// Los valores se guardan en `localStorage`, así que sobreviven a recargas y a
-// apagar el equipo.
+//   ocular — montado en el tubo: rotación y posición de la vista, tamaño fijo.
+//   guía   — se mira de frente: tamaño de la vista, siempre arriba, sin rotación.
+//
+// Los que dependen de los sensores (suavizado, zona dinámica, recalibrar) sólo
+// se arman en el rol que efectivamente los lleva, que lo decide el servidor.
+import './ui.css';
 
-const CLAVE = 'dual-telescope:ocular';
-
-// Fracción del alto de pantalla que ocupa la vista. Medido contra el ocular
-// real, así que es constante y no un ajuste.
-export const FRACCION_VISTA = 0.5;
+// Una clave por rol: en desarrollo las dos páginas se abren en el mismo
+// navegador, o sea el mismo origen y el mismo localStorage.
+const clave = (role) => `dual-telescope:${role}`;
 
 // Rango del zoom, en radianes. Cruza el umbral de la zona dinámica (0.06) para
 // poder entrar y salir de ella con el deslizador.
 export const FOV_MIN = 0.0005;
 export const FOV_MAX = 1.5;
 
+// Ancho a partir del cual se considera pantalla de escritorio. Por debajo, la
+// vista se recorta como en el teléfono.
+export const PANTALLA_GRANDE = '(min-width: 900px)';
+
 export const AJUSTES_POR_DEFECTO = {
-  // Fracción del error corregida por lectura. 1 = crudo.
-  smooth: 0.18,
-  // Rotación del canvas, en grados. 270 es la posición física del teléfono.
-  rot: 270,
-  // Centro vertical de la vista, como fracción del alto de pantalla.
-  pos: 1 - FRACCION_VISTA / 2,
-  // Campo visual en radianes.
-  fov: 0.05,
-  // Zona dinámica del zoom activada.
-  dyn: false,
-  // De qué lado del canvas se ancla el panel: 'arriba' o 'abajo'.
-  lado: 'arriba',
+  ocular: {
+    smooth: 0.18,
+    // 270 es la posición física del teléfono dentro del tubo.
+    rot: 270,
+    // Medido contra el ocular real, así que no se expone como control.
+    fraccion: 0.5,
+    // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
+    pos: 0.75,
+    fov: 0.05,
+    dyn: false,
+    lado: 'arriba',
+  },
+  guide: {
+    smooth: 0.18,
+    rot: 0,
+    fraccion: 0.5,
+    // Arriba. Se recalcula al cambiar el tamaño; el guía no mueve la vista.
+    pos: 0.25,
+    fov: 0.14,
+    dyn: false,
+    lado: 'abajo',
+  },
 };
 
-export function cargarAjustes() {
+export function cargarAjustes(role) {
+  const base = AJUSTES_POR_DEFECTO[role] ?? AJUSTES_POR_DEFECTO.ocular;
   try {
-    return { ...AJUSTES_POR_DEFECTO, ...JSON.parse(localStorage.getItem(CLAVE) ?? '{}') };
+    return { ...base, ...JSON.parse(localStorage.getItem(clave(role)) ?? '{}') };
   } catch {
-    return { ...AJUSTES_POR_DEFECTO };
+    return { ...base };
   }
 }
 
-function guardar(ajustes) {
-  try { localStorage.setItem(CLAVE, JSON.stringify(ajustes)); } catch { /* modo privado */ }
+function guardar(role, ajustes) {
+  try { localStorage.setItem(clave(role), JSON.stringify(ajustes)); } catch { /* modo privado */ }
 }
 
-export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
+export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, onRecalibrar }) {
+  const esOcular = role === 'ocular';
+
   const capa = document.createElement('div');
   capa.className = 'op-capa';
 
@@ -65,6 +83,8 @@ export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
   abridor.onclick = () => capa.classList.add('abierta');
   capa.addEventListener('click', (e) => { if (e.target === capa) capa.classList.remove('abierta'); });
 
+  const emitir = (c) => { guardar(role, ajustes); onChange(c, ajustes); };
+
   const fila = (etiqueta, control, valorEl) => {
     const d = document.createElement('div');
     d.className = 'op-row';
@@ -77,32 +97,40 @@ export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
 
   // `escala` permite deslizadores logarítmicos: el zoom abarca tres órdenes de
   // magnitud y en lineal el extremo cerrado sería inmanejable.
-  const deslizador = (clave, { min, max, paso, formato, escala = null }) => {
+  const deslizador = (c, { min, max, paso, formato, escala = null }) => {
     const aCrudo = escala ? escala.a : (v) => v;
     const deCrudo = escala ? escala.de : (v) => v;
     const input = document.createElement('input');
     Object.assign(input, {
-      type: 'range', min: aCrudo(min), max: aCrudo(max), step: paso, value: aCrudo(ajustes[clave]),
+      type: 'range', min: aCrudo(min), max: aCrudo(max), step: paso, value: aCrudo(ajustes[c]),
     });
     const valor = document.createElement('b');
-    valor.textContent = formato(ajustes[clave]);
+    valor.textContent = formato(ajustes[c]);
     input.addEventListener('input', () => {
-      ajustes[clave] = deCrudo(parseFloat(input.value));
-      valor.textContent = formato(ajustes[clave]);
-      guardar(ajustes);
-      onChange(clave, ajustes);
+      ajustes[c] = deCrudo(parseFloat(input.value));
+      valor.textContent = formato(ajustes[c]);
+      emitir(c);
     });
     return { input, valor };
   };
 
-  const sm = deslizador('smooth', { min: 0.02, max: 1, paso: 0.01, formato: (v) => v.toFixed(2) });
-  fila('suavizado', sm.input, sm.valor);
+  const pct = (v) => `${Math.round(v * 100)}%`;
 
-  const ps = deslizador('pos', {
-    min: FRACCION_VISTA / 2, max: 1 - FRACCION_VISTA / 2, paso: 0.01,
-    formato: (v) => `${Math.round(v * 100)}%`,
-  });
-  fila('posición', ps.input, ps.valor);
+  if (esFuente) {
+    const sm = deslizador('smooth', { min: 0.02, max: 1, paso: 0.01, formato: (v) => v.toFixed(2) });
+    fila('suavizado', sm.input, sm.valor);
+  }
+
+  // El ocular tiene tamaño fijo y posición móvil; el guía al revés.
+  if (esOcular) {
+    const ps = deslizador('pos', {
+      min: ajustes.fraccion / 2, max: 1 - ajustes.fraccion / 2, paso: 0.01, formato: pct,
+    });
+    fila('posición', ps.input, ps.valor);
+  } else {
+    const fr = deslizador('fraccion', { min: 0.2, max: 1, paso: 0.05, formato: pct });
+    fila('tamaño', fr.input, fr.valor);
+  }
 
   const zm = deslizador('fov', {
     min: FOV_MIN, max: FOV_MAX, paso: 0.001,
@@ -111,56 +139,53 @@ export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
   });
   fila('zoom', zm.input, zm.valor);
 
-  const rotBox = document.createElement('div');
-  rotBox.className = 'op-rot';
-  for (const g of [0, 90, 180, 270]) {
-    const b = document.createElement('button');
-    b.textContent = `${g}°`;
-    b.className = ajustes.rot === g ? 'on' : '';
-    b.onclick = () => {
-      ajustes.rot = g;
-      guardar(ajustes);
-      for (const o of rotBox.children) o.className = '';
-      b.className = 'on';
-      onChange('rot', ajustes);
-    };
-    rotBox.appendChild(b);
+  if (esOcular) {
+    const rotBox = document.createElement('div');
+    rotBox.className = 'op-rot';
+    for (const g of [0, 90, 180, 270]) {
+      const b = document.createElement('button');
+      b.textContent = `${g}°`;
+      b.className = ajustes.rot === g ? 'on' : '';
+      b.onclick = () => {
+        ajustes.rot = g;
+        for (const o of rotBox.children) o.className = '';
+        b.className = 'on';
+        emitir('rot');
+      };
+      rotBox.appendChild(b);
+    }
+    fila('rotación', rotBox);
   }
-  fila('rotación', rotBox);
 
-  // La zona dinámica integra el giroscopio escalado por zoom. Con el montaje
-  // rotado usa ejes sin corregir, así que va apagada por defecto.
-  const dyn = document.createElement('button');
-  dyn.className = `op-toggle ${ajustes.dyn ? 'on' : ''}`;
-  dyn.textContent = ajustes.dyn ? 'activada' : 'apagada';
-  dyn.onclick = () => {
-    ajustes.dyn = !ajustes.dyn;
-    dyn.className = `op-toggle ${ajustes.dyn ? 'on' : ''}`;
-    dyn.textContent = ajustes.dyn ? 'activada' : 'apagada';
-    guardar(ajustes);
-    onChange('dyn', ajustes);
-  };
-  fila('zona dinám.', dyn);
+  if (esFuente) {
+    // La zona dinámica integra el giroscopio escalado por zoom.
+    const dyn = document.createElement('button');
+    const pintarDyn = () => {
+      dyn.className = `op-toggle ${ajustes.dyn ? 'on' : ''}`;
+      dyn.textContent = ajustes.dyn ? 'activada' : 'apagada';
+    };
+    pintarDyn();
+    dyn.onclick = () => { ajustes.dyn = !ajustes.dyn; pintarDyn(); emitir('dyn'); };
+    fila('zona dinám.', dyn);
 
-  const recal = document.createElement('button');
-  recal.className = 'op-cerrar';
-  recal.textContent = 'Recalibrar giroscopio';
-  recal.onclick = () => {
-    capa.classList.remove('abierta');
-    onRecalibrar?.();
-  };
-  caja.appendChild(recal);
+    const recal = document.createElement('button');
+    recal.className = 'op-cerrar';
+    recal.textContent = 'Recalibrar giroscopio';
+    recal.onclick = () => { capa.classList.remove('abierta'); onRecalibrar?.(); };
+    caja.appendChild(recal);
+  }
 
   const estado = document.createElement('div');
   estado.className = 'op-estado';
   caja.appendChild(estado);
 
+  // El enfocador vive en el ocular, que es donde está el hardware.
   const botonPair = document.createElement('button');
   botonPair.className = 'op-pair';
   botonPair.textContent = 'Emparejar enfocador';
   botonPair.style.display = 'none';
   botonPair.onclick = () => onPair?.(botonPair);
-  caja.appendChild(botonPair);
+  if (esOcular) caja.appendChild(botonPair);
 
   // Barra fija arriba de todo: con la vista en un extremo el hueco de ese lado es
   // cero y la caja se recorta al mínimo, así que estos dos botones tienen que
@@ -168,9 +193,6 @@ export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
   const barra = document.createElement('div');
   barra.className = 'op-barra';
 
-  // Cambiar de lado es lo que permite ver el canvas mientras se lo ajusta: el
-  // hueco libre depende de dónde esté la vista, y con la vista al medio los dos
-  // huecos son chicos.
   const lado = document.createElement('button');
   lado.className = 'op-cerrar';
   const pintarLado = () => { lado.textContent = ajustes.lado === 'arriba' ? '↓ abajo' : '↑ arriba'; };
@@ -178,8 +200,7 @@ export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
   lado.onclick = () => {
     ajustes.lado = ajustes.lado === 'arriba' ? 'abajo' : 'arriba';
     pintarLado();
-    guardar(ajustes);
-    onChange('lado', ajustes);
+    emitir('lado');
   };
 
   const cerrar = document.createElement('button');

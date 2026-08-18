@@ -1,0 +1,62 @@
+/* UI compartida por las dos entradas. Estaba duplicada en index.html y
+   guide.html; se importa desde sky.js, así que cada página recibe sólo lo suyo
+   más esto. Lo único que queda en cada HTML es el fondo y el canvas. */
+
+/* Mira. La posición la fija acomodarVista(): sigue al centro del área visible. */
+.crosshair { position:fixed; left:50%; top:50%; width:24px; height:24px; margin:-12px 0 0 -12px;
+  z-index:5; pointer-events:none; border:1px solid rgba(255,122,13,.8); border-radius:50%; }
+.crosshair::before, .crosshair::after { content:''; position:absolute; background:rgba(255,122,13,.8); }
+.crosshair::before { left:50%; top:-8px; width:1px; height:40px; margin-left:-.5px; }
+.crosshair::after { top:50%; left:-8px; height:1px; width:40px; margin-top:-.5px; }
+
+#status { position:fixed; left:8px; bottom:8px; z-index:10; padding:7px 10px;
+  background:rgba(6,8,15,.82); border:1px solid rgba(255,255,255,.12); border-radius:8px; }
+
+/* Por encima del panel: si la calibración no arranca porque el aparato se
+   mueve, hay que verlo con el panel cerrado. */
+.calib-aviso { position:fixed; left:50%; top:12px; transform:translateX(-50%); z-index:60;
+  padding:8px 14px; border-radius:8px; text-align:center;
+  background:rgba(255,122,13,.92); color:#180a00; font-weight:700; }
+
+/* Panel de depuración. Es un popover porque la vista puede ocupar distintas
+   partes de la pantalla y una franja fija terminaría chocando con ella.
+   Cerrado queda sólo el botón. */
+.op-abridor { position:fixed; left:8px; top:8px; z-index:40; width:34px; height:34px;
+  border-radius:50%; border:1px solid rgba(255,255,255,.18); font:inherit; font-size:15px;
+  background:rgba(6,8,15,.55); color:rgba(232,236,245,.7); padding:0; }
+
+/* Sin fondo oscuro: el canvas tiene que verse mientras se ajusta. La capa cubre
+   la pantalla sólo para cerrar al tocar afuera. El alto de la caja lo fija
+   panel.acomodar() según el hueco que deje la vista. */
+.op-capa { position:fixed; inset:0; z-index:50; display:none; }
+.op-capa.abierta { display:block; }
+.op-caja { position:absolute; left:50%; transform:translateX(-50%);
+  width:min(340px, 96vw); overflow-y:auto;
+  box-sizing:border-box; padding:12px; border-radius:12px;
+  display:flex; flex-direction:column; gap:8px;
+  background:rgba(8,11,19,.94); border:1px solid rgba(255,255,255,.14); }
+
+.op-barra { display:flex; gap:8px; position:sticky; top:0; z-index:1;
+  padding-bottom:8px; background:rgba(8,11,19,.94); }
+.op-barra button { flex:1; }
+
+.op-row { display:grid; grid-template-columns:74px 1fr 46px; align-items:center; gap:10px; }
+.op-row > span:first-child { color:rgba(232,236,245,.55); }
+.op-row b { text-align:right; font-variant-numeric:tabular-nums; color:#ff7a0d; }
+/* Blancos de toque generosos: esto se ajusta con el telescopio armado. */
+.op-row input[type=range] { width:100%; height:28px; accent-color:#ff7a0d; }
+
+.op-rot { display:flex; gap:6px; }
+.op-rot button { flex:1; padding:8px 0; font:inherit; color:#e8ecf5;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:6px; }
+.op-rot button.on { background:rgba(255,122,13,.22); border-color:#ff7a0d; color:#ff7a0d; }
+
+.op-toggle { padding:8px 0; font:inherit; color:#e8ecf5; border-radius:6px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }
+.op-toggle.on { background:rgba(255,122,13,.22); border-color:#ff7a0d; color:#ff7a0d; }
+
+.op-estado { color:rgba(232,236,245,.55); min-height:1em; }
+.op-pair { padding:12px; font:inherit; font-weight:700; color:#fff; border:none;
+  border-radius:8px; background:linear-gradient(135deg,#ff7a0d,#ff5500); }
+.op-cerrar { padding:10px; font:inherit; color:#e8ecf5; border-radius:8px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }

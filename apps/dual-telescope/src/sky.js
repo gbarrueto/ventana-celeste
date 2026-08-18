@@ -6,13 +6,16 @@ import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.was
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
 import { createFocuser, aplicarBlur } from './focuser.js';
-import { cargarAjustes, crearPanel, FRACCION_VISTA } from './panel.js';
+import { cargarAjustes, crearPanel, PANTALLA_GRANDE } from './panel.js';
 
-// El guía simula un tubo buscador: campo amplio y fijo. El ocular va bastante
-// más cerrado, que es el punto del instrumento.
+// El guía simula un tubo buscador: campo amplio. El ocular va bastante más
+// cerrado, que es el punto del instrumento.
+//
+// El FOV por rol no está acá: los dos son ajustables y su valor inicial vive en
+// AJUSTES_POR_DEFECTO, que es también donde queda guardado.
 const ROLE = {
-  ocular: { fov: 0.05, extended: true, label: 'Ocular' },
-  guide: { fov: 0.14, extended: false, label: 'Guía' },
+  ocular: { extended: true, label: 'Ocular' },
+  guide: { extended: false, label: 'Guía' },
 };
 
 // Catálogos remotos por ahora: todavía no hay copia local (§5.2d del plan). La
@@ -27,16 +30,36 @@ const BIG = 'https://bigdata.ventanaceleste.com/';
 //
 // Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
 // valores, sin volver a registrar listeners.
-function acomodarOcular(canvas, ajustes, onGeometria = () => {}) {
+// Los dos roles recortan la vista por la ubicación física del teléfono: el ocular
+// queda abajo y rotado dentro del tubo, el guía arriba y derecho.
+//
+// Se calcula en JS y no en CSS porque al rotar 90° o 270° hay que **intercambiar**
+// ancho y alto: el canvas se dibuja apaisado y la rotación lo presenta como se ve
+// por el ocular.
+//
+// Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
+// valores, sin volver a registrar listeners.
+function acomodarVista(canvas, ajustes, { recortarSiempre }, onGeometria = () => {}) {
   const mira = document.querySelector('.crosshair');
+  const grande = window.matchMedia(PANTALLA_GRANDE);
+
   const aplicar = () => {
-    const altoArea = window.innerHeight * FRACCION_VISTA;
+    // En una pantalla de escritorio el recorte no tiene sentido: el guía se deja
+    // abierto en el monitor durante el desarrollo y ahí conviene a pantalla
+    // completa. El ocular se recorta siempre, porque va dentro del tubo.
+    if (!recortarSiempre && grande.matches) {
+      canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;display:block';
+      if (mira) mira.style.top = '50%';
+      onGeometria({ arriba: 0, abajo: 0 });
+      return;
+    }
+
+    const altoArea = window.innerHeight * ajustes.fraccion;
     const anchoArea = window.innerWidth;
     const rotado = Math.abs(ajustes.rot % 180) === 90;
-    // `pos` es el centro vertical de la vista. Que sea movible es lo que permite
-    // iterar el calce con el ocular sin volver a montar el teléfono.
     const centro = window.innerHeight * ajustes.pos;
     canvas.style.position = 'fixed';
+    canvas.style.inset = 'auto';
     canvas.style.left = '50%';
     canvas.style.top = `${centro}px`;
     canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
@@ -51,9 +74,11 @@ function acomodarOcular(canvas, ajustes, onGeometria = () => {}) {
       abajo: window.innerHeight - (centro + altoArea / 2),
     });
   };
+
   aplicar();
   window.addEventListener('resize', aplicar);
   window.addEventListener('orientationchange', aplicar);
+  grande.addEventListener('change', aplicar);
   return aplicar;
 }
 
@@ -80,9 +105,10 @@ export async function startSky({ role, statusEl, canvas }) {
   };
   const textoCalibracion = (t) => { avisoCalib.textContent = t; };
 
-  // Antes de arrancar el motor: el ocular retoma el zoom guardado, no el del rol.
-  const ajustes = cargarAjustes();
-  const fovInicial = role === 'ocular' ? ajustes.fov : cfg.fov;
+  // Antes de arrancar el motor: los dos roles retoman el zoom guardado. Los
+  // valores por defecto por rol son los de ROLE, sólo que ahora ajustables.
+  const ajustes = cargarAjustes(role);
+  const fovInicial = ajustes.fov;
 
   say('cargando motor…');
   const engine = await initializeStellariumEngine({
@@ -120,35 +146,11 @@ export async function startSky({ role, statusEl, canvas }) {
     if (engine?.core) engine.core.fov = fov;
   };
 
-  // Sólo el ocular va montado en el tubo; el guía se mira de frente. El panel va
-  // en un popover porque la vista puede moverse a cualquier altura de la
-  // pantalla y una franja fija terminaría chocando con ella.
-  if (role === 'ocular') {
-    // El panel se ancla en el hueco que deja la vista, así que cada vez que la
-    // vista se mueve hay que recalcularlo.
-    const reacomodar = acomodarOcular(canvas, ajustes, (g) => panel?.acomodar(g));
-    panel = crearPanel({
-      ajustes,
-      onChange: (clave) => {
-        if (clave === 'smooth') controller?.setSmoothing({ relative: ajustes.smooth, gyro: ajustes.smooth });
-        else if (clave === 'fov') aplicarFov(ajustes.fov);
-        else if (clave === 'dyn') controller?.setDynamicThreshold(ajustes.dyn ? 0.06 : 0);
-        else reacomodar();
-      },
-      onPair: async (btn) => {
-        try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
-      },
-      // El bias queda guardado, así que sin esto no habría forma de rehacerlo.
-      onRecalibrar: () => controller?.startCalibration(),
-    });
-    // El estado colgaba abajo a la izquierda, o sea encima de la vista.
-    if (statusEl) {
-      statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
-      panel.caja.appendChild(statusEl);
-    }
-    // La primera pasada corrió antes de que el panel existiera.
-    reacomodar();
-  }
+  // El ocular se recorta siempre, porque va dentro del tubo. El guía sólo en
+  // pantalla chica: en el monitor conviene a pantalla completa.
+  const reacomodar = acomodarVista(
+    canvas, ajustes, { recortarSiempre: role === 'ocular' }, (g) => panel?.acomodar(g),
+  );
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
   const { sensorSource } = await fetchLinkConfig();
@@ -244,6 +246,38 @@ export async function startSky({ role, statusEl, canvas }) {
     requestAnimationFrame(step);
     say(`${cfg.label} · recibiendo de ${sensorSource}`);
   }
+
+  // --- Panel de depuración ---------------------------------------------
+  // Se arma acá y no antes porque qué controles necesita depende de si este rol
+  // lleva los sensores, y eso lo decide el servidor.
+  panel = crearPanel({
+    role,
+    ajustes,
+    esFuente: isSource,
+    onChange: (clave) => {
+      if (clave === 'smooth') controller?.setSmoothing({ relative: ajustes.smooth, gyro: ajustes.smooth });
+      else if (clave === 'fov') aplicarFov(ajustes.fov);
+      else if (clave === 'dyn') controller?.setDynamicThreshold(ajustes.dyn ? 0.06 : 0);
+      else {
+        // El guía no mueve la vista: siempre arriba, así que el centro queda
+        // atado al tamaño.
+        if (clave === 'fraccion') ajustes.pos = ajustes.fraccion / 2;
+        reacomodar();
+      }
+    },
+    onPair: async (btn) => {
+      try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
+    },
+    // El bias queda guardado, así que sin esto no habría forma de rehacerlo.
+    onRecalibrar: () => controller?.startCalibration(),
+  });
+  // El estado colgaba abajo a la izquierda, o sea encima de la vista.
+  if (statusEl) {
+    statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
+    panel.caja.appendChild(statusEl);
+  }
+  // La primera pasada del layout corrió antes de que el panel existiera.
+  reacomodar();
 
   // --- Enfocador -------------------------------------------------------
   // El hardware vive en el ocular, así que sólo ese rol lo abre. El guía no
