@@ -110,21 +110,13 @@ Eliminarlo o reemplazarlo por el contrato de WebUSB que se terminó usando.
 
 ## Despliegue y arranque
 
-### `start.sh` muestra una IP inutilizable
+### IP estática para el dispositivo principal
 
-El guía necesita abrir la app en la IP LAN del dispositivo principal. `start.sh` la calcula con
-`ip route get 1` y cae a `hostname -i`, que en Termux devuelve una dirección de loopback.
+La dirección del principal se detecta y se publica sola, así que el emparejamiento funciona con
+cualquier IP. Sigue cambiando entre arranques, lo cual obliga a reescanear el QR cada vez.
 
-El script debe mostrar la IP real del host.
-
-- `apps/dual-telescope/start.sh`
-
-### Entregar la URL al teléfono guía sin escribirla
-
-Copiar una IP a mano en el teléfono guía en cada arranque es el paso más lento del montaje.
-
-Opciones a evaluar: QR en la pantalla del principal, mDNS con un nombre fijo, o una página de
-arranque en el guía que descubra al principal.
+Fijarla desde la configuración del punto de acceso del teléfono la volvería estable, y con eso el
+guía podría guardar la URL como marcador.
 
 ### Rama de deploy y comandos de build para kiosk
 

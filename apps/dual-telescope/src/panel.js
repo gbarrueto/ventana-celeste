@@ -14,6 +14,7 @@
 //
 // Los que dependen de los sensores (suavizado, zona dinámica, recalibrar) sólo
 // se arman en el rol que efectivamente los lleva, que lo decide el servidor.
+import qrcode from 'qrcode-generator';
 import './ui.css';
 
 // Una clave por rol: en desarrollo las dos páginas se abren en el mismo
@@ -175,6 +176,50 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     caja.appendChild(recal);
   }
 
+  // Emparejamiento: QR con la URL del guía.
+  //
+  // La dirección la reporta el relay, porque una página no puede conocer la IP
+  // de LAN del equipo que la sirve. El protocolo y el puerto salen de `location`,
+  // así que la URL queda bien tanto en desarrollo, sobre Vite, como en
+  // producción, sin que el servidor tenga que saber en cuál de los dos está.
+  const qrCaja = document.createElement('div');
+  qrCaja.className = 'op-qr';
+  qrCaja.style.display = 'none';
+  const qrImg = document.createElement('div');
+  const qrUrl = document.createElement('div');
+  qrUrl.className = 'op-qr-url';
+  qrCaja.append(qrImg, qrUrl);
+  if (esOcular) caja.appendChild(qrCaja);
+
+  let direcciones = [];
+  let iDir = 0;
+
+  function pintarQr() {
+    if (!direcciones.length) {
+      qrCaja.style.display = 'none';
+      return;
+    }
+    const url = `${location.protocol}//${direcciones[iDir]}:${location.port || (location.protocol === 'https:' ? 443 : 80)}/guide.html`;
+    // Tipo 0 deja que la librería elija la versión mínima que entre.
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    qrImg.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    qrUrl.textContent = direcciones.length > 1
+      ? `${url}   (${iDir + 1}/${direcciones.length}, toca para cambiar)`
+      : url;
+    qrCaja.style.display = 'block';
+  }
+
+  // Un teléfono puede tener a la vez la interfaz del punto de acceso y una de
+  // wifi. Cuál alcanza al guía depende de a cuál esté conectado, así que se
+  // pueden recorrer en vez de adivinar.
+  qrCaja.onclick = () => {
+    if (direcciones.length < 2) return;
+    iDir = (iDir + 1) % direcciones.length;
+    pintarQr();
+  };
+
   const estado = document.createElement('div');
   estado.className = 'op-estado';
   caja.appendChild(estado);
@@ -227,5 +272,10 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     caja,
     setEstado(texto) { estado.textContent = texto; },
     mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
+    setDirecciones(lista) {
+      direcciones = lista ?? [];
+      iDir = 0;
+      pintarQr();
+    },
   };
 }

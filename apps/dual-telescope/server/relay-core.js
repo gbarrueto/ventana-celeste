@@ -8,8 +8,32 @@
 // puede abrir un WebSocket en claro. Compartiendo servidor, el socket queda en
 // el mismo origen y es `wss://` sin configurar nada.
 import { WebSocketServer } from 'ws';
+import { networkInterfaces } from 'node:os';
 
 export const RELAY_PATH = '/relay';
+
+// IPv4 de LAN del equipo, para que el guía pueda alcanzarlo.
+//
+// Sale del propio Node y no de `ip route` ni `hostname -i`: en Termux esas dos
+// devuelven una dirección de loopback, que es inalcanzable desde el otro
+// teléfono aunque este equipo sea el punto de acceso.
+//
+// Se devuelven todas porque el teléfono puede tener a la vez la interfaz del
+// punto de acceso y una de wifi, y cuál sirve depende de a cuál esté conectado
+// el guía. El orden pone primero los rangos privados habituales de un punto de
+// acceso de teléfono.
+export function direccionesLan() {
+  const salida = [];
+  for (const [nombre, entradas] of Object.entries(networkInterfaces())) {
+    for (const e of entradas ?? []) {
+      // `family` es 'IPv4' en Node moderno y 4 en versiones viejas.
+      if (e.internal || (e.family !== 'IPv4' && e.family !== 4)) continue;
+      salida.push({ nombre, address: e.address });
+    }
+  }
+  const prioridad = (a) => (a.startsWith('192.168.') ? 0 : a.startsWith('10.') ? 1 : 2);
+  return salida.sort((a, b) => prioridad(a.address) - prioridad(b.address));
+}
 
 // Enruta por **rol**, no por id de conexión, así `send(msg, values, target)` del
 // messageBus llega sin traducción.
@@ -56,12 +80,17 @@ export function createRelay({ sensorSource = 'ocular', log = console.log } = {})
     return true;
   }
 
-  // Qué dispositivo lleva los sensores. Cada página lo consulta al cargar.
+  // Qué dispositivo lleva los sensores, y por dónde se alcanza a este equipo.
+  // Cada página lo consulta al cargar.
+  //
+  // Sólo van las direcciones: el protocolo y el puerto los sabe la página, así
+  // que la URL se arma del lado del cliente y sirve igual en desarrollo, sobre
+  // el servidor de Vite, que en producción.
   function handleRequest(req, res) {
     const { pathname } = new URL(req.url, 'http://localhost');
     if (pathname !== '/link-config') return false;
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ sensorSource }));
+    res.end(JSON.stringify({ sensorSource, addresses: direccionesLan().map((d) => d.address) }));
     return true;
   }
 

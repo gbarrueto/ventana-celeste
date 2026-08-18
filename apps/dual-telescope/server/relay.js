@@ -6,7 +6,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve, normalize } from 'node:path';
-import { createRelay } from './relay-core.js';
+import { createRelay, direccionesLan } from './relay-core.js';
 
 // Desde el directorio de trabajo, no desde la ubicación del archivo: así sirve
 // igual dentro del repo y en el paquete de despliegue, y evita `import.meta.url`,
@@ -50,7 +50,20 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`[relay] http+ws en :${PORT}`);
   console.log(`[relay] fuente de sensores: ${SENSOR_SOURCE}`);
   console.log(`[relay] estáticos desde ${DIST}`);
+  console.log('');
+  console.log(`  Ocular (este equipo): http://localhost:${PORT}/`);
+  // Las direcciones salen de Node, no de `ip route` ni `hostname -i`: en Termux
+  // esas devuelven loopback, que el guía no puede alcanzar.
+  const lan = direccionesLan();
+  if (lan.length) {
+    for (const { nombre, address } of lan) {
+      console.log(`  Guía (otro teléfono): http://${address}:${PORT}/guide.html   [${nombre}]`);
+    }
+  } else {
+    console.log('  Guía: sin dirección de LAN. ¿El punto de acceso está encendido?');
+  }
+  console.log('');
+  console.log('  El panel de depuración del ocular muestra esta URL como QR.');
 });

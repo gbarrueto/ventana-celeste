@@ -144,7 +144,7 @@ export async function startSky({ role, statusEl, canvas }) {
   const reacomodar = acomodarVista(canvas, ajustes, { recortarSiempre: role === 'ocular' });
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
-  const { sensorSource } = await fetchLinkConfig();
+  const { sensorSource, addresses } = await fetchLinkConfig();
   const isSource = sensorSource === role;
 
   const apply = (yaw, pitch) => {
@@ -262,6 +262,10 @@ export async function startSky({ role, statusEl, canvas }) {
     // El bias queda guardado, así que sin esto no habría forma de rehacerlo.
     onRecalibrar: () => controller?.startCalibration(),
   });
+  // El QR con la URL del guía. Las direcciones las reporta el relay, porque una
+  // página no puede conocer la IP de LAN del equipo que la sirve.
+  panel.setDirecciones(addresses);
+
   // El estado colgaba abajo a la izquierda, o sea encima de la vista.
   if (statusEl) {
     statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
