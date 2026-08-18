@@ -280,8 +280,45 @@ if ('usb' in navigator) {
     document.getElementById('bUsb').textContent = 'WebUSB';
     log('Dispositivo desconectado.');
     revisarAutorizados();
+    sondearPermiso();
   });
   revisarAutorizados();
+}
+
+// Sonda del permiso tras una desconexion.
+//
+// Hay dos causas posibles y se arreglan distinto, asi que hay que separarlas:
+//
+//   getDevices() vuelve VACIO      -> Chrome solto el permiso. Nada que reabrir,
+//                                     hace falta requestDevice() con gesto.
+//   getDevices() DEVUELVE la placa -> el permiso sigue; si igual no se puede
+//                                     abrir, el que bloquea es Android por
+//                                     debajo, y el error de open() lo dice.
+//
+// Se muestrea varias veces porque reenumerar lleva su tiempo: preguntar una sola
+// vez justo al desconectar puede dar un resultado que despues cambia.
+async function sondearPermiso() {
+  for (const t of [0, 1000, 3000, 6000]) {
+    setTimeout(async () => {
+      const devs = await navigator.usb.getDevices();
+      if (!devs.length) {
+        log('  +' + t + 'ms  getDevices(): vacio -> permiso revocado');
+        return;
+      }
+      const d = devs[0];
+      log('  +' + t + 'ms  getDevices(): ' + (d.productName || '?') +
+          ' serie "' + (d.serialNumber || '') + '" -> permiso vigente');
+      // Si el permiso sigue pero abrir falla, el nombre del error es el dato.
+      if (usbLeyendo) return;
+      try {
+        await d.open();
+        log('  +' + t + 'ms  open(): OK -> se puede reconectar sin gesto');
+        await d.close();
+      } catch (e) {
+        log('  +' + t + 'ms  open(): ' + e.name + ' - ' + e.message);
+      }
+    }, t);
+  }
 }
 
 </script>
