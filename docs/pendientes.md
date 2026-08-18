@@ -28,20 +28,22 @@ quaternion con suavizado exponencial.
 Ambos ceros se pusieron para escapar de un bug: en modo giroscopio se integran los ejes crudos del
 dispositivo, y con el montaje rotado 90° eso daba deriva con el aparato quieto y ejes cambiados.
 
-Determinar si la diferencia de calidad viene de ahí, y si la zona dinámica se puede recuperar
-corrigiendo los ejes en vez de apagándola. Relacionado con [corrección de ejes en el camino del
-giroscopio](#corrección-de-ejes-en-el-camino-del-giroscopio).
+La corrección de ejes del camino del giroscopio ya está hecha, así que la zona dinámica se puede
+volver a encender. Queda comparar el seguimiento contra `kiosk` con las dos en la misma
+configuración y determinar si la diferencia de calidad venía de tenerla apagada. Ver [medir la zona
+dinámica en el aparato](#medir-la-zona-dinámica-en-el-aparato).
 
 - `packages/core/src/orientation/controller.js`
 - `apps/dual-telescope/src/sky.js`
 - `apps/kiosk-standalone/src/App.svelte`
 
-### Corrección de ejes en el camino del giroscopio
+### Medir la zona dinámica en el aparato
 
-`quaternionToPointing()` corrige el montaje sólo en el camino del quaternion. La integración del
-giroscopio lee los ejes crudos del dispositivo (`gyroSensor.x`, `.z`) y no tiene equivalente.
+Las tasas del giroscopio ya se derivan del quaternion en modo vector, verificado contra rotaciones
+conocidas y contra la derivada numérica del apuntado con montaje rotado.
 
-Con el teléfono rotado en el tubo, esos ejes no corresponden a altura y acimut.
+Falta la prueba en el telescopio: activar la zona dinámica desde el panel del ocular y comprobar
+que a zoom alto los ejes responden bien y el movimiento se atenúa como corresponde.
 
 ### Transformación de imagen newtoniana
 

@@ -139,6 +139,11 @@ export function createOrientationController({
   // Clave de OPTICAL_AXES o un vector [x, y, z]. Sólo se usa en modo 'vector'.
   opticalAxis = '+y',
 
+  // Altura, en grados, a la que se topa la amplificación de la tasa de acimut.
+  // Sólo interviene en modo vector. No es un tope de apuntado: la vista puede
+  // pasar del cenit, lo que se limita es cuánto se amplifica el giro ahí.
+  zenithRateGuardDeg = 85,
+
   getLogFov = () => 0.05,
   onDebug = () => {},
   onCoords = () => {},
@@ -206,6 +211,58 @@ export function createOrientationController({
       pitch: Math.asin(Math.max(-1, Math.min(1, v[2] / n))),
       yaw: Math.atan2(v[0] / n, v[1] / n),
     };
+  }
+
+  // Tope de tan(altura) al derivar la tasa de acimut. Cerca del cenit el acimut
+  // se vuelve indefinido y su tasa diverge: es la degeneración alt-az de siempre,
+  // que en velocidades aparece como amplificación en vez de indefinición.
+  const TAN_MAX = Math.tan((zenithRateGuardDeg * Math.PI) / 180);
+
+  // Tasas de acimut y altura a partir de la velocidad angular del giroscopio.
+  //
+  // Único punto donde ω se convierte en tasas, igual que quaternionToPointing()
+  // es el único donde el quaternion se convierte en posición. Los dos modos
+  // devuelven la misma forma.
+  //
+  // El camino histórico integra los ejes crudos del dispositivo: asume que
+  // gyro.z es acimut y gyro.x es altura, lo cual sólo vale con el aparato
+  // derecho. Peor: la correspondencia depende de la elevación, así que ninguna
+  // permutación fija de ejes la arregla — es el mismo error que la
+  // descomposición Euler tenía para la posición.
+  //
+  // En modo vector, ω se lleva al marco del mundo con el mismo quaternion que ya
+  // usa el apuntado y las tasas salen por proyección, sin convención de montaje:
+  //
+  //   d(altura)/dt = wx·cos(az) − wy·sin(az)
+  //   d(acimut)/dt = tan(alt)·(wx·sin(az) + wy·cos(az)) − wz
+  //
+  // Derivadas de yaw = atan2(vx, vy) y pitch = asin(vz), las mismas expresiones
+  // que quaternionToPointing, así que posición y tasa quedan consistentes y un
+  // cambio de modo no salta.
+  function angularRates(omega, yaw, pitch) {
+    if (pointingMode !== 'vector' || !state.relOrientLast) {
+      return { yawRate: omega[2], pitchRate: omega[0] };
+    }
+    const w = rotateVectorByQuaternion(state.relOrientLast, omega);
+    const tan = Math.max(-TAN_MAX, Math.min(TAN_MAX, Math.tan(pitch)));
+    return {
+      pitchRate: w[0] * Math.cos(yaw) - w[1] * Math.sin(yaw),
+      yawRate: tan * (w[0] * Math.sin(yaw) + w[1] * Math.cos(yaw)) - w[2],
+    };
+  }
+
+  // El bias es una propiedad del sensor, así que se resta en el marco del
+  // dispositivo. La deadzone también: es ruido de lectura, no de apuntado.
+  function omegaCorregida() {
+    const w = [
+      state.gyroSensor.x - state.gyroBias.x,
+      state.gyroSensor.y - state.gyroBias.y,
+      state.gyroSensor.z - state.gyroBias.z,
+    ];
+    for (let i = 0; i < 3; i += 1) {
+      if (Math.abs(w[i]) < gyroDeadzone) w[i] = 0;
+    }
+    return w;
   }
 
   function emitDebug(partial) {
@@ -509,15 +566,11 @@ export function createOrientationController({
     const inDynamicZone = currentV < umbralDinamico;
 
     if (inDynamicZone) {
-      const wx = state.gyroSensor.x - state.gyroBias.x;
-      const wz = state.gyroSensor.z - state.gyroBias.z;
-      let effWx = wx;
-      let effWz = wz;
-      if (Math.abs(effWx) < gyroDeadzone) effWx = 0;
-      if (Math.abs(effWz) < gyroDeadzone) effWz = 0;
+      // Referencia para la proyección: el apuntado que se está mostrando.
+      const { yawRate, pitchRate } = angularRates(omegaCorregida(), state.oldX ?? 0, state.oldY ?? 0);
 
-      const rawDeltaYaw = effWz * dt;
-      const rawDeltaPitch = effWx * dt;
+      const rawDeltaYaw = yawRate * dt;
+      const rawDeltaPitch = pitchRate * dt;
 
       const rawZoomRatio = currentV / umbralDinamico;
       let zoomRatio = Math.pow(rawZoomRatio, 1.8);
@@ -562,12 +615,9 @@ export function createOrientationController({
       state.orient.yaw = euler.yaw;
       emitDebug({ activeSource: 'relative-orientation' });
     } else {
-      let wx = state.gyroSensor.x - state.gyroBias.x;
-      let wz = state.gyroSensor.z - state.gyroBias.z;
-      if (Math.abs(wx) < gyroDeadzone) wx = 0;
-      if (Math.abs(wz) < gyroDeadzone) wz = 0;
-      state.orient.pitch += wx * dt;
-      state.orient.yaw += wz * dt;
+      const { yawRate, pitchRate } = angularRates(omegaCorregida(), state.orient.yaw, state.orient.pitch);
+      state.orient.pitch += pitchRate * dt;
+      state.orient.yaw += yawRate * dt;
 
       blendTowardRelativeOnZoomIn(currentV);
       emitDebug({ activeSource: 'gyroscope' });
