@@ -189,17 +189,20 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   const qrUrl = document.createElement('div');
   qrUrl.className = 'op-qr-url';
   qrCaja.append(qrImg, qrUrl);
-  if (esOcular) caja.appendChild(qrCaja);
 
   let direcciones = [];
   let iDir = 0;
+  // Arranca oculto: un QR legible ocupa casi todo el panel y taparía el canvas,
+  // y el emparejamiento se hace una vez por sesión de montaje. El SVG tampoco se
+  // genera hasta que se muestra.
+  let qrVisible = false;
 
   function pintarQr() {
-    if (!direcciones.length) {
-      qrCaja.style.display = 'none';
-      return;
-    }
-    const url = `${location.protocol}//${direcciones[iDir]}:${location.port || (location.protocol === 'https:' ? 443 : 80)}/guide.html`;
+    const mostrar = qrVisible && direcciones.length > 0;
+    qrCaja.style.display = mostrar ? 'block' : 'none';
+    if (!mostrar) return;
+    const puerto = location.port || (location.protocol === 'https:' ? 443 : 80);
+    const url = `${location.protocol}//${direcciones[iDir]}:${puerto}/guide.html`;
     // Tipo 0 deja que la librería elija la versión mínima que entre.
     const qr = qrcode(0, 'M');
     qr.addData(url);
@@ -208,7 +211,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     qrUrl.textContent = direcciones.length > 1
       ? `${url}   (${iDir + 1}/${direcciones.length}, toca para cambiar)`
       : url;
-    qrCaja.style.display = 'block';
   }
 
   // Un teléfono puede tener a la vez la interfaz del punto de acceso y una de
@@ -219,6 +221,23 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     iDir = (iDir + 1) % direcciones.length;
     pintarQr();
   };
+
+  if (esOcular) {
+    const qrBoton = document.createElement('button');
+    const pintarBoton = () => {
+      qrBoton.className = `op-toggle ${qrVisible ? 'on' : ''}`;
+      qrBoton.textContent = qrVisible ? 'ocultar' : 'mostrar';
+    };
+    pintarBoton();
+    qrBoton.onclick = () => {
+      qrVisible = !qrVisible;
+      pintarBoton();
+      pintarQr();
+    };
+    // El interruptor va antes del QR, así no se mueve de lugar al abrirlo.
+    fila('QR del guía', qrBoton);
+    caja.appendChild(qrCaja);
+  }
 
   const estado = document.createElement('div');
   estado.className = 'op-estado';
