@@ -52,14 +52,8 @@ else
   exit 1
 fi
 
-# IP en la LAN, para poder abrir el guía desde el otro teléfono.
-IP="$(ip route get 1 2>/dev/null | awk '{print $7; exit}' || true)"
-[ -z "$IP" ] && IP="$(hostname -i 2>/dev/null | awk '{print $1}' || echo '<ip-del-dispositivo>')"
-
-echo "[start] fuente de sensores : $SENSOR_SOURCE"
-echo "[start] ocular (este equipo): http://localhost:$PORT/"
-echo "[start] guía (otro teléfono): http://$IP:$PORT/guide.html"
-echo
-
-# El relay sirve los estáticos y hace de puente entre los dos roles.
+# Las URLs las imprime el relay al levantar. La IP sale de Node y no de aquí:
+# `ip route get` y `hostname -i` devuelven loopback en Termux, o sea una
+# dirección que el guía no puede alcanzar aunque este equipo sea el punto de
+# acceso.
 exec node "$RELAY"

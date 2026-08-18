@@ -14,6 +14,7 @@
 //
 // Los que dependen de los sensores (suavizado, zona dinámica, recalibrar) sólo
 // se arman en el rol que efectivamente los lleva, que lo decide el servidor.
+import qrcode from 'qrcode-generator';
 import './ui.css';
 
 // Una clave por rol: en desarrollo las dos páginas se abren en el mismo
@@ -29,9 +30,11 @@ export const FOV_MAX = 1.5;
 // vista se recorta como en el teléfono.
 export const PANTALLA_GRANDE = '(min-width: 900px)';
 
+// Sólo lo que el panel ajusta. El suavizado y el umbral de la zona dinámica
+// quedaron fijados en código (ver sky.js): tenerlos acá los guardaría en
+// localStorage, y un valor viejo guardado le ganaría al del código.
 export const AJUSTES_POR_DEFECTO = {
   ocular: {
-    smooth: 0.18,
     // 270 es la posición física del teléfono dentro del tubo.
     rot: 270,
     // Medido contra el ocular real, así que no se expone como control.
@@ -39,17 +42,14 @@ export const AJUSTES_POR_DEFECTO = {
     // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
     pos: 0.75,
     fov: 0.05,
-    dyn: false,
     lado: 'arriba',
   },
   guide: {
-    smooth: 0.18,
     rot: 0,
     fraccion: 0.5,
     // Arriba. Se recalcula al cambiar el tamaño; el guía no mueve la vista.
     pos: 0.25,
     fov: 0.14,
-    dyn: false,
     lado: 'abajo',
   },
 };
@@ -116,11 +116,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
 
   const pct = (v) => `${Math.round(v * 100)}%`;
 
-  if (esFuente) {
-    const sm = deslizador('smooth', { min: 0.02, max: 1, paso: 0.01, formato: (v) => v.toFixed(2) });
-    fila('suavizado', sm.input, sm.valor);
-  }
-
   // El ocular tiene tamaño fijo y posición móvil; el guía al revés.
   if (esOcular) {
     const ps = deslizador('pos', {
@@ -158,21 +153,74 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   }
 
   if (esFuente) {
-    // La zona dinámica integra el giroscopio escalado por zoom.
-    const dyn = document.createElement('button');
-    const pintarDyn = () => {
-      dyn.className = `op-toggle ${ajustes.dyn ? 'on' : ''}`;
-      dyn.textContent = ajustes.dyn ? 'activada' : 'apagada';
-    };
-    pintarDyn();
-    dyn.onclick = () => { ajustes.dyn = !ajustes.dyn; pintarDyn(); emitir('dyn'); };
-    fila('zona dinám.', dyn);
-
     const recal = document.createElement('button');
     recal.className = 'op-cerrar';
     recal.textContent = 'Recalibrar giroscopio';
     recal.onclick = () => { capa.classList.remove('abierta'); onRecalibrar?.(); };
     caja.appendChild(recal);
+  }
+
+  // Emparejamiento: QR con la URL del guía.
+  //
+  // La dirección la reporta el relay, porque una página no puede conocer la IP
+  // de LAN del equipo que la sirve. El protocolo y el puerto salen de `location`,
+  // así que la URL queda bien tanto en desarrollo, sobre Vite, como en
+  // producción, sin que el servidor tenga que saber en cuál de los dos está.
+  const qrCaja = document.createElement('div');
+  qrCaja.className = 'op-qr';
+  qrCaja.style.display = 'none';
+  const qrImg = document.createElement('div');
+  const qrUrl = document.createElement('div');
+  qrUrl.className = 'op-qr-url';
+  qrCaja.append(qrImg, qrUrl);
+
+  let direcciones = [];
+  let iDir = 0;
+  // Arranca oculto: un QR legible ocupa casi todo el panel y taparía el canvas,
+  // y el emparejamiento se hace una vez por sesión de montaje. El SVG tampoco se
+  // genera hasta que se muestra.
+  let qrVisible = false;
+
+  function pintarQr() {
+    const mostrar = qrVisible && direcciones.length > 0;
+    qrCaja.style.display = mostrar ? 'block' : 'none';
+    if (!mostrar) return;
+    const puerto = location.port || (location.protocol === 'https:' ? 443 : 80);
+    const url = `${location.protocol}//${direcciones[iDir]}:${puerto}/guide.html`;
+    // Tipo 0 deja que la librería elija la versión mínima que entre.
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    qrImg.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    qrUrl.textContent = direcciones.length > 1
+      ? `${url}   (${iDir + 1}/${direcciones.length}, toca para cambiar)`
+      : url;
+  }
+
+  // Un teléfono puede tener a la vez la interfaz del punto de acceso y una de
+  // wifi. Cuál alcanza al guía depende de a cuál esté conectado, así que se
+  // pueden recorrer en vez de adivinar.
+  qrCaja.onclick = () => {
+    if (direcciones.length < 2) return;
+    iDir = (iDir + 1) % direcciones.length;
+    pintarQr();
+  };
+
+  if (esOcular) {
+    const qrBoton = document.createElement('button');
+    const pintarBoton = () => {
+      qrBoton.className = `op-toggle ${qrVisible ? 'on' : ''}`;
+      qrBoton.textContent = qrVisible ? 'ocultar' : 'mostrar';
+    };
+    pintarBoton();
+    qrBoton.onclick = () => {
+      qrVisible = !qrVisible;
+      pintarBoton();
+      pintarQr();
+    };
+    // El interruptor va antes del QR, así no se mueve de lugar al abrirlo.
+    fila('QR del guía', qrBoton);
+    caja.appendChild(qrCaja);
   }
 
   const estado = document.createElement('div');
@@ -227,5 +275,10 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     caja,
     setEstado(texto) { estado.textContent = texto; },
     mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
+    setDirecciones(lista) {
+      direcciones = lista ?? [];
+      iDir = 0;
+      pintarQr();
+    },
   };
 }

@@ -28,7 +28,7 @@ import { createOrientationController } from '@ventanaceleste/core';
 const controller = createOrientationController({
   pointingMode: 'vector',
   opticalAxis: '+y',
-  smoothing: { relative: 0.18, gyro: 0.18 },
+  smoothing: { relative: 0.10, gyro: 0.10 },
   onView: ({ yaw, pitch }) => { /* escribir en el motor */ },
   onError: (e) => { /* superficie visible */ },
 });
@@ -173,8 +173,9 @@ La zona dinámica es un tercer camino, independiente del modo: con `fov < dynami
 integra el giroscopio escalado por el zoom, para que un movimiento pequeño de la mano recorra menos
 cielo cuanto más cerrado esté el campo. `dynamicThreshold` de `0` la desactiva por completo.
 
-`setDynamicThreshold()` lo cambia en caliente, lo que permite entrar y salir de la zona sin
-reconstruir el controlador.
+`setDynamicThreshold()` y `setSmoothing()` los cambian en caliente, sin reconstruir el controlador.
+Ninguna app los usa hoy: existen porque encontrar estos dos valores exige moverlos con el
+instrumento apuntando a algo, y una vez encontrados se fijan en código.
 
 El límite por debajo del cual se considera que hubo integración del giroscopio es el mayor entre
 `fovThreshold` y `dynamicThreshold`. Mirar sólo `fovThreshold` dejaba la corrección de deriva
@@ -190,8 +191,8 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 | `readinessGate` | `'countdown'` | `'stillness'` | `'stillness'` |
 | `pointingMode` | `'euler'` | `'euler'` | `'vector'` |
 | `fovThreshold` | `0.8` | `0.2` | `0` |
-| `dynamicThreshold` | default | default | `0` |
-| `smoothing` | default | default | `0.18` en ambos ejes |
+| `dynamicThreshold` | default | default | `0.06` |
+| `smoothing` | default | default | `0.10` en ambos ejes |
 | `persistBiasKey` | — | `astrovis_gyro_bias` | `dual-telescope:gyro-bias` |
 
 ## Utilidades exportadas

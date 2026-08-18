@@ -61,3 +61,9 @@
   border-radius:8px; background:linear-gradient(135deg,#ff7a0d,#ff5500); }
 .op-cerrar { padding:10px; font:inherit; color:#e8ecf5; border-radius:8px;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }
+
+/* Emparejamiento: QR con la URL del guía. Fondo blanco porque un lector espera
+   módulos oscuros sobre claro. */
+.op-qr { background:#fff; border-radius:8px; padding:8px; text-align:center; }
+.op-qr svg { width:100%; height:auto; max-width:220px; display:block; margin:0 auto; }
+.op-qr-url { margin-top:6px; color:#111; font-size:10px; word-break:break-all; }
