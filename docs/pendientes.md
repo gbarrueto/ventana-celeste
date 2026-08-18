@@ -8,17 +8,6 @@ trabajo futuro va aquí.
 
 ## Orientación
 
-### Encender la zona dinámica por defecto
-
-La zona dinámica quedó verificada en el aparato, pero sigue apagada al arrancar y se enciende desde
-el panel de depuración. Falta decidir el valor de `dynamicThreshold` para el ocular y dejarlo como
-default, con lo cual el toggle del panel deja de ser necesario.
-
-Depende de comparar el seguimiento contra `kiosk` con las dos en la misma configuración.
-
-- `apps/dual-telescope/src/sky.js`
-- `apps/kiosk-standalone/src/App.svelte`
-
 ### Transformación de imagen newtoniana
 
 Un newtoniano entrega la imagen rotada y reflejada respecto de lo que se ve a ojo desnudo. Hoy no

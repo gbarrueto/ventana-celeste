@@ -30,9 +30,11 @@ export const FOV_MAX = 1.5;
 // vista se recorta como en el teléfono.
 export const PANTALLA_GRANDE = '(min-width: 900px)';
 
+// Sólo lo que el panel ajusta. El suavizado y el umbral de la zona dinámica
+// quedaron fijados en código (ver sky.js): tenerlos acá los guardaría en
+// localStorage, y un valor viejo guardado le ganaría al del código.
 export const AJUSTES_POR_DEFECTO = {
   ocular: {
-    smooth: 0.18,
     // 270 es la posición física del teléfono dentro del tubo.
     rot: 270,
     // Medido contra el ocular real, así que no se expone como control.
@@ -40,17 +42,14 @@ export const AJUSTES_POR_DEFECTO = {
     // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
     pos: 0.75,
     fov: 0.05,
-    dyn: false,
     lado: 'arriba',
   },
   guide: {
-    smooth: 0.18,
     rot: 0,
     fraccion: 0.5,
     // Arriba. Se recalcula al cambiar el tamaño; el guía no mueve la vista.
     pos: 0.25,
     fov: 0.14,
-    dyn: false,
     lado: 'abajo',
   },
 };
@@ -117,11 +116,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
 
   const pct = (v) => `${Math.round(v * 100)}%`;
 
-  if (esFuente) {
-    const sm = deslizador('smooth', { min: 0.02, max: 1, paso: 0.01, formato: (v) => v.toFixed(2) });
-    fila('suavizado', sm.input, sm.valor);
-  }
-
   // El ocular tiene tamaño fijo y posición móvil; el guía al revés.
   if (esOcular) {
     const ps = deslizador('pos', {
@@ -159,16 +153,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   }
 
   if (esFuente) {
-    // La zona dinámica integra el giroscopio escalado por zoom.
-    const dyn = document.createElement('button');
-    const pintarDyn = () => {
-      dyn.className = `op-toggle ${ajustes.dyn ? 'on' : ''}`;
-      dyn.textContent = ajustes.dyn ? 'activada' : 'apagada';
-    };
-    pintarDyn();
-    dyn.onclick = () => { ajustes.dyn = !ajustes.dyn; pintarDyn(); emitir('dyn'); };
-    fila('zona dinám.', dyn);
-
     const recal = document.createElement('button');
     recal.className = 'op-cerrar';
     recal.textContent = 'Recalibrar giroscopio';

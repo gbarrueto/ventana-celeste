@@ -18,6 +18,17 @@ const ROLE = {
   guide: { extended: false, label: 'Guía' },
 };
 
+// Suavizado del seguimiento, como fracción del error corregida por lectura.
+// Medido en el aparato con el deslizador que existía en el panel; encontrado el
+// valor, el deslizador dejó de tener sentido. Se cambia acá, no en la UI.
+const SUAVIZADO = 0.10;
+
+// Umbral de la zona dinámica, en radianes. Por debajo de este FOV el giroscopio
+// se integra escalado por el zoom, para que un movimiento chico de la mano
+// recorra menos cielo cuanto más cerrado sea el campo. Verificado en el aparato,
+// así que va activa desde el arranque.
+const UMBRAL_DINAMICO = 0.06;
+
 // Catálogos remotos por ahora: todavía no hay copia local (§5.2d del plan). La
 // red se usa para preparar, no para operar.
 const SMALL = 'https://smalldata.ventanaceleste.com/';
@@ -168,9 +179,7 @@ export async function startSky({ role, statusEl, canvas }) {
       // rotado, arriba-abajo e izquierda-derecha salen cambiados. Verificado
       // activando la zona dinámica desde el panel.
       fovThreshold: 0,
-      // Apagada al arrancar; el panel la activa. Integra el giroscopio con ejes
-      // sin corregir para un montaje rotado, así que no puede ser el default.
-      dynamicThreshold: ajustes.dyn ? 0.06 : 0,
+      dynamicThreshold: UMBRAL_DINAMICO,
       // El controlador lo consulta por lectura para decidir si está en la zona
       // dinámica. Sin esto quedaba en el valor por defecto y el zoom no influía.
       getLogFov: () => logFov,
@@ -200,10 +209,8 @@ export async function startSky({ role, statusEl, canvas }) {
         else if (preCalibStatus === 'countdown') textoCalibracion(`calibrando en ${Math.max(0, preCalibCountdown)}…`);
       },
       // Con zoom alto un temblor de la mano se amplifica, así que hace falta
-      // bastante más suavizado que el 0.5 que traía por defecto. El deslizador del
-      // panel lo cambia en vivo, que es la única forma razonable de encontrar el
-      // punto entre realismo y usabilidad: se prueba apuntando a algo.
-      smoothing: { relative: ajustes.smooth, gyro: ajustes.smooth },
+      // bastante más suavizado que el 0.5 que traía core por defecto.
+      smoothing: { relative: SUAVIZADO, gyro: SUAVIZADO },
       onView: ({ yaw, pitch }) => {
         apply(yaw, pitch);
         bus.sendThrottled('pose', { yaw, pitch }, other, 20);
@@ -246,15 +253,11 @@ export async function startSky({ role, statusEl, canvas }) {
     ajustes,
     esFuente: isSource,
     onChange: (clave) => {
-      if (clave === 'smooth') controller?.setSmoothing({ relative: ajustes.smooth, gyro: ajustes.smooth });
-      else if (clave === 'fov') aplicarFov(ajustes.fov);
-      else if (clave === 'dyn') controller?.setDynamicThreshold(ajustes.dyn ? 0.06 : 0);
-      else {
-        // El guía no mueve la vista: siempre arriba, así que el centro queda
-        // atado al tamaño.
-        if (clave === 'fraccion') ajustes.pos = ajustes.fraccion / 2;
-        reacomodar();
-      }
+      if (clave === 'fov') { aplicarFov(ajustes.fov); return; }
+      // El guía no mueve la vista: siempre arriba, así que el centro queda atado
+      // al tamaño.
+      if (clave === 'fraccion') ajustes.pos = ajustes.fraccion / 2;
+      reacomodar();
     },
     onPair: async (btn) => {
       try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
