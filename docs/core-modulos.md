@@ -48,13 +48,17 @@ La compuerta decide cuándo empezar a muestrear:
 
 | `readinessGate` | Comportamiento | Dónde se usa |
 |---|---|---|
-| `'stillness'` | Espera a que el dispositivo deje de moverse durante `stillnessHoldSeconds`. | `kiosk-standalone` (default) |
+| `'stillness'` | Espera a que el dispositivo deje de moverse durante `stillnessHoldSeconds`. | `kiosk-standalone` (default), `dual-telescope` |
 | `'countdown'` | Temporizador fijo de `countdownSeconds`, sin mirar el movimiento. | `web-app` |
-| `'immediate'` | Sin compuerta. | `dual-telescope` |
+| `'immediate'` | Sin compuerta. | Ninguna app |
 
 La calibración promedia `gyroFreq × calibDuration` muestras del giroscopio para obtener el bias.
 Con `persistBiasKey`, el resultado se guarda en `localStorage` y en arranques siguientes se salta la
 calibración.
+
+El bias es el cero del sensor, así que se mide con el aparato quieto. Muestrear mientras se lo
+manipula deja movimiento real dentro del promedio, y la integración del giroscopio pasa a acumular
+una velocidad que no existe.
 
 ## Opciones
 
@@ -172,6 +176,10 @@ cielo cuanto más cerrado esté el campo. `dynamicThreshold` de `0` la desactiva
 `setDynamicThreshold()` lo cambia en caliente, lo que permite entrar y salir de la zona sin
 reconstruir el controlador.
 
+El límite por debajo del cual se considera que hubo integración del giroscopio es el mayor entre
+`fovThreshold` y `dynamicThreshold`. Mirar sólo `fovThreshold` dejaba la corrección de deriva
+muerta en cualquier app que lo pusiera en `0` para quedarse en el camino del quaternion.
+
 Al salir de la zona dinámica hacia campos más amplios, `blendTowardRelativeOnZoomIn()` mezcla
 gradualmente hacia la lectura del quaternion en vez de saltar.
 
@@ -179,12 +187,12 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 
 | Opción | `web-app` | `kiosk-standalone` | `dual-telescope` |
 |---|---|---|---|
-| `readinessGate` | `'countdown'` | `'stillness'` | `'immediate'` |
+| `readinessGate` | `'countdown'` | `'stillness'` | `'stillness'` |
 | `pointingMode` | `'euler'` | `'euler'` | `'vector'` |
 | `fovThreshold` | `0.8` | `0.2` | `0` |
 | `dynamicThreshold` | default | default | `0` |
 | `smoothing` | default | default | `0.18` en ambos ejes |
-| `persistBiasKey` | — | `astrovis_gyro_bias` | — |
+| `persistBiasKey` | — | `astrovis_gyro_bias` | `dual-telescope:gyro-bias` |
 
 ## Utilidades exportadas
 

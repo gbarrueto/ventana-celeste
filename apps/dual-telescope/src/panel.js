@@ -51,7 +51,7 @@ function guardar(ajustes) {
   try { localStorage.setItem(CLAVE, JSON.stringify(ajustes)); } catch { /* modo privado */ }
 }
 
-export function crearPanel({ ajustes, onChange, onPair }) {
+export function crearPanel({ ajustes, onChange, onPair, onRecalibrar }) {
   const capa = document.createElement('div');
   capa.className = 'op-capa';
 
@@ -141,6 +141,15 @@ export function crearPanel({ ajustes, onChange, onPair }) {
     onChange('dyn', ajustes);
   };
   fila('zona dinám.', dyn);
+
+  const recal = document.createElement('button');
+  recal.className = 'op-cerrar';
+  recal.textContent = 'Recalibrar giroscopio';
+  recal.onclick = () => {
+    capa.classList.remove('abierta');
+    onRecalibrar?.();
+  };
+  caja.appendChild(recal);
 
   const estado = document.createElement('div');
   estado.className = 'op-estado';

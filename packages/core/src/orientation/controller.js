@@ -632,12 +632,23 @@ export function createOrientationController({
   // dynamic-zone drift back toward the real relative-orientation reading
   // instead of snapping, so the view doesn't jump.
   function blendTowardRelativeOnZoomIn(currentV) {
+    // El límite es el más ancho de los dos: por debajo de cualquiera de ellos
+    // hubo integración del giroscopio, y por lo tanto deriva que corregir.
+    //
+    // Antes miraba sólo `fovThreshold`, lo cual dejaba la corrección muerta en
+    // cualquier app que lo pusiera en 0 para quedarse en el camino del
+    // quaternion: la deriva de la zona dinámica no volvía nunca a la lectura
+    // absoluta. Con el máximo, kiosk y web-app conservan su límite anterior,
+    // que en las dos es el mayor.
+    const umbral = Math.max(fovThreshold, umbralDinamico);
+    if (umbral <= 0) return;
+
     if (state.lastV === undefined) state.lastV = currentV;
     const deltaV = currentV - state.lastV;
-    if (!(deltaV > 0.000001 && state.relOrientLast && state.lastV < fovThreshold)) return;
+    if (!(deltaV > 0.000001 && state.relOrientLast && state.lastV < umbral)) return;
 
     const euler = quaternionToPointing(state.relOrientLast);
-    const f = (v) => Math.max(0, 1.0 - Math.pow(v / fovThreshold, 2.5));
+    const f = (v) => Math.max(0, 1.0 - Math.pow(v / umbral, 2.5));
     const fLast = f(state.lastV);
     const fCurr = f(currentV);
     const progress = Math.max(0, Math.min(1, fLast > 0.0001 ? 1.0 - fCurr / fLast : 1.0));

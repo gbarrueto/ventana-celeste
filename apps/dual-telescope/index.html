@@ -35,6 +35,11 @@
       box-sizing:border-box; padding:12px; border-radius:12px;
       display:flex; flex-direction:column; gap:8px;
       background:rgba(8,11,19,.94); border:1px solid rgba(255,255,255,.14); }
+    /* Por encima del panel: si la calibración no arranca porque el aparato se
+       mueve, hay que verlo con el panel cerrado. */
+    .calib-aviso { position:fixed; left:50%; top:12px; transform:translateX(-50%); z-index:60;
+      padding:8px 14px; border-radius:8px; text-align:center;
+      background:rgba(255,122,13,.92); color:#180a00; font-weight:700; }
     .op-barra { display:flex; gap:8px; position:sticky; top:0; z-index:1;
       padding-bottom:8px; background:rgba(8,11,19,.94); }
     .op-barra button { flex:1; }
