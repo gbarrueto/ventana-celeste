@@ -8,13 +8,6 @@ trabajo futuro va aquí.
 
 ## Orientación
 
-### Transformación de imagen newtoniana
-
-Un newtoniano entrega la imagen rotada y reflejada respecto de lo que se ve a ojo desnudo. Hoy no
-se aplica ninguna transformación.
-
-Distinto de la disposición física del canvas, que ya está resuelta.
-
 ### Referencia de norte
 
 El apuntado es relativo: no hay norte absoluto. El magnetómetro funciona en los dispositivos
@@ -83,32 +76,18 @@ hay una persona experta operando.
 `PUNTOS_DE_FOCO` en `focuser.js` tiene valores provisionales. Cada ocular enfoca en una posición
 distinta del recorrido del potenciómetro y esos números salen de medir contra el hardware.
 
-### Cambio de ocular por RFID
+### Detectar el cambio de ocular
 
-`setEyepiece()` existe y mueve el punto de foco. Falta el lector RFID y el cableado del evento.
+`setEyepiece()` existe y mueve el punto de foco. Falta el hardware que avise qué ocular está puesto.
+
+Se resuelve con señales eléctricas que lee el Arduino, no con RFID. El detalle del circuito está sin
+definir.
 
 ### Verificar kiosk contra hardware real
 
 La entrada del Arduino como teclado en `kiosk` no se probó desde la migración a monorepo.
 
-### Actualizar el stub de `createSerialConnector`
-
-`packages/core/src/io/connectors.js` tiene un stub de Web Serial que lanza error, escrito cuando se
-suponía que Web Serial era el camino para RFID y potenciómetro. Web Serial no existe en Android.
-
-Eliminarlo o reemplazarlo por el contrato de WebUSB que se terminó usando.
-
 ## Despliegue y arranque
-
-### Verificar el emparejamiento en producción
-
-En desarrollo el QR funciona y `os.networkInterfaces()` devuelve la interfaz correcta. Falta
-comprobarlo en el dispositivo real, donde el teléfono hace de punto de acceso: si Node ve esa
-interfaz en Termux, y si la dirección que reporta es la que el guía alcanza.
-
-El relay imprime todas las interfaces al arrancar, así que el arranque mismo sirve de diagnóstico.
-
-- `apps/dual-telescope/server/relay-core.js`
 
 ### IP estática para el dispositivo principal
 
@@ -148,9 +127,14 @@ servidores remotos.
 
 `vite --mode production` mantiene el dev server y selecciona el config correcto.
 
-### Medir latencia en la topología real
+### Desfase del guía en desarrollo
 
-Dos motores WASM y un teléfono haciendo de punto de acceso. Sin medición sobre el montaje real.
+En producción la latencia es buena: dos motores WASM y un teléfono haciendo de punto de acceso no
+dieron problema.
+
+En desarrollo el guía va con algo de desfase. La topología es distinta —los dos dispositivos pasan
+por la PC en vez de por el teléfono que hace de punto de acceso— así que probablemente venga de ahí.
+No afecta al prototipo; queda anotado por si molesta al desarrollar.
 
 ### Instalación como PWA
 
@@ -176,8 +160,8 @@ antes de diseñar esas versiones, no después.
 No hay ningún documento del montaje. `apps/device-lab/arduino/README.md` cubre sólo el sketch del
 potenciómetro.
 
-Falta: qué telescopio, cómo se monta cada teléfono, qué oculares, el lector RFID, el cableado y qué
-placa lleva cada prototipo. Para un proyecto figital es la mitad ausente de la documentación.
+Falta: qué telescopio, cómo se monta cada teléfono, qué oculares, el circuito que detecta el ocular
+puesto, el cableado y qué placa lleva cada prototipo. Para un proyecto figital es la mitad ausente de la documentación.
 
 ### Elegir licencia
 

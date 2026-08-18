@@ -51,8 +51,13 @@ chico es zoom alto.
 **Pupila de salida**. Apertura dividida por aumento, en milímetros. Si supera la pupila del ojo, la
 luz sobrante se desperdicia.
 
-**Newtoniano**. Telescopio reflector con espejo secundario plano a 45°. Entrega la imagen rotada y
-reflejada respecto de lo que se ve a ojo desnudo.
+**Newtoniano**. Telescopio reflector con espejo secundario plano a 45°. La luz se refleja dos veces,
+en el primario y en el secundario, así que la imagen sale **rotada 180°** respecto de lo que se ve a
+ojo desnudo, sin reflejarse: dos reflexiones conservan la lateralidad.
+
+Por ser una rotación pura, se reproduce rotando el canvas y se compone con la rotación del montaje
+en un solo valor. En `dual-telescope` es el control de rotación del panel, cuyo valor se elige
+mirando por el ocular, así que ya lleva las dos cosas dentro.
 
 **Tubo guía** o buscador. Telescopio pequeño montado en paralelo al principal, con campo amplio,
 usado para localizar el objeto antes de mirarlo por el ocular. Es el rol `guide` de

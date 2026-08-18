@@ -4,6 +4,22 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-19 — Verificaciones en producción y decisiones de hardware
+
+Verificado en el prototipo desplegado: el emparejamiento por QR funciona, y la latencia con dos
+motores WASM y un teléfono haciendo de punto de acceso es buena. En desarrollo el guía va con algo
+de desfase, atribuible a que ahí la topología es otra.
+
+**La transformación newtoniana ya está cubierta.** Un newtoniano refleja dos veces, en el primario y
+en el secundario, así que la imagen sale rotada 180° y no reflejada. Por ser una rotación pura se
+compone con la rotación del montaje en un solo valor, que es el control que el panel ya tiene. El
+glosario lo decía mal.
+
+**El cambio de ocular no usará RFID.** Se resolverá con señales eléctricas leídas por el Arduino. Se
+eliminaron las referencias, incluido el stub de `createSerialConnector` en `core`, cuya premisa
+estaba doblemente muerta: Web Serial no existe en Android y el RFID quedó descartado. No lo usaba
+ninguna app.
+
 ## 2026-08-18 — Montaje, orientación y emparejamiento
 
 Sesión sobre el montaje real del teléfono en el tubo. Verificado en el aparato: la calibración
