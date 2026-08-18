@@ -1,5 +1,10 @@
 // Panel de ajustes del ocular.
 //
+// Es un panel de **depuración**, no interfaz de producto. Igual que el de kiosk:
+// existe para calibrar el montaje y probar hipótesis en el aparato, y no debería
+// llegar a una instalación real. Que hoy sea útil no lo convierte en una
+// funcionalidad.
+//
 // Vive en un popover: el canvas puede moverse a lo largo de la pantalla, así que
 // cualquier franja fija termina chocando con él. Cerrado deja sólo un botón
 // chico; abierto tapa todo, que es lo correcto porque mientras se ajusta se está

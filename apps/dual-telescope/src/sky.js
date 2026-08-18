@@ -142,7 +142,8 @@ export async function startSky({ role, statusEl, canvas }) {
       // es positivo) y se queda en 'relative', que es el camino del quaternion —
       // el único con la corrección de montaje. En giroscopio se integran los ejes
       // crudos del dispositivo: deriva con el aparato quieto y, con el montaje
-      // rotado 90°, arriba-abajo e izquierda-derecha salen cambiados.
+      // rotado, arriba-abajo e izquierda-derecha salen cambiados. Verificado
+      // activando la zona dinámica desde el panel.
       fovThreshold: 0,
       // Apagada al arrancar; el panel la activa. Integra el giroscopio con ejes
       // sin corregir para un montaje rotado, así que no puede ser el default.
@@ -150,10 +151,15 @@ export async function startSky({ role, statusEl, canvas }) {
       // El controlador lo consulta por lectura para decidir si está en la zona
       // dinámica. Sin esto quedaba en el valor por defecto y el zoom no influía.
       getLogFov: () => logFov,
-      // El teléfono apunta por su parte baja, no por la superior, así que los dos
-      // ejes salen invertidos. Va en mountingTransform, que se aplica sólo en la
-      // salida y no toca el estado interno de continuidad.
-      mountingTransform: (yaw, pitch) => ({ yaw: -yaw, pitch: -pitch }),
+      // El teléfono apunta por su parte baja, no por la superior, así que la
+      // altura sale invertida. Medido en el montaje: el acimut queda bien, sólo
+      // se invierte arriba-abajo.
+      //
+      // Este es el ajuste que cambia con cada prototipo, porque cada diseño ubica
+      // el teléfono distinto. Va en mountingTransform y no en el eje óptico
+      // porque se aplica sólo en la salida, sin tocar el estado interno de
+      // continuidad de ángulos.
+      mountingTransform: (yaw, pitch) => ({ yaw, pitch: -pitch }),
       readinessGate: 'immediate',
       calibDuration: 1,
       // Con zoom alto un temblor de la mano se amplifica, así que hace falta
