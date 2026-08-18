@@ -20,7 +20,7 @@
 #
 # Este script NO compila. El build se hace en la PC y el dispositivo sólo baja
 # el resultado: compilar en Android es lento y es la razón de que kiosk necesite
-# subir el límite de memoria de Node. Ver docs/DEPLOYMENT.md.
+# subir el límite de memoria de Node. Ver docs/deployment.md.
 
 set -euo pipefail
 
@@ -36,8 +36,8 @@ fi
 
 if [ ! -d dist ]; then
   echo "[start] ERROR: no existe dist/." >&2
-  echo "        Este dispositivo no compila. Genera el build en la PC y publicalo," >&2
-  echo "        después traelo con: PULL=1 ./start.sh   (ver docs/DEPLOYMENT.md)" >&2
+  echo "        Este dispositivo no compila. Genera el build en la PC y publícalo," >&2
+  echo "        después tráelo con: PULL=1 ./start.sh   (ver docs/deployment.md)" >&2
   exit 1
 fi
 
@@ -52,14 +52,8 @@ else
   exit 1
 fi
 
-# IP en la LAN, para poder abrir el guía desde el otro teléfono.
-IP="$(ip route get 1 2>/dev/null | awk '{print $7; exit}' || true)"
-[ -z "$IP" ] && IP="$(hostname -i 2>/dev/null | awk '{print $1}' || echo '<ip-del-dispositivo>')"
-
-echo "[start] fuente de sensores : $SENSOR_SOURCE"
-echo "[start] ocular (este equipo): http://localhost:$PORT/"
-echo "[start] guía (otro teléfono): http://$IP:$PORT/guide.html"
-echo
-
-# El relay sirve los estáticos y hace de puente entre los dos roles.
+# Las URLs las imprime el relay al levantar. La IP sale de Node y no de aquí:
+# `ip route get` y `hostname -i` devuelven loopback en Termux, o sea una
+# dirección que el guía no puede alcanzar aunque este equipo sea el punto de
+# acceso.
 exec node "$RELAY"

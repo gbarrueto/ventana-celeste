@@ -8,40 +8,14 @@
     :root { color-scheme: dark; }
     html, body { margin:0; height:100%; overflow:hidden; background:#000; color:#e8ecf5;
                  font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; }
-    /* Posición y rotación las fija acomodarOcular() en JS: al rotar 90° hay que
-       intercambiar ancho y alto, y eso no se puede expresar con inset:0. */
+    /* Posición, tamaño y rotación las fija acomodarVista() en JS: al rotar 90° o
+       270° hay que intercambiar ancho y alto, y eso no se expresa con inset:0.
+       El resto de la UI está en src/ui.css. */
     #stel-canvas { display:block; background:#000; }
-    #status { position:fixed; left:8px; bottom:8px; z-index:10; padding:7px 10px;
-              background:rgba(6,8,15,.82); border:1px solid rgba(255,255,255,.12);
-              border-radius:8px; }
-    .crosshair { position:fixed; left:50%; top:75%; width:24px; height:24px; margin:-12px 0 0 -12px;
-      z-index:5; pointer-events:none; border:1px solid rgba(255,122,13,.8); border-radius:50%; }
-    .crosshair::before, .crosshair::after { content:''; position:absolute; background:rgba(255,122,13,.8); }
-    .crosshair::before { left:50%; top:-8px; width:1px; height:40px; margin-left:-.5px; }
-    .crosshair::after { top:50%; left:-8px; height:1px; width:40px; margin-top:-.5px; }
-    /* El panel vive en la franja de arriba: es la parte de la pantalla que el
-       tubo tapa una vez montado el teléfono, así que no le roba nada a la vista.
-       El alto lo fija panel.acomodar() según cuánto ocupe el canvas. */
-    .ocular-panel { position:fixed; left:0; top:0; width:100%; z-index:20;
-      box-sizing:border-box; padding:10px 12px; overflow-y:auto;
-      display:flex; flex-direction:column; gap:10px;
-      background:rgba(6,8,15,.9); border-bottom:1px solid rgba(255,255,255,.12); }
-    .op-row { display:grid; grid-template-columns:64px 1fr 44px; align-items:center; gap:10px; }
-    .op-row > span:first-child { color:rgba(232,236,245,.55); }
-    .op-row b { text-align:right; font-variant-numeric:tabular-nums; color:#ff7a0d; }
-    /* Blancos de toque generosos: esto se ajusta con el telescopio armado. */
-    .op-row input[type=range] { width:100%; height:28px; accent-color:#ff7a0d; }
-    .op-rot { display:flex; gap:6px; }
-    .op-rot button { flex:1; padding:8px 0; font:inherit; color:#e8ecf5;
-      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
-      border-radius:6px; }
-    .op-rot button.on { background:rgba(255,122,13,.22); border-color:#ff7a0d; color:#ff7a0d; }
-    .op-estado { color:rgba(232,236,245,.55); min-height:1em; }
-    .op-pair { padding:12px; font:inherit; font-weight:700; color:#fff; border:none;
-      border-radius:8px; background:linear-gradient(135deg,#ff7a0d,#ff5500); }
   </style>
-  <script type="module" crossorigin src="/assets/ocular-DyHzN0V-.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/sky-Cm52-c1c.js">
+  <script type="module" crossorigin src="/assets/ocular-B2_isubM.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/sky-CXtlapBq.js">
+  <link rel="stylesheet" crossorigin href="/assets/sky-BEEK-zwv.css">
 </head>
 <body>
   <canvas id="stel-canvas"></canvas>

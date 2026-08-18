@@ -1,1 +1,0 @@
-import{s as e}from"./sky-Cm52-c1c.js";e({role:"ocular",canvas:document.getElementById("stel-canvas"),statusEl:document.getElementById("status")}).catch(t=>{document.getElementById("status").textContent="error: "+t.message});

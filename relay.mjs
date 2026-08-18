@@ -3721,7 +3721,19 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
 // server/relay-core.js
+import { networkInterfaces } from "node:os";
 var RELAY_PATH = "/relay";
+function direccionesLan() {
+  const salida = [];
+  for (const [nombre, entradas] of Object.entries(networkInterfaces())) {
+    for (const e of entradas ?? []) {
+      if (e.internal || e.family !== "IPv4" && e.family !== 4) continue;
+      salida.push({ nombre, address: e.address });
+    }
+  }
+  const prioridad = (a) => a.startsWith("192.168.") ? 0 : a.startsWith("10.") ? 1 : 2;
+  return salida.sort((a, b) => prioridad(a.address) - prioridad(b.address));
+}
 function createRelay({ sensorSource = "ocular", log = console.log } = {}) {
   const wss = new import_websocket_server.default({ noServer: true });
   const byRole = /* @__PURE__ */ new Map();
@@ -3759,7 +3771,7 @@ function createRelay({ sensorSource = "ocular", log = console.log } = {}) {
     const { pathname } = new URL(req.url, "http://localhost");
     if (pathname !== "/link-config") return false;
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify({ sensorSource }));
+    res.end(JSON.stringify({ sensorSource, addresses: direccionesLan().map((d) => d.address) }));
     return true;
   }
   return { wss, handleUpgrade, handleRequest };
@@ -3800,7 +3812,18 @@ server.on("upgrade", (req, socket, head) => {
   if (!relay.handleUpgrade(req, socket, head)) socket.destroy();
 });
 server.listen(PORT, () => {
-  console.log(`[relay] http+ws en :${PORT}`);
   console.log(`[relay] fuente de sensores: ${SENSOR_SOURCE}`);
   console.log(`[relay] est\xE1ticos desde ${DIST}`);
+  console.log("");
+  console.log(`  Ocular (este equipo): http://localhost:${PORT}/`);
+  const lan = direccionesLan();
+  if (lan.length) {
+    for (const { nombre, address } of lan) {
+      console.log(`  Gu\xEDa (otro tel\xE9fono): http://${address}:${PORT}/guide.html   [${nombre}]`);
+    }
+  } else {
+    console.log("  Gu\xEDa: sin direcci\xF3n de LAN. \xBFEl punto de acceso est\xE1 encendido?");
+  }
+  console.log("");
+  console.log("  El panel de depuraci\xF3n del ocular muestra esta URL como QR.");
 });
