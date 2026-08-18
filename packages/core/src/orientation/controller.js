@@ -183,6 +183,10 @@ export function createOrientationController({
   // aparato en vez de a ciegas.
   const suavizado = { relative: 0.5, gyro: 0.1, ...smoothing };
 
+  // Igual que el suavizado: ajustable en caliente. Con 0 la zona dinámica queda
+  // desactivada, porque el FOV siempre es positivo.
+  let umbralDinamico = dynamicThreshold;
+
   const opticalVector = Array.isArray(opticalAxis) ? opticalAxis : OPTICAL_AXES[opticalAxis];
   if (pointingMode === 'vector' && !opticalVector) {
     throw new Error(`createOrientationController: opticalAxis inválido "${opticalAxis}"`);
@@ -502,7 +506,7 @@ export function createOrientationController({
       currentV = 0.05;
     }
 
-    const inDynamicZone = currentV < dynamicThreshold;
+    const inDynamicZone = currentV < umbralDinamico;
 
     if (inDynamicZone) {
       const wx = state.gyroSensor.x - state.gyroBias.x;
@@ -515,11 +519,11 @@ export function createOrientationController({
       const rawDeltaYaw = effWz * dt;
       const rawDeltaPitch = effWx * dt;
 
-      const rawZoomRatio = currentV / dynamicThreshold;
+      const rawZoomRatio = currentV / umbralDinamico;
       let zoomRatio = Math.pow(rawZoomRatio, 1.8);
 
       const thresholdV = 0.003;
-      const minFactor = Math.pow(thresholdV / dynamicThreshold, 1.8);
+      const minFactor = Math.pow(thresholdV / umbralDinamico, 1.8);
       if (currentV < thresholdV) {
         zoomRatio = minFactor * (currentV / thresholdV);
       }
@@ -669,5 +673,8 @@ export function createOrientationController({
     // Ajuste en caliente. Acepta uno solo de los dos.
     setSmoothing(partial) { Object.assign(suavizado, partial); },
     getSmoothing() { return { ...suavizado }; },
+    // Permite entrar y salir de la zona dinámica sin reconstruir el controlador.
+    setDynamicThreshold(v) { umbralDinamico = v; },
+    getDynamicThreshold() { return umbralDinamico; },
   };
 }

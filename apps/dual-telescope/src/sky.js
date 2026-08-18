@@ -6,7 +6,7 @@ import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.was
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
 import { createFocuser, aplicarBlur } from './focuser.js';
-import { cargarAjustes, crearPanel } from './panel.js';
+import { cargarAjustes, crearPanel, FRACCION_VISTA } from './panel.js';
 
 // El guía simula un tubo buscador: campo amplio y fijo. El ocular va bastante
 // más cerrado, que es el punto del instrumento.
@@ -30,19 +30,20 @@ const BIG = 'https://bigdata.ventanaceleste.com/';
 function acomodarOcular(canvas, ajustes) {
   const mira = document.querySelector('.crosshair');
   const aplicar = () => {
-    const altoArea = window.innerHeight * ajustes.canvas;
+    const altoArea = window.innerHeight * FRACCION_VISTA;
     const anchoArea = window.innerWidth;
     const rotado = Math.abs(ajustes.rot % 180) === 90;
+    // `pos` es el centro vertical de la vista. Que sea movible es lo que permite
+    // iterar el calce con el ocular sin volver a montar el teléfono.
+    const centro = window.innerHeight * ajustes.pos;
     canvas.style.position = 'fixed';
     canvas.style.left = '50%';
-    canvas.style.top = `${window.innerHeight - altoArea / 2}px`;
+    canvas.style.top = `${centro}px`;
     canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
     canvas.style.height = `${rotado ? anchoArea : altoArea}px`;
     canvas.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
     canvas.style.transformOrigin = 'center';
-    // La mira va al centro de la vista, no a un porcentaje fijo: si cambia
-    // cuánto ocupa el canvas, tiene que seguirlo.
-    if (mira) mira.style.top = `${window.innerHeight - altoArea / 2}px`;
+    if (mira) mira.style.top = `${centro}px`;
   };
   aplicar();
   window.addEventListener('resize', aplicar);
@@ -54,6 +55,10 @@ export async function startSky({ role, statusEl, canvas }) {
   const cfg = ROLE[role];
   const other = role === 'ocular' ? 'guide' : 'ocular';
   const say = (t) => { if (statusEl) statusEl.textContent = t; };
+
+  // Antes de arrancar el motor: el ocular retoma el zoom guardado, no el del rol.
+  const ajustes = cargarAjustes();
+  const fovInicial = role === 'ocular' ? ajustes.fov : cfg.fov;
 
   say('cargando motor…');
   const engine = await initializeStellariumEngine({
@@ -71,42 +76,47 @@ export async function startSky({ role, statusEl, canvas }) {
       stel.core.landscapes.visible = true;
       stel.core.cardinals.visible = true;
       stel.core.constellations.lines_visible = true;
-      stel.core.fov = cfg.fov;
+      stel.core.fov = fovInicial;
     },
   });
 
   // Se vuelve a fijar después de que la inicialización resolvió: setearlo sólo
   // dentro de onReady no alcanzaba y el guía quedaba con el FOV por defecto.
-  if (engine?.core) engine.core.fov = cfg.fov;
+  if (engine?.core) engine.core.fov = fovInicial;
 
-  // Sólo el ocular va montado en el tubo; el guía se mira de frente.
-  //
-  // El panel de ajustes ocupa la parte de arriba, que es la que queda tapada por
-  // el tubo: se ve y se toca mientras se arma, y desaparece de la vista una vez
-  // montado. Los valores quedan guardados, así que se ajusta una vez.
-  const ajustes = cargarAjustes();
   let controller = null;
   let focuser = null;
   let panel = null;
 
+  // El zoom se lleva en logaritmo porque es lo que consume el controlador para
+  // decidir si está en la zona dinámica.
+  let logFov = Math.log(fovInicial);
+  const aplicarFov = (fov) => {
+    logFov = Math.log(fov);
+    if (engine?.core) engine.core.fov = fov;
+  };
+
+  // Sólo el ocular va montado en el tubo; el guía se mira de frente. El panel va
+  // en un popover porque la vista puede moverse a cualquier altura de la
+  // pantalla y una franja fija terminaría chocando con ella.
   if (role === 'ocular') {
     const reacomodar = acomodarOcular(canvas, ajustes);
     panel = crearPanel({
       ajustes,
       onChange: (clave) => {
         if (clave === 'smooth') controller?.setSmoothing({ relative: ajustes.smooth, gyro: ajustes.smooth });
-        else { reacomodar(); panel.acomodar(ajustes.canvas); }
+        else if (clave === 'fov') aplicarFov(ajustes.fov);
+        else if (clave === 'dyn') controller?.setDynamicThreshold(ajustes.dyn ? 0.06 : 0);
+        else reacomodar();
       },
       onPair: async (btn) => {
         try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
       },
     });
-    panel.acomodar(ajustes.canvas);
-    // El estado colgaba abajo a la izquierda, o sea encima de la vista. Dentro
-    // del panel queda en la zona tapada, que es donde no molesta.
+    // El estado colgaba abajo a la izquierda, o sea encima de la vista.
     if (statusEl) {
       statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
-      panel.raiz.appendChild(statusEl);
+      panel.caja.appendChild(statusEl);
     }
   }
 
@@ -132,9 +142,24 @@ export async function startSky({ role, statusEl, canvas }) {
       // es positivo) y se queda en 'relative', que es el camino del quaternion —
       // el único con la corrección de montaje. En giroscopio se integran los ejes
       // crudos del dispositivo: deriva con el aparato quieto y, con el montaje
-      // rotado 90°, arriba-abajo e izquierda-derecha salen cambiados.
+      // rotado, arriba-abajo e izquierda-derecha salen cambiados. Verificado
+      // activando la zona dinámica desde el panel.
       fovThreshold: 0,
-      dynamicThreshold: 0,
+      // Apagada al arrancar; el panel la activa. Integra el giroscopio con ejes
+      // sin corregir para un montaje rotado, así que no puede ser el default.
+      dynamicThreshold: ajustes.dyn ? 0.06 : 0,
+      // El controlador lo consulta por lectura para decidir si está en la zona
+      // dinámica. Sin esto quedaba en el valor por defecto y el zoom no influía.
+      getLogFov: () => logFov,
+      // El teléfono apunta por su parte baja, no por la superior, así que la
+      // altura sale invertida. Medido en el montaje: el acimut queda bien, sólo
+      // se invierte arriba-abajo.
+      //
+      // Este es el ajuste que cambia con cada prototipo, porque cada diseño ubica
+      // el teléfono distinto. Va en mountingTransform y no en el eje óptico
+      // porque se aplica sólo en la salida, sin tocar el estado interno de
+      // continuidad de ángulos.
+      mountingTransform: (yaw, pitch) => ({ yaw, pitch: -pitch }),
       readinessGate: 'immediate',
       calibDuration: 1,
       // Con zoom alto un temblor de la mano se amplifica, así que hace falta
