@@ -26,12 +26,13 @@
   background:rgba(6,8,15,.55); color:rgba(232,236,245,.7); padding:0; }
 
 /* Sin fondo oscuro: el canvas tiene que verse mientras se ajusta. La capa cubre
-   la pantalla sólo para cerrar al tocar afuera. El alto de la caja lo fija
-   panel.acomodar() según el hueco que deje la vista. */
+   la pantalla sólo para cerrar al tocar afuera. La caja mide lo que mide su
+   contenido y se ancla arriba o abajo; el tope sólo evita que se desborde en
+   pantallas muy bajas. */
 .op-capa { position:fixed; inset:0; z-index:50; display:none; }
 .op-capa.abierta { display:block; }
 .op-caja { position:absolute; left:50%; transform:translateX(-50%);
-  width:min(340px, 96vw); overflow-y:auto;
+  width:min(340px, 96vw); max-height:calc(100% - 16px); overflow-y:auto;
   box-sizing:border-box; padding:12px; border-radius:12px;
   display:flex; flex-direction:column; gap:8px;
   background:rgba(8,11,19,.94); border:1px solid rgba(255,255,255,.14); }

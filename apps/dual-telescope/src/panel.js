@@ -193,13 +193,24 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   const barra = document.createElement('div');
   barra.className = 'op-barra';
 
+  // Anclaje manual arriba o abajo. Antes el alto se recortaba solo al hueco que
+  // dejaba la vista, lo cual en pantalla completa daba hueco cero y aplastaba el
+  // panel. Mover de lado alcanza: la caja mide lo que mide su contenido y deja
+  // ver el canvas del otro lado.
   const lado = document.createElement('button');
   lado.className = 'op-cerrar';
-  const pintarLado = () => { lado.textContent = ajustes.lado === 'arriba' ? '↓ abajo' : '↑ arriba'; };
-  pintarLado();
+  const aplicarLado = () => {
+    const enArriba = ajustes.lado === 'arriba';
+    lado.textContent = enArriba ? '↓ abajo' : '↑ arriba';
+    caja.style.top = enArriba ? '8px' : 'auto';
+    caja.style.bottom = enArriba ? 'auto' : '8px';
+    abridor.style.top = enArriba ? '8px' : 'auto';
+    abridor.style.bottom = enArriba ? 'auto' : '8px';
+  };
+  aplicarLado();
   lado.onclick = () => {
     ajustes.lado = ajustes.lado === 'arriba' ? 'abajo' : 'arriba';
-    pintarLado();
+    aplicarLado();
     emitir('lado');
   };
 
@@ -216,19 +227,5 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     caja,
     setEstado(texto) { estado.textContent = texto; },
     mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
-
-    // Ancla el panel en el hueco que deja la vista y le limita el alto a ese
-    // hueco, así no puede taparla. Si no entra, scrollea adentro.
-    acomodar({ arriba, abajo }) {
-      const enArriba = ajustes.lado === 'arriba';
-      // El mínimo deja ver la barra: desde ahí se puede mandar el panel al otro
-      // lado aunque de este no quede hueco.
-      const hueco = Math.max(76, enArriba ? arriba : abajo);
-      caja.style.top = enArriba ? '0px' : 'auto';
-      caja.style.bottom = enArriba ? 'auto' : '0px';
-      caja.style.maxHeight = `${hueco}px`;
-      abridor.style.top = enArriba ? '8px' : 'auto';
-      abridor.style.bottom = enArriba ? 'auto' : '8px';
-    },
   };
 }

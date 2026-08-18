@@ -39,7 +39,7 @@ const BIG = 'https://bigdata.ventanaceleste.com/';
 //
 // Devuelve la función de reacomodo para poder llamarla cuando el panel cambia los
 // valores, sin volver a registrar listeners.
-function acomodarVista(canvas, ajustes, { recortarSiempre }, onGeometria = () => {}) {
+function acomodarVista(canvas, ajustes, { recortarSiempre }) {
   const mira = document.querySelector('.crosshair');
   const grande = window.matchMedia(PANTALLA_GRANDE);
 
@@ -50,7 +50,6 @@ function acomodarVista(canvas, ajustes, { recortarSiempre }, onGeometria = () =>
     if (!recortarSiempre && grande.matches) {
       canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;display:block';
       if (mira) mira.style.top = '50%';
-      onGeometria({ arriba: 0, abajo: 0 });
       return;
     }
 
@@ -67,12 +66,6 @@ function acomodarVista(canvas, ajustes, { recortarSiempre }, onGeometria = () =>
     canvas.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
     canvas.style.transformOrigin = 'center';
     if (mira) mira.style.top = `${centro}px`;
-    // Rotado o no, la huella vertical en pantalla es siempre `altoArea`: al rotar
-    // 90° o 270° se intercambian ancho y alto del elemento y del recuadro.
-    onGeometria({
-      arriba: centro - altoArea / 2,
-      abajo: window.innerHeight - (centro + altoArea / 2),
-    });
   };
 
   aplicar();
@@ -148,9 +141,7 @@ export async function startSky({ role, statusEl, canvas }) {
 
   // El ocular se recorta siempre, porque va dentro del tubo. El guía sólo en
   // pantalla chica: en el monitor conviene a pantalla completa.
-  const reacomodar = acomodarVista(
-    canvas, ajustes, { recortarSiempre: role === 'ocular' }, (g) => panel?.acomodar(g),
-  );
+  const reacomodar = acomodarVista(canvas, ajustes, { recortarSiempre: role === 'ocular' });
 
   const bus = connect({ role, onStatus: (s) => say(`${cfg.label} · enlace ${s}`) });
   const { sensorSource } = await fetchLinkConfig();
@@ -276,8 +267,6 @@ export async function startSky({ role, statusEl, canvas }) {
     statusEl.style.cssText = 'position:static;background:none;border:none;padding:0';
     panel.caja.appendChild(statusEl);
   }
-  // La primera pasada del layout corrió antes de que el panel existiera.
-  reacomodar();
 
   // --- Enfocador -------------------------------------------------------
   // El hardware vive en el ocular, así que sólo ese rol lo abre. El guía no
