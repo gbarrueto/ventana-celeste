@@ -4,7 +4,7 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
-## 2026-08-18 — Orientación del ocular y zona dinámica
+## 2026-08-18 — Montaje, orientación y emparejamiento
 
 Sesión sobre el montaje real del teléfono en el tubo. Verificado en el aparato: la calibración
 funciona y la zona dinámica se comporta como corresponde.
@@ -59,20 +59,58 @@ El límite pasa a ser el mayor entre `fovThreshold` y `dynamicThreshold`: por de
 los dos hubo integración, y por lo tanto deriva que corregir. `kiosk` (0.2) y `web-app` (0.8)
 conservan su límite anterior, que en ambas es el mayor.
 
-### Montaje y panel del ocular
+### Montaje del ocular
 
 - Rotación del canvas a 270°, la posición física real del teléfono.
 - El alto de la vista queda fijo en 50 %, medido contra el ocular. Deja de ser un ajuste.
-- Altura invertida y acimut sin tocar, medido en el montaje. Va en `mountingTransform`.
+- Altura invertida y acimut sin tocar, medido en el montaje. Va en `mountingTransform`, que es el
+  ajuste que cambia con cada prototipo.
 - La vista se puede desplazar a lo largo de la pantalla, para iterar el calce sin volver a montar.
-- El panel de ajustes pasa a un popover anclado arriba o abajo de la vista, con el alto limitado al
-  hueco libre, así no puede taparla. Un botón lo manda al otro lado.
 - Deslizador de zoom. El controlador ahora recibe `getLogFov` real; antes quedaba en el valor por
   defecto y el zoom no influía en nada.
-- `setDynamicThreshold()` en `core` permite entrar y salir de la zona dinámica sin reconstruir el
-  controlador.
 
-El panel del ocular es de depuración, no interfaz de producto, igual que el de `kiosk`.
+### Montaje del guía
+
+La UI del guía reutiliza la del ocular parametrizada por rol, en vez de existir dos veces. La vista
+se recorta y queda arriba, con el tamaño ajustable, que es el reparto inverso al del ocular: allá el
+tamaño es fijo y la posición móvil.
+
+En pantalla de escritorio el guía va a pantalla completa. El recorte existe por la ubicación física
+del teléfono y no tiene sentido cuando se deja el guía abierto en el monitor durante el desarrollo.
+
+Qué controles aparecen depende del rol y de si lleva los sensores, así que el panel se arma después
+de `fetchLinkConfig()`. Una clave de `localStorage` por rol: en desarrollo las dos páginas se abren
+en el mismo navegador, o sea el mismo origen.
+
+El CSS de la UI estaba duplicado en los dos HTML y pasó a `src/ui.css`.
+
+### Emparejamiento
+
+- El dev server imprime las dos URLs con el rol al lado, ya resueltas al puerto real, así que
+  `/guide.html` deja de escribirse a mano.
+- La IPv4 de LAN del principal se detecta con `os.networkInterfaces()` y se publica en
+  `/link-config`. El panel del ocular la muestra como QR, oculto detrás de un interruptor porque un
+  código legible ocupa casi todo el panel.
+- Se publican todas las interfaces: el teléfono puede tener a la vez la del punto de acceso y una de
+  wifi, y tocar el QR las recorre.
+- `start.sh` dejó de adivinar la IP. `ip route get` y `hostname -i` devuelven loopback en Termux, o
+  sea una dirección que el guía no puede alcanzar aunque este equipo sea el punto de acceso.
+
+El QR se genera con `qrcode-generator`, sin dependencias y empaquetada local. `web-app` la carga de
+un CDN, lo cual acá no sirve.
+
+### El panel es de depuración
+
+No es interfaz de producto, igual que el de `kiosk`. Los controles que existían para encontrar un
+valor desaparecieron al encontrarlo: el suavizado quedó en `0.10` y la zona dinámica activa con
+umbral `0.06`, ambos como constantes en el código.
+
+Sacarlos de los ajustes era la parte que importaba: mientras vivieran ahí se guardaban en
+`localStorage`, y un valor viejo guardado le habría ganado al del código sin que se notara.
+
+`setSmoothing()` y `setDynamicThreshold()` en `core` permiten cambiarlos en caliente. Hoy no los usa
+ninguna app; existen porque encontrar estos valores exige moverlos con el instrumento apuntando a
+algo, y eso hará falta otra vez con el próximo montaje.
 
 ## 2026-08-12 — Documentación
 

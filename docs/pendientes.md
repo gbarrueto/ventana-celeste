@@ -34,8 +34,9 @@ Debería resolverse en un solo punto en vez de en cada app.
 En alt-az el acimut es indefinido en el cenit. Un tope por software evita la degeneración a costa
 de impedir apuntar al cenit.
 
-Sin decidir. Distinto de `zenithRateGuardDeg`, que ya existe y sólo topa cuánto se amplifica la
-tasa de acimut cerca del cenit, sin limitar a dónde se puede apuntar.
+Sin decidir. Distinto de `zenithRateGuardDeg`, que ya existe, está en uso desde que la zona dinámica
+quedó activa, y sólo topa cuánto se amplifica la tasa de acimut cerca del cenit, sin limitar a dónde
+se puede apuntar.
 
 ## Hardware
 
@@ -98,6 +99,16 @@ suponía que Web Serial era el camino para RFID y potenciómetro. Web Serial no 
 Eliminarlo o reemplazarlo por el contrato de WebUSB que se terminó usando.
 
 ## Despliegue y arranque
+
+### Verificar el emparejamiento en producción
+
+En desarrollo el QR funciona y `os.networkInterfaces()` devuelve la interfaz correcta. Falta
+comprobarlo en el dispositivo real, donde el teléfono hace de punto de acceso: si Node ve esa
+interfaz en Termux, y si la dirección que reporta es la que el guía alcanza.
+
+El relay imprime todas las interfaces al arrancar, así que el arranque mismo sirve de diagnóstico.
+
+- `apps/dual-telescope/server/relay-core.js`
 
 ### IP estática para el dispositivo principal
 

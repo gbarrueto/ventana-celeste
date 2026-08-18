@@ -352,9 +352,16 @@ sin traducción. Un mensaje sin `target` va a todos los clientes menos el emisor
 Ambas devuelven `false` cuando la ruta no les corresponde, lo cual permite montar el relay sobre el
 dev server de Vite sin romper su WebSocket de HMR.
 
-`/link-config` devuelve `{ sensorSource }`, que es qué rol lleva los sensores. Lo fija el script de
-arranque con la variable `SENSOR_SOURCE`, y cada página lo consulta al cargar con
+`/link-config` devuelve `{ sensorSource, addresses }`, y cada página lo consulta al cargar con
 `fetchLinkConfig()`.
+
+`sensorSource` es qué rol lleva los sensores, y lo fija el script de arranque con la variable
+`SENSOR_SOURCE`. `addresses` son las IPv4 de LAN del equipo, sacadas de `os.networkInterfaces()`,
+para que el ocular pueda mostrar la URL del guía como QR.
+
+Van sólo las direcciones y no la URL completa: el protocolo y el puerto los sabe la página, así que
+la URL se arma del lado del cliente y queda bien tanto sobre el servidor de Vite en desarrollo como
+en producción, sin que el relay tenga que saber en cuál de los dos está.
 
 Corre en dos modos con la misma lógica: como proceso propio en producción (`server/relay.js`, que
 además sirve `dist/`) y montado sobre Vite en desarrollo.

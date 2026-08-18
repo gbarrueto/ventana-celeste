@@ -83,14 +83,20 @@ por teclado, con un Arduino actuando como teclado USB.
               (proceso Node en el dispositivo principal)
 ```
 
-Dos entradas de una misma app: `index.html` es el ocular, `guide.html` es el guía. El ocular usa un
-FOV de 0.05 rad con catálogos extendidos; el guía usa 0.14 rad sin ellos.
+Dos entradas de una misma app: `index.html` es el ocular, `guide.html` es el guía. El ocular arranca
+con catálogos extendidos y un FOV de 0.05 rad; el guía sin ellos y 0.14 rad. Los dos FOV son
+ajustables desde el panel de depuración.
+
+Cada rol recorta la vista según dónde queda físicamente el teléfono: el ocular abajo y rotado dentro
+del tubo, el guía arriba. En pantalla de escritorio el guía va completo, porque el recorte existe
+por la ubicación en el tubo y no tiene sentido en un monitor.
 
 El dispositivo principal corre el relay, sirve los estáticos y hace de punto de acceso. El otro
 teléfono se conecta a esa red.
 
-Qué rol lleva los sensores lo decide el servidor y lo consulta cada página en `/link-config`. Se
-cambia con la variable `SENSOR_SOURCE` del script de arranque, sin tocar código.
+Qué rol lleva los sensores lo decide el servidor y lo consulta cada página en `/link-config`, junto
+con las IPv4 de LAN del equipo. Se cambia con la variable `SENSOR_SOURCE` del script de arranque,
+sin tocar código. El ocular muestra la URL del guía como QR.
 
 El enfocador es un potenciómetro sobre un Arduino Leonardo, leído por WebUSB desde el ocular.
 
@@ -148,7 +154,9 @@ funciona como punto de partida conocido donde el cielo se ve en todo su esplendo
 
 - pnpm 11 con workspaces. `shellEmulator: true` en `pnpm-workspace.yaml` hace que los prefijos
   `VAR=x comando` de los scripts funcionen también en Windows.
-- Vite 5 en las cuatro apps.
+- Vite 6 en `web-app`, Vite 5 en las otras tres.
 - Svelte en `web-app` y `kiosk-standalone`. `dual-telescope` y `device-lab` son JavaScript y HTML
   sin framework.
 - esbuild para empaquetar el relay de `dual-telescope` en un archivo sin dependencias.
+- `qrcode-generator` en `dual-telescope`, para el QR de emparejamiento. Sin dependencias y
+  empaquetada local, porque el prototipo tiene que funcionar sin internet.
