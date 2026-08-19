@@ -41,7 +41,5 @@ export function createKeyboardConnector({ bindings = {}, onError = () => {} } = 
   return { isSupported, connect, disconnect };
 }
 
-// There was a Web Serial stub here, written when Web Serial looked like the way
-// to read the board. It is gone: measured on the device, Web Serial is not
-// available on Android. The working path is WebUSB, in
-// apps/dual-telescope/src/focuser.js.
+// dual-telescope reads its board over WebUSB, in apps/dual-telescope/src/focuser.js.
+// That implementation lives next to the hardware it talks to, not here.

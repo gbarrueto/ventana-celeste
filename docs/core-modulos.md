@@ -460,9 +460,8 @@ Contrato de lo que alimenta a una app con entrada externa. Qué hardware hay dif
 objeto de tecla en minúscula a función. Es lo que usa `kiosk-standalone`, donde el Arduino actúa
 como teclado USB.
 
-Hubo un stub de Web Serial, escrito cuando Web Serial parecía el camino para leer la placa. Se
-eliminó: medido en el dispositivo, no está disponible en Android. El camino que funciona es WebUSB,
-en `apps/dual-telescope/src/focuser.js`.
+`dual-telescope` lee su placa por WebUSB, en `apps/dual-telescope/src/focuser.js`. La implementación
+vive ahí y no en `core` porque es específica de ese hardware.
 
 ---
 
