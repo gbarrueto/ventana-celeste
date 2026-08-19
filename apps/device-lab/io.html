@@ -152,8 +152,15 @@ async function usbLeer(devicePrevio) {
       }
     }
   }
+  // El numero de serie decide si el permiso sobrevive a desenchufar el cable.
+  // Chrome revoca el permiso al desconectar cualquier dispositivo que no lo
+  // reporte, y ahi getDevices() vuelve vacio y no llega evento 'connect': hay
+  // que volver a emparejar con gesto. Con numero de serie, el permiso persiste.
+  const serie = dev.serialNumber
+    ? 'serie "' + dev.serialNumber + '" -> el permiso PERSISTE al desenchufar'
+    : 'SIN numero de serie -> Chrome revoca el permiso al desenchufar';
   const resumen = 'WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' +
-    (dev.productName || '?') + '\n' + mapa.join('\n');
+    (dev.productName || '?') + '\n  ' + serie + '\n' + mapa.join('\n');
   if (iface === null) { log(resumen); throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB'); }
   // Decir cual se eligio y por que: si cae en CDC en vez de la vendor-specific,
   // no llega nada y desde afuera parece un problema de hardware.
@@ -273,8 +280,45 @@ if ('usb' in navigator) {
     document.getElementById('bUsb').textContent = 'WebUSB';
     log('Dispositivo desconectado.');
     revisarAutorizados();
+    sondearPermiso();
   });
   revisarAutorizados();
+}
+
+// Sonda del permiso tras una desconexion.
+//
+// Hay dos causas posibles y se arreglan distinto, asi que hay que separarlas:
+//
+//   getDevices() vuelve VACIO      -> Chrome solto el permiso. Nada que reabrir,
+//                                     hace falta requestDevice() con gesto.
+//   getDevices() DEVUELVE la placa -> el permiso sigue; si igual no se puede
+//                                     abrir, el que bloquea es Android por
+//                                     debajo, y el error de open() lo dice.
+//
+// Se muestrea varias veces porque reenumerar lleva su tiempo: preguntar una sola
+// vez justo al desconectar puede dar un resultado que despues cambia.
+async function sondearPermiso() {
+  for (const t of [0, 1000, 3000, 6000]) {
+    setTimeout(async () => {
+      const devs = await navigator.usb.getDevices();
+      if (!devs.length) {
+        log('  +' + t + 'ms  getDevices(): vacio -> permiso revocado');
+        return;
+      }
+      const d = devs[0];
+      log('  +' + t + 'ms  getDevices(): ' + (d.productName || '?') +
+          ' serie "' + (d.serialNumber || '') + '" -> permiso vigente');
+      // Si el permiso sigue pero abrir falla, el nombre del error es el dato.
+      if (usbLeyendo) return;
+      try {
+        await d.open();
+        log('  +' + t + 'ms  open(): OK -> se puede reconectar sin gesto');
+        await d.close();
+      } catch (e) {
+        log('  +' + t + 'ms  open(): ' + e.name + ' - ' + e.message);
+      }
+    }, t);
+  }
 }
 
 </script>

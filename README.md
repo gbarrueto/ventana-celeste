@@ -29,8 +29,7 @@ El proyecto se despliega en cuatro ejes, según quién opera el instrumento y d�
 `web-app` es el núcleo: la versión más completa y la que se muestra como demostración del proyecto
 entero. Su trabajo actual es mantenimiento, búsqueda de bugs y mejoras de interfaz.
 
-Los ejes de hogar y educativo no tienen todavía una app. Ver
-[pendientes.md](docs/pendientes.md) para lo que hay que decidir antes de diseñarlos.
+Los ejes de hogar y educativo no tienen todavía una app.
 
 `packages/core` (`@ventanaceleste/core`) tiene lo compartido: motor, orientación, comunicación,
 tiempo, óptica, conectores de hardware y configuración.
@@ -96,13 +95,16 @@ Dos condiciones que hacen perder tiempo cuando no se conocen:
   [ADR 0001](docs/adr/0001-protobject-peers-must-share-an-origin.md).
 - **Algunos puntos de acceso aíslan a sus clientes entre sí.** Si un dispositivo llega al servidor y
   otro no, suele ser esto y no la app.
+- **En `dual-telescope`, el guía va con algo de desfase durante el desarrollo.** No pasa en
+  producción, donde la latencia es buena. La topología es otra: sirviendo desde la PC los dos
+  teléfonos pasan por ella, en vez de por el que hace de punto de acceso.
 
 ## Convenciones
 
 - **Documentación en español neutro**, sin voseo. El estilo de redacción está en
   `.claude/skills/docs-style/SKILL.md` y aplica a todo `.md` del repo.
-- **Los documentos de referencia describen lo que existe.** Lo pendiente va en
-  [docs/pendientes.md](docs/pendientes.md).
+- **Los documentos de referencia describen lo que existe.** Lo pendiente se sigue en el gestor de
+  issues.
 - **Nada específico de una máquina** en el repo: sin rutas absolutas, sin nombres de usuario, sin IPs
   de LAN. Se enuncia la restricción portable.
 - **`main` se sube antes que cualquier rama de deploy.** El paquete publicado referencia el commit

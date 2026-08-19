@@ -460,9 +460,8 @@ Contrato de lo que alimenta a una app con entrada externa. Qué hardware hay dif
 objeto de tecla en minúscula a función. Es lo que usa `kiosk-standalone`, donde el Arduino actúa
 como teclado USB.
 
-`createSerialConnector()` es un stub que lanza error. Se escribió cuando se suponía que Web Serial
-era el camino para el potenciómetro y el RFID. Web Serial no está disponible en Android, y el
-enfocador de `dual-telescope` usa WebUSB en `apps/dual-telescope/src/focuser.js`.
+`dual-telescope` lee su placa por WebUSB, en `apps/dual-telescope/src/focuser.js`. La implementación
+vive ahí y no en `core` porque es específica de ese hardware.
 
 ---
 

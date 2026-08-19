@@ -11,7 +11,6 @@
 | [core-modulos.md](core-modulos.md) | Orientación, tiempo, comunicación, óptica, conectores y configuración. |
 | [../apps/device-lab/arduino/README.md](../apps/device-lab/arduino/README.md) | Sketch del potenciómetro y cableado del enfocador. |
 | [adr/](adr/) | Decisiones de arquitectura. |
-| [pendientes.md](pendientes.md) | Temporal. Pasa a GitHub Projects. |
 
 `agents/` contiene instrucciones para agentes, no documentación del proyecto.
 

@@ -35,9 +35,16 @@ export function createFocuser({
   // >1 hace que cerca del foco la imagen mejore rápido y lejos sature: se parece
   // más a enfocar de verdad que una rampa lineal.
   exponente = 1.6,
+  // Cada cuánto se reintenta abrir cuando no hay conexión. Es el respaldo del
+  // evento `connect`, no la vía principal, así que no hace falta que sea corto.
+  reintentoMs = 2000,
 } = {}) {
   let device = null;
   let leyendo = false;
+  let conectando = false;
+  let supervisando = false;
+  let temporizador = null;
+  let ultimoEstado = null;
   let ocular = '';
   let posicion = null;
 
@@ -69,6 +76,73 @@ export function createFocuser({
     }
   }
 
+  // ── Ciclo de conexión ──────────────────────────────────────
+  //
+  // El permiso de WebUSB no se pierde al desenchufar el cable: queda atado al
+  // par (origen, dispositivo). O sea que reenchufar puede recuperarse solo, sin
+  // gesto del usuario, que es lo que permite que el teléfono viva dentro del
+  // tubo.
+  //
+  // Se combinan dos mecanismos a propósito. El evento `connect` reacciona al
+  // instante, y un reintento periódico cubre el caso de que no llegue: el
+  // dispositivo puede tardar en enumerar, o el evento puede perderse con la
+  // página en segundo plano. Sin el reintento, un evento perdido deja el
+  // enfocador muerto hasta recargar, que es justo lo que no se puede hacer con
+  // el teléfono montado.
+
+  function reportar(connected, message, extra = {}) {
+    // Sin deduplicar, el reintento periódico emitiría un mensaje cada dos
+    // segundos, y `onStatus` viaja por el relay hasta el guía.
+    const clave = `${connected}:${message}`;
+    if (clave === ultimoEstado) return;
+    ultimoEstado = clave;
+    onStatus({ connected, message, requierePairing: false, ...extra });
+  }
+
+  function programarReintento() {
+    if (!supervisando) return;
+    clearTimeout(temporizador);
+    temporizador = setTimeout(intentarAbrir, reintentoMs);
+  }
+
+  function caida(motivo) {
+    const estabaLeyendo = leyendo;
+    leyendo = false;
+    buffer = '';
+    try { device?.close().catch(() => {}); } catch { /* ya cerrado */ }
+    device = null;
+    if (estabaLeyendo) reportar(false, `enfocador desconectado (${motivo})`);
+    programarReintento();
+  }
+
+  async function intentarAbrir() {
+    if (leyendo || conectando || !supervisando) return;
+    conectando = true;
+    try {
+      const devs = await navigator.usb.getDevices();
+      if (!devs.length) {
+        // Chrome revoca el permiso al desenchufar un dispositivo que no reporta
+        // número de serie, así que acá no hay nada que reabrir y tampoco va a
+        // llegar un evento `connect`. La única salida es volver a emparejar con
+        // gesto, y para eso el botón tiene que reaparecer solo.
+        reportar(false, 'enfocador sin emparejar', { requierePairing: true });
+        programarReintento();
+        return;
+      }
+      // Siempre desde getDevices() y no desde la referencia guardada: al
+      // reenchufar, el objeto anterior quedó obsoleto.
+      await abrir(devs[0]);
+    } catch (e) {
+      reportar(false, `enfocador no disponible (${e.message})`);
+      programarReintento();
+    } finally {
+      conectando = false;
+    }
+  }
+
+  const alConectar = () => { intentarAbrir(); };
+  const alDesconectar = (e) => { if (!device || e.device === device) caida('cable'); };
+
   async function abrir(dev) {
     device = dev;
     await dev.open();
@@ -95,43 +169,59 @@ export function createFocuser({
     });
 
     leyendo = true;
-    onStatus({ connected: true, message: 'enfocador conectado' });
+    reportar(true, 'enfocador conectado');
+    // El bucle corre de fondo: `abrir` tiene que resolver para que quien la
+    // llamó suelte el flag de conexión en curso.
+    bucle(dev, epIn);
+  }
 
-    while (leyendo) {
-      const r = await dev.transferIn(epIn, 64);
-      if (r.status !== 'ok' || !r.data?.byteLength) continue;
-      consumir(new TextDecoder().decode(r.data));
+  async function bucle(dev, epIn) {
+    try {
+      while (leyendo) {
+        const r = await dev.transferIn(epIn, 64);
+        // Un stall no se limpia solo: sin clearHalt el bucle gira en vacío
+        // consumiendo CPU y sin volver a leer nunca.
+        if (r.status === 'stall') { await dev.clearHalt('in', epIn); continue; }
+        if (r.status !== 'ok' || !r.data?.byteLength) continue;
+        consumir(new TextDecoder().decode(r.data));
+      }
+    } catch (e) {
+      // Desenchufar el cable hace que transferIn rechace. Antes el error se
+      // reportaba pero `leyendo` quedaba en true, así que el enfocador se creía
+      // conectado para siempre y nada reintentaba.
+      caida(e.message);
     }
   }
 
   return {
-    // Sin gesto del usuario: sólo dispositivos ya autorizados para este origen.
-    // Es lo que permite que el teléfono viva dentro del telescopio, donde tocar
-    // un botón no es viable. El emparejamiento se hace una vez, antes de montar,
-    // y en la MISMA URL que se usa después: el permiso va atado al origen.
+    // Arranca la supervisión y devuelve si hay algún dispositivo ya autorizado
+    // para este origen. El emparejamiento se hace una vez, antes de montar, y en
+    // la MISMA URL que se usa después: el permiso va atado al origen.
+    //
+    // A partir de acá el enfocador se recupera solo de cualquier desconexión
+    // física, sin gesto y sin intervención de otro dispositivo.
     async autoConnect() {
       if (!('usb' in navigator)) {
-        onStatus({ connected: false, message: 'WebUSB no disponible' });
+        reportar(false, 'WebUSB no disponible');
         return false;
       }
+      supervisando = true;
+      navigator.usb.addEventListener('connect', alConectar);
+      navigator.usb.addEventListener('disconnect', alDesconectar);
+
       const devs = await navigator.usb.getDevices();
-      if (!devs.length) {
-        onStatus({ connected: false, message: 'enfocador sin emparejar' });
-        return false;
-      }
-      try {
-        abrir(devs[0]).catch((e) => onStatus({ connected: false, message: e.message }));
-        return true;
-      } catch (e) {
-        onStatus({ connected: false, message: e.message });
-        return false;
-      }
+      intentarAbrir();
+      return devs.length > 0;
     },
 
-    // Con gesto: el emparejamiento inicial.
+    // Con gesto: el emparejamiento inicial. Deja la supervisión andando, así que
+    // después de esto no vuelve a hacer falta tocar nada.
     async pair() {
-      const dev = await navigator.usb.requestDevice({ filters: [] });
-      abrir(dev).catch((e) => onStatus({ connected: false, message: e.message }));
+      await navigator.usb.requestDevice({ filters: [] });
+      supervisando = true;
+      navigator.usb.addEventListener('connect', alConectar);
+      navigator.usb.addEventListener('disconnect', alDesconectar);
+      await intentarAbrir();
     },
 
     // Cambiar de ocular mueve el punto de foco, así que lo que estaba nítido deja
@@ -142,8 +232,15 @@ export function createFocuser({
     },
 
     stop() {
+      supervisando = false;
       leyendo = false;
-      device?.close().catch(() => {});
+      clearTimeout(temporizador);
+      if ('usb' in navigator) {
+        navigator.usb.removeEventListener('connect', alConectar);
+        navigator.usb.removeEventListener('disconnect', alDesconectar);
+      }
+      try { device?.close().catch(() => {}); } catch { /* ya cerrado */ }
+      device = null;
     },
 
     get connected() { return leyendo; },

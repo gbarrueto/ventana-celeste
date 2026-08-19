@@ -12,8 +12,8 @@ role.
 
 ## Reference docs describe what exists
 
-Anything pending, uncertain, or planned lives in `docs/pendientes.md`, never in a reference doc.
-When work reveals a new open question, it goes there.
+Anything pending, uncertain, or planned belongs in the issue tracker, never in a reference doc.
+When work reveals a new open question, raise it there.
 
 ## Writing docs
 
