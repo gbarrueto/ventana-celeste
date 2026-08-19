@@ -12,7 +12,7 @@ role.
 
 ## Reference docs describe what exists
 
-Anything pending, uncertain, or planned lives in `docs/pendientes.md`, never in a reference doc.
+Anything pending, uncertain, or planned lives in `docs/backlog.md`, never in a reference doc.
 When work reveals a new open question, it goes there.
 
 ## Writing docs

@@ -4,6 +4,30 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-19 — Repaso de pendientes y backlog
+
+`pendientes.md` pasó a `backlog.md`, con cada problema abierto descrito para convertirse en un issue
+sin volver a investigarlo: causa, referencias al código y qué haría falta.
+
+Cerrados por verificación en el aparato: el clamp de altitud a 85° (el dispositivo se comporta bien
+en elevaciones altas y el prototipo físico no llega tan arriba), la entrada del Arduino en `kiosk`
+(las teclas `+` y `-` responden), la IP estática del principal, y mover el enfocador al dispositivo
+de control, que no aplica porque ese dispositivo es externo y remoto.
+
+Cerrada también la reconexión sin gesto del enfocador. Perder la conexión exige desenchufar el cable
+o reiniciar la placa, o sea pasos de montaje, no fallos espontáneos. El plan B por teclado queda
+abierto sólo por si resulta molesto en uso real.
+
+La referencia de norte quedó resuelta a favor del magnetómetro, que entrega norte real, y en el
+camino apareció un error de 180° en acimut que está descrito en el backlog.
+
+El desfase del guía en desarrollo salió del backlog al README: es una rareza del entorno, no una
+tarea.
+
+Los cuatro problemas del arranque de `kiosk` —rama de deploy, comandos de build, empaquetado de
+catálogos y modo `development`— se condensaron en uno solo, porque los cuatro se resuelven
+replicando la arquitectura de arranque de `dual-telescope`.
+
 ## 2026-08-19 — Verificaciones en producción y decisiones de hardware
 
 Verificado en el prototipo desplegado: el emparejamiento por QR funciona, y la latencia con dos
