@@ -4,10 +4,10 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
-## 2026-08-19 — Repaso de pendientes y backlog
+## 2026-08-19 — Repaso de pendientes
 
-`pendientes.md` pasó a `backlog.md`, con cada problema abierto descrito para convertirse en un issue
-sin volver a investigarlo: causa, referencias al código y qué haría falta.
+El backlog sale del repo. Los problemas abiertos se siguen en el gestor de issues, y los documentos
+de referencia describen sólo lo que existe.
 
 Cerrados por verificación en el aparato: el clamp de altitud a 85° (el dispositivo se comporta bien
 en elevaciones altas y el prototipo físico no llega tan arriba), la entrada del Arduino en `kiosk`
@@ -19,9 +19,10 @@ o reiniciar la placa, o sea pasos de montaje, no fallos espontáneos. El plan B 
 abierto sólo por si resulta molesto en uso real.
 
 La referencia de norte quedó resuelta a favor del magnetómetro, que entrega norte real, y en el
-camino apareció un error de 180° en acimut que está descrito en el backlog.
+camino apareció un error de 180° en acimut: el eje óptico está declarado como `'+y'` cuando el
+teléfono apunta por su parte baja, o sea `'-y'`.
 
-El desfase del guía en desarrollo salió del backlog al README: es una rareza del entorno, no una
+El desfase del guía en desarrollo quedó anotado en el README: es una rareza del entorno, no una
 tarea.
 
 Los cuatro problemas del arranque de `kiosk` —rama de deploy, comandos de build, empaquetado de
