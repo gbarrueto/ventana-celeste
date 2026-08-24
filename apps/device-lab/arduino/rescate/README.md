@@ -24,7 +24,9 @@ instante en que aparece, así que no depende de llegar a tiempo con el ratón. S
 `avrdude` falla porque la ventana se cerró, sigue vigilando: basta repetir el
 doble reset.
 
-Usa el `avrdude` y el `hex` que ya trae el IDE instalado; no hace falta nada más.
+Usa el `avrdude` que ya trae el IDE instalado y el `rescate.hex` versionado aquí al lado. Ese
+hex está commiteado a propósito: es el artefacto que tiene que existir justo cuando la placa no
+responde, y compilarlo en ese momento agrega un punto de falla.
 
 ## Recompilar el sketch de rescate
 

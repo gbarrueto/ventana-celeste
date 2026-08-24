@@ -19,7 +19,7 @@ $ErrorActionPreference = 'Stop'
 
 $avrdude = Join-Path $env:LOCALAPPDATA 'Arduino15\packages\arduino\tools\avrdude\8.0.0-arduino1\bin\avrdude.exe'
 $conf    = Join-Path $env:LOCALAPPDATA 'Arduino15\packages\arduino\tools\avrdude\8.0.0-arduino1\etc\avrdude.conf'
-$hex     = Join-Path $PSScriptRoot 'build\rescate.ino.hex'
+$hex     = Join-Path $PSScriptRoot 'rescate.hex'
 
 foreach ($p in @($avrdude, $conf, $hex)) {
   if (-not (Test-Path $p)) { Write-Host "No encuentro: $p" -ForegroundColor Red; exit 1 }
