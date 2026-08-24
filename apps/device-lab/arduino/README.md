@@ -104,3 +104,16 @@ máximo de configuración, en `apps/dual-telescope/src/focuser.js`.
 ## Estado
 
 **Funcionando** (2026-08-11): el valor llega y sigue al potenciómetro en tiempo real.
+
+## Distribución del teclado
+
+`teclado_mediado` separa los campos con `:`. La librería `Keyboard` envía códigos de tecla con
+distribución US, así que el carácter que llega depende de la distribución configurada en el
+anfitrión:
+
+| Distribución del teléfono | Llega |
+|---|---|
+| Inglés | `:` |
+| Español | `ñ` |
+
+**El teclado del dispositivo tiene que estar en inglés.** Medido en el aparato.

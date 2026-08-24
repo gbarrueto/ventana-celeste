@@ -19,7 +19,10 @@ $ErrorActionPreference = 'Stop'
 $ide     = Join-Path $env:LOCALAPPDATA 'Programs\Arduino IDE\resources\app\lib\backend\resources'
 $cli     = Join-Path $ide 'arduino-cli.exe'
 $datos   = Join-Path $env:LOCALAPPDATA 'Arduino15'
-$libs    = Join-Path $datos 'libraries'
+# Dos rutas de librerias: las que trae el IDE y las del cuaderno de bocetos,
+# donde vive WebUSB por haberse instalado desde el gestor de librerias.
+$libsIde = Join-Path $datos 'libraries'
+$libsUsr = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Arduino\libraries'
 $avrdude = Join-Path $datos 'packages\arduino\tools\avrdude\8.0.0-arduino1\bin\avrdude.exe'
 $conf    = Join-Path $datos 'packages\arduino\tools\avrdude\8.0.0-arduino1\etc\avrdude.conf'
 $carpeta = Join-Path $PSScriptRoot $Sketch
@@ -32,7 +35,7 @@ $env:ARDUINO_DIRECTORIES_DATA = $datos
 $salida = Join-Path $carpeta 'build'
 
 Write-Host "Compilando $Sketch..." -ForegroundColor Cyan
-& $cli compile --fqbn arduino:avr:leonardo --libraries $libs --output-dir $salida $carpeta
+& $cli compile --fqbn arduino:avr:leonardo --libraries $libsIde --libraries $libsUsr --output-dir $salida $carpeta
 if ($LASTEXITCODE -ne 0) { Write-Host 'Fallo la compilacion.' -ForegroundColor Red; exit 1 }
 
 $hex = Join-Path $salida "$Sketch.ino.hex"
