@@ -144,3 +144,34 @@ Consecuencias:
   arriba del divisor y la fija quede abajo, contra masa.
 - Para recuperar una placa que ya no se reconoce, basta cargarle un sketch que no emita:
   `.\subir.ps1 rescate`.
+
+## Por qué Windows no reconocía las placas
+
+**Causa.** El core AVR 1.8.8 declara USB 2.1 para todo sketch:
+
+```
+cores/arduino/USBCore.h:133   #define USB_VERSION 0x210
+```
+
+pero el core no implementa el descriptor BOS. Declarar 2.1 significa, según la especificación,
+«tengo BOS». Windows lo pide, no lo recibe, y `usbccgp` no arranca: Código 10, dispositivo
+inexistente. Android no lo pide, así que ahí todo funciona.
+
+La librería WebUSB aporta su propio BOS. Por eso ese sketch era el único que Windows aceptaba, en
+cualquiera de las dos placas, y por eso cargarlo «recuperaba» la placa.
+
+**Solución.** Declarar 2.0 y quitar la promesa. La constante está bajo `#ifndef`, así que se
+redefine al compilar sin tocar el core:
+
+```
+--build-property "build.extra_flags={build.usb_flags} -DUSB_VERSION=0x200"
+```
+
+`subir.ps1` ya lo hace. Hay que conservar `{build.usb_flags}` porque de ahí salen VID y PID.
+
+Para el IDE, la misma corrección va en `platform.local.txt` junto a `boards.txt`, o se usa
+`subir.ps1` en su lugar.
+
+**Cómo se llegó.** Lo que lo señaló fue que una placa programada desde otra máquina funcionaba y la
+misma placa programada desde esta, no. El sketch no era la variable; lo era el firmware que genera
+cada instalación. La otra máquina tiene un core anterior, donde la constante valía `0x200`.

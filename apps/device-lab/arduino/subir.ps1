@@ -38,11 +38,24 @@ foreach ($p in @($cli, $avrdude, $conf, $carpeta)) {
   if (-not (Test-Path $p)) { Write-Host "No encuentro: $p" -ForegroundColor Red; exit 1 }
 }
 
+# El core 1.8.8 declara USB 2.1 para todo sketch (USB_VERSION 0x210 en
+# USBCore.h) pero no implementa el descriptor BOS. Declarar 2.1 significa
+# "tengo BOS", asi que Windows lo pide, no lo recibe y usbccgp no arranca:
+# Codigo 10, dispositivo inexistente. Android no lo pide y por eso ahi funciona.
+#
+# La libreria WebUSB aporta su propio BOS, y por eso ese sketch es el unico que
+# Windows acepta con este core.
+#
+# Declarar 2.0 quita la promesa. La constante esta bajo #ifndef, asi que se
+# redefine al compilar sin tocar el core. Se conserva {build.usb_flags} porque
+# de ahi salen VID y PID.
+$flagsUsb = '{build.usb_flags} -DUSB_VERSION=0x200'
+
 $env:ARDUINO_DIRECTORIES_DATA = $datos
 $salida = Join-Path $carpeta 'build'
 
 Write-Host "Compilando $Sketch..." -ForegroundColor Cyan
-& $cli compile --fqbn $Fqbn --libraries $libsIde --libraries $libsUsr --output-dir $salida $carpeta
+& $cli compile --fqbn $Fqbn --libraries $libsIde --libraries $libsUsr --build-property "build.extra_flags=$flagsUsb" --output-dir $salida $carpeta
 if ($LASTEXITCODE -ne 0) { Write-Host 'Fallo la compilacion.' -ForegroundColor Red; exit 1 }
 
 $hex = Join-Path $salida "$Sketch.ino.hex"
