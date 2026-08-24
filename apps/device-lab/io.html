@@ -53,6 +53,16 @@
   </div>
 
   <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">DESCRIPTORES USB</h2>
+    <div class="muted" style="margin-bottom:6px">
+      Lee los descriptores sin reclamar ninguna interfaz, asi que sirve para cualquier sketch.
+      Para comparar que declara cada uno cuando Windows acepta o rechaza la placa.
+    </div>
+    <button id="bDesc">Leer descriptores</button>
+    <pre id="descOut" style="margin:8px 0 0;white-space:pre-wrap;font-size:11px">—</pre>
+  </div>
+
+  <div class="card">
     <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">TECLADO HID (ARDUINO)</h2>
     <div class="muted" style="margin-bottom:6px">
       Sin permisos ni emparejamiento: la placa teclea. Enchufa el Leonardo con el sketch
@@ -303,6 +313,52 @@ if ('usb' in navigator) {
   });
   revisarAutorizados();
 }
+
+// --- Volcado de descriptores -------------------------------------------
+// Lee lo que la placa declara, sin reclamar ninguna interfaz, asi que funciona
+// con cualquier sketch. La comparacion entre un sketch que Windows acepta y uno
+// que rechaza es lo que senala la diferencia.
+//
+// El numero de serie importa especialmente: Windows lo usa como identidad del
+// dispositivo, y un sketch sin modulos PluggableUSB devuelve una cadena vacia.
+$('bDesc').onclick = async () => {
+  const out = $('descOut');
+  if (!('usb' in navigator)) { out.textContent = 'WebUSB no disponible.'; return; }
+  let dev = null;
+  try {
+    dev = await navigator.usb.requestDevice({ filters: [] });
+    const L = [];
+    L.push(`fabricante : ${dev.manufacturerName ?? '(sin dato)'}`);
+    L.push(`producto   : ${dev.productName ?? '(sin dato)'}`);
+    const serie = dev.serialNumber;
+    L.push(`serie      : ${serie === undefined ? '(no declara)' : serie === '' ? '(CADENA VACIA)' : '"' + serie + '"'}`);
+    L.push(`vid:pid    : ${dev.vendorId.toString(16).padStart(4, '0')}:${dev.productId.toString(16).padStart(4, '0')}`);
+    // bcdUSB: 2.1 significa que hay descriptor BOS, que es lo que agrega WebUSB.
+    L.push(`USB        : ${dev.usbVersionMajor}.${dev.usbVersionMinor}.${dev.usbVersionSubminor}`);
+    L.push(`revision   : ${dev.deviceVersionMajor}.${dev.deviceVersionMinor}.${dev.deviceVersionSubminor}`);
+    L.push(`clase disp : ${dev.deviceClass}/${dev.deviceSubclass}/${dev.deviceProtocol}` +
+           (dev.deviceClass === 0xEF ? '  (asociacion de interfaces)' : ''));
+    L.push(`configs    : ${dev.configurations.length}`);
+
+    await dev.open();
+    if (dev.configuration === null) await dev.selectConfiguration(1);
+    for (const cfg of dev.configurations) {
+      L.push(`config ${cfg.configurationValue}: ${cfg.interfaces.length} interfaces`);
+      for (const it of cfg.interfaces) {
+        for (const alt of it.alternates) {
+          const eps = alt.endpoints.map((e) => `${e.direction}/${e.type}/${e.endpointNumber}`).join(' ');
+          L.push(`  iface ${it.interfaceNumber} clase ${alt.interfaceClass}/${alt.interfaceSubclass}/${alt.interfaceProtocol}` +
+                 (eps ? `  ${eps}` : '  (sin endpoints)'));
+        }
+      }
+    }
+    out.textContent = L.join('\n');
+  } catch (e) {
+    out.textContent = 'Error: ' + e.name + ' — ' + e.message;
+  } finally {
+    try { await dev?.close(); } catch { /* puede no estar abierto */ }
+  }
+};
 
 // --- Sonda de teclado HID -----------------------------------------------
 // La placa con el sketch teclado_mediado escribe una linea por lectura. Aca no
