@@ -12,7 +12,14 @@
 # Pasos: desenchufa la placa, ejecuta esto, y cuando lo pida enchufala y pulsa
 # reset DOS VECES seguidas, rapido.
 
-param([string]$Sketch = 'teclado_mediado')
+param(
+  [string]$Sketch = 'teclado_mediado',
+  # Cambiar la definicion de placa cambia el PID que declara el dispositivo, y con
+  # eso Windows la trata como hardware nuevo, sin la cache del par VID/PID viejo.
+  # arduino:avr:micro declara 8037 en vez del 8036 del Leonardo. Mismo micro y
+  # mismo gestor de arranque, asi que la carga funciona igual.
+  [string]$Fqbn = 'arduino:avr:leonardo'
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -35,7 +42,7 @@ $env:ARDUINO_DIRECTORIES_DATA = $datos
 $salida = Join-Path $carpeta 'build'
 
 Write-Host "Compilando $Sketch..." -ForegroundColor Cyan
-& $cli compile --fqbn arduino:avr:leonardo --libraries $libsIde --libraries $libsUsr --output-dir $salida $carpeta
+& $cli compile --fqbn $Fqbn --libraries $libsIde --libraries $libsUsr --output-dir $salida $carpeta
 if ($LASTEXITCODE -ne 0) { Write-Host 'Fallo la compilacion.' -ForegroundColor Red; exit 1 }
 
 $hex = Join-Path $salida "$Sketch.ino.hex"
