@@ -44,3 +44,32 @@ librerías.
 `teclado_mediado` tiene un pin de seguridad: con D4 puenteado a GND no teclea
 nada, y la placa se programa como cualquier otra. El puente es la vía normal;
 este script es para cuando ya no hay puente que poner.
+
+## Si Windows sigue sin reconocer la placa
+
+Sintoma: Codigo 10 en el administrador de dispositivos, `STATUS_NO_SUCH_DEVICE`, y el telefono
+en cambio si la reconoce.
+
+Windows enlaza un controlador al par (VID/PID, identidad) y lo cachea. La identidad es el numero
+de serie cuando el dispositivo lo reporta, y la ruta del puerto cuando no:
+
+| Sketch | Modulos PluggableUSB | Numero de serie | Se presenta como |
+|---|---|---|---|
+| `webusb_potenciometro` | WebUSB | `WUART` | Compuesto |
+| `teclado_mediado` | Keyboard | `HIDPC` | Compuesto |
+| `rescate` | ninguno | sin serie | CDC simple |
+
+Al pasar de un sketch compuesto a uno simple en el mismo puerto, Windows carga el padre compuesto
+sobre un dispositivo que ya no lo es y falla. La placa esta sana.
+
+```powershell
+# consola de administrador
+powershell -ExecutionPolicy Bypass -File limpiar-usb.ps1
+```
+
+Borra los nodos guardados, incluidos los fantasmas de conexiones anteriores. Despues hay que
+desenchufar la placa y volver a enchufarla para que Windows la enumere desde cero.
+
+El puente de seguridad de `teclado_mediado` no sirve para esto: el objeto `Keyboard` se construye
+antes de `setup()` y registra la interfaz HID ahi mismo, asi que el puente impide teclear pero no
+cambia el descriptor.
