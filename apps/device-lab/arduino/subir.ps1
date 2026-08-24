@@ -38,18 +38,25 @@ foreach ($p in @($cli, $avrdude, $conf, $carpeta)) {
   if (-not (Test-Path $p)) { Write-Host "No encuentro: $p" -ForegroundColor Red; exit 1 }
 }
 
-# El core 1.8.8 declara USB 2.1 para todo sketch (USB_VERSION 0x210 en
-# USBCore.h) pero no implementa el descriptor BOS. Declarar 2.1 significa
-# "tengo BOS", asi que Windows lo pide, no lo recibe y usbccgp no arranca:
-# Codigo 10, dispositivo inexistente. Android no lo pide y por eso ahi funciona.
+# La version de USB que declara el dispositivo tiene que coincidir con lo que el
+# sketch realmente entrega:
 #
-# La libreria WebUSB aporta su propio BOS, y por eso ese sketch es el unico que
-# Windows acepta con este core.
+#   con libreria WebUSB  -> aporta descriptor BOS  -> 2.1
+#   cualquier otro       -> no aporta BOS          -> 2.0
 #
-# Declarar 2.0 quita la promesa. La constante esta bajo #ifndef, asi que se
-# redefine al compilar sin tocar el core. Se conserva {build.usb_flags} porque
-# de ahi salen VID y PID.
-$flagsUsb = '{build.usb_flags} -DUSB_VERSION=0x200'
+# Declarar 2.1 sin entregar BOS hace que Windows lo pida, no lo reciba, y que
+# usbccgp no arranque: Codigo 10. Android no lo pide y no se entera.
+#
+# Las instrucciones de instalacion de la libreria WebUSB piden editar USBCore.h y
+# poner 0x210. Eso lo deja global, o sea que TODOS los sketches pasan a prometer
+# un BOS que no tienen. De ahi venia el problema.
+#
+# Se decide por sketch en vez de por instalacion. La constante esta bajo #ifndef,
+# asi que esto gana sin tocar el core, y da igual como haya quedado editado.
+$usaWebUsb = Select-String -Path (Join-Path $carpeta '*.ino') -Pattern 'WebUSB\.h' -Quiet
+$usbVersion = if ($usaWebUsb) { '0x210' } else { '0x200' }
+$flagsUsb = "{build.usb_flags} -DUSB_VERSION=$usbVersion"
+Write-Host "USB $usbVersion ($(if ($usaWebUsb) { 'el sketch usa WebUSB' } else { 'sin WebUSB' }))" -ForegroundColor DarkGray
 
 $env:ARDUINO_DIRECTORIES_DATA = $datos
 $salida = Join-Path $carpeta 'build'

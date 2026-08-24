@@ -145,33 +145,42 @@ Consecuencias:
 - Para recuperar una placa que ya no se reconoce, basta cargarle un sketch que no emita:
   `.\subir.ps1 rescate`.
 
-## Por qué Windows no reconocía las placas
+## Versión de USB declarada: tiene que coincidir con el sketch
 
-**Causa.** El core AVR 1.8.8 declara USB 2.1 para todo sketch:
+La versión que el dispositivo declara en su descriptor debe corresponder con lo que el sketch
+realmente entrega:
 
-```
-cores/arduino/USBCore.h:133   #define USB_VERSION 0x210
-```
+| Sketch | Aporta descriptor BOS | Debe declarar |
+|---|---|---|
+| Con librería WebUSB | sí | 2.1 (`0x210`) |
+| Cualquier otro | no | 2.0 (`0x200`) |
 
-pero el core no implementa el descriptor BOS. Declarar 2.1 significa, según la especificación,
-«tengo BOS». Windows lo pide, no lo recibe, y `usbccgp` no arranca: Código 10, dispositivo
-inexistente. Android no lo pide, así que ahí todo funciona.
+Declarar 2.1 significa, según la especificación, «tengo descriptor BOS». Windows lo pide; si no
+llega, `usbccgp` no arranca y el dispositivo queda con Código 10, «se ha especificado un dispositivo
+inexistente». Android no lo pide, así que ahí el síntoma no aparece.
 
-La librería WebUSB aporta su propio BOS. Por eso ese sketch era el único que Windows aceptaba, en
-cualquiera de las dos placas, y por eso cargarlo «recuperaba» la placa.
+**El error a evitar.** Las instrucciones de instalación de la librería WebUSB piden editar
+`cores/arduino/USBCore.h` y poner `USB_VERSION` en `0x210`. Eso lo deja global: a partir de ahí
+**todos** los sketches de esa instalación prometen un BOS que no tienen, y ninguno funciona en
+Windows salvo el de WebUSB. La placa sigue funcionando en Android, lo cual hace el diagnóstico
+confuso.
 
-**Solución.** Declarar 2.0 y quitar la promesa. La constante está bajo `#ifndef`, así que se
-redefine al compilar sin tocar el core:
+**Cómo se resuelve.** La constante está bajo `#ifndef`, así que se decide por sketch al compilar en
+lugar de por instalación:
 
 ```
 --build-property "build.extra_flags={build.usb_flags} -DUSB_VERSION=0x200"
 ```
 
-`subir.ps1` ya lo hace. Hay que conservar `{build.usb_flags}` porque de ahí salen VID y PID.
+`subir.ps1` lo hace solo: busca `WebUSB.h` en el sketch y elige `0x210` o `0x200`. Con eso da igual
+cómo haya quedado editado el core.
 
-Para el IDE, la misma corrección va en `platform.local.txt` junto a `boards.txt`, o se usa
-`subir.ps1` en su lugar.
+Hay que conservar `{build.usb_flags}`, porque de ahí salen VID y PID.
 
-**Cómo se llegó.** Lo que lo señaló fue que una placa programada desde otra máquina funcionaba y la
-misma placa programada desde esta, no. El sketch no era la variable; lo era el firmware que genera
-cada instalación. La otra máquina tiene un core anterior, donde la constante valía `0x200`.
+**Si se usa el IDE**, conviene devolver `USBCore.h` a `0x200` y poner la excepción para WebUSB en un
+`platform.local.txt` junto a `boards.txt`. Editar el core deja el problema latente para cualquier
+otro proyecto de esa instalación.
+
+**Cómo se llegó.** Lo señaló que una placa programada desde otra máquina funcionara y la misma placa
+programada desde esta, no. El sketch no era la variable: lo era el firmware que genera cada
+instalación, y la diferencia estaba en esa edición del core.
