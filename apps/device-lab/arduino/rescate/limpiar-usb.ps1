@@ -37,5 +37,28 @@ foreach ($n in $nodos) {
 }
 
 Write-Host ''
+Write-Host ''
+Write-Host 'Borrando la cache de descriptores (usbflags)...' -ForegroundColor Yellow
+
+# usbflags cachea, por VID+PID+revision, cosas que Windows aprendio del
+# dispositivo la primera vez. La mas relevante aca es osvc: si soporta
+# descriptores de sistema operativo de Microsoft. La libreria WebUSB los instala,
+# asi que un sketch de WebUSB deja esa marca puesta. Con un sketch posterior que
+# no los provee, Windows los pide igual por el dato cacheado y la enumeracion
+# falla con Codigo 10.
+#
+# pnputil no toca esta clave: por eso borrar los nodos de dispositivo no alcanza.
+$flags = 'HKLM:\SYSTEM\CurrentControlSet\Control\usbflags'
+$claves = Get-ChildItem $flags -ErrorAction SilentlyContinue |
+          Where-Object { $_.PSChildName -like '2341*' }
+if (-not $claves) {
+  Write-Host '  no hay entradas para VID 2341'
+} else {
+  foreach ($k in $claves) {
+    Write-Host ('  quitando ' + $k.PSChildName)
+    Remove-Item $k.PSPath -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+
 Write-Host 'Listo. Desenchufa la placa, espera cinco segundos y vuelve a enchufarla.' -ForegroundColor Green
 Write-Host 'Windows la va a enumerar desde cero, sin el enlace viejo.'

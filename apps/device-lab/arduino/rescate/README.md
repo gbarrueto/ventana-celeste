@@ -73,3 +73,24 @@ desenchufar la placa y volver a enchufarla para que Windows la enumere desde cer
 El puente de seguridad de `teclado_mediado` no sirve para esto: el objeto `Keyboard` se construye
 antes de `setup()` y registra la interfaz HID ahi mismo, asi que el puente impide teclear pero no
 cambia el descriptor.
+### La caché de descriptores
+
+Si tras borrar los nodos el problema sigue, falta una caché que `pnputil` no toca:
+
+```
+HKLM\SYSTEM\CurrentControlSet\Control\usbflags\<VID><PID><revision>
+```
+
+Guarda lo que Windows aprendió del dispositivo la primera vez. El valor `osvc` registra si soporta
+descriptores de sistema operativo de Microsoft, que es algo que la librería WebUSB instala para
+anunciar su URL y pedir `WinUSB`.
+
+Después de correr un sketch de WebUSB, esa marca queda puesta para el par VID/PID. Un sketch
+posterior que no los provee recibe igual la petición, y `usbccgp` —el controlador de dispositivo
+compuesto, que al Leonardo le corresponde porque declara asociación de interfaces— no arranca.
+Resultado: Código 10.
+
+`limpiar-usb.ps1` borra esa clave junto con los nodos.
+
+Que el gestor de arranque funcione mientras el sketch falla encaja: Caterina se declara CDC simple,
+sin asociación de interfaces, así que va directo a `usbser` y nunca pasa por `usbccgp`.
