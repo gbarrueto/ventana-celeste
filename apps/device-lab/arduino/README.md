@@ -117,3 +117,30 @@ anfitrión:
 | Español | `ñ` |
 
 **El teclado del dispositivo tiene que estar en inglés.** Medido en el aparato.
+
+## Entradas al aire y enumeración USB
+
+Medido en las dos placas: **una entrada analógica sin circuito conectado impide que Windows
+reconozca la placa.**
+
+Una entrada sin nada conectado no tiene tensión definida y su lectura salta sola, así que la
+condición de banda muerta se cumple casi en cada vuelta y la placa emite sin parar desde el primer
+instante. Ese caudal durante la ventana de enumeración la rompe, y la placa deja de reconocerse
+hasta que se le carga un sketch que no emita.
+
+| Placa | Sketch | Lee A1 | Emite sin circuito | Windows la reconoce |
+|---|---|---|---|---|
+| 2 | teclado, puente puesto | no emite nada | no | sí |
+| 1 | teclado | sí | ruido de `R` constante | no |
+| 1 | WebUSB | no lee A1 | no | sí |
+
+Android tolera el mismo caudal sin problema, así que el síntoma sólo aparece en el escritorio.
+
+Consecuencias:
+
+- `LEER_OCULAR` en `teclado_mediado` queda en `0` mientras el circuito del ocular no exista.
+- El ocular es removible por diseño, así que su entrada tiene que quedar definida también cuando no
+  hay ocular puesto. La forma que no agrega componentes es que el ocular aporte la resistencia de
+  arriba del divisor y la fija quede abajo, contra masa.
+- Para recuperar una placa que ya no se reconoce, basta cargarle un sketch que no emita:
+  `.\subir.ps1 rescate`.
