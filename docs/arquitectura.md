@@ -41,7 +41,7 @@ Todo lo público sale de `src/index.js`.
 | `sync/` | Bus de mensajes agnóstico de transporte, más los adaptadores de Protobject, WebSocket y nulo. |
 | `time/` | Conversiones MJD y mutación del reloj del motor. |
 | `telescope/` | Óptica: aumento, FOV desde ocular, magnitud límite, escala Bortle. |
-| `io/` | Contrato de conectores de hardware. Implementación de teclado. |
+| `io/` | Contrato de conectores de hardware. Teclado por teclas y por líneas. |
 | `config/` | Carga de config por modo de Vite. |
 | `assets/` | Copia única de los binarios del motor. |
 

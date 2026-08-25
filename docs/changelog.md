@@ -4,6 +4,77 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-24 — El enfocador pasa a teclado
+
+El teléfono del ocular va dentro del tubo y su pantalla no queda accesible cuando se conecta el USB.
+WebUSB exige un gesto del usuario para autorizar el dispositivo, así que ese camino no encaja con el
+montaje. Un Arduino que actúa como teclado no pide permiso ni gesto: funciona desde el instante en
+que se conecta el cable.
+
+### La versión de USB que declara el firmware
+
+Encontrar esto llevó la mayor parte de la sesión, y conviene que quede escrito porque el síntoma
+apunta a cualquier lado menos a la causa.
+
+Windows dejaba de reconocer las placas: dispositivo compuesto con Código 10, «se ha especificado un
+dispositivo inexistente». Ocurría en tres máquinas y con dos placas, con cualquier sketch salvo el de
+WebUSB, y Android nunca tuvo problema.
+
+La causa es una edición del core que piden las instrucciones de instalación de la librería WebUSB:
+poner `USB_VERSION` en `0x210` en `cores/arduino/USBCore.h`. Declarar USB 2.1 significa, según la
+especificación, «tengo descriptor BOS». El core no lo implementa; la librería WebUSB sí. Así que a
+partir de esa edición **todos** los sketches de esa instalación prometen un descriptor que no tienen,
+y el único que cumple es el de WebUSB. Windows pide el descriptor, no lo recibe y `usbccgp` no
+arranca. Android no lo pide, y por eso ahí el síntoma no aparece.
+
+Lo señaló que una placa programada desde otra máquina funcionara y la misma placa programada desde
+esta, no. El sketch no era la variable: lo era el firmware que genera cada instalación.
+
+La versión declarada tiene que coincidir con lo que el sketch entrega, así que se decide por sketch y
+no por instalación. `subir.ps1` busca `WebUSB.h` y elige `0x210` o `0x200`. Hace falta `--clean`:
+`USBCore.cpp` es parte del core, el core compilado se cachea, y sin eso se reutiliza uno armado con
+el valor anterior.
+
+Detalle relacionado: la librería `Keyboard` envía códigos de tecla, no caracteres, así que el
+teclado del dispositivo tiene que estar en distribución inglesa. Con distribución española el
+separador `:` del protocolo llega como `ñ`.
+
+### El enfocador
+
+`createKeyboardLineSource()` en `core` rearma líneas terminadas en Enter a partir de pulsaciones
+sueltas, con el mismo contrato que el resto de los conectores. Deja la fuente intercambiable: el
+código que interpreta el protocolo no sabe de dónde vinieron los bytes.
+
+`focuser.js` pasó de 258 a 166 líneas. Desapareció el ciclo de conexión completo —permisos,
+emparejamiento, reintentos, eventos de conexión, bucle de lectura, selección de interfaz— porque con
+teclado no hay conexión que gestionar. Quedó la lógica del instrumento.
+
+Los tres canales del sketch quedan cableados:
+
+| Canal | Destino |
+|---|---|
+| `P:<0..1023>` | Posición del enfocador, normalizada a 0..1 en el borde |
+| `R:<0..1023>` | Ocular, resuelto a una clave por tramos del ADC |
+| `C:TRUE` / `C:FALSE` | Presencia de la cámara, reflejada al guía |
+
+La cámara se reporta y no se interpreta: qué debe hacer la aplicación cuando está presente todavía no
+está decidido.
+
+`TRAMOS_OCULAR` queda vacío. Sin medir las resistencias reales no se puede clasificar, así que el
+canal avisa «ocular sin clasificar» con el valor crudo en lugar de inventar una clave. Con eso el
+propio instrumento sirve para tomar la medida.
+
+Se eliminó el botón de emparejar del panel.
+
+### Herramientas de placa
+
+- `subir.ps1` compila y carga cualquier sketch por la ventana del gestor de arranque, sin depender
+  del puerto COM ni del IDE.
+- `rescate/` deja una placa muda para poder programarla cuando un sketch de teclado la vuelve
+  inoperable.
+- `device-lab` gana una sonda de teclado, que mide caudal y distribución, y un volcado de
+  descriptores USB.
+
 ## 2026-08-19 — Repaso de pendientes
 
 El backlog sale del repo. Los problemas abiertos se siguen en el gestor de issues, y los documentos
