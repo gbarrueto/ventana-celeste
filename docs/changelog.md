@@ -9,27 +9,27 @@ Orden inverso: lo más reciente arriba.
 Las pruebas en museo fijaron el zoom como rueda continua, así que se retira el mecanismo de la
 primera iteración: niveles discretos de ocular seleccionados por tarjeta.
 
-Se van , , , ,
-, las teclas –, los enganches  y
-, y  junto con , que ya no tenía uso. En el
-panel de depuración se van sus props, ,  —declarados y sin usar— y
+Se van `LENS_FOCAL_LENGTHS`, `currentLensLevel`, `applyLensLevel()`, `triggerLens()`,
+`triggerCardChange()`, las teclas `1`–`8`, los enganches `onDebugSelectLens` y
+`onDebugSimulateCardChange`, y `HUMAN_EYE_FOV` junto con `NO_LENS_BLUR`, que ya no tenía uso. En el
+panel de depuración se van sus props, `lensLevels` y `simulatedCardLevels` —declarados y sin usar— y
 la línea «ID lente».
 
-Queda intacto el camino de zoom continuo, y también la instancia de : la usa
- para derivar la focal del ocular a partir del FOV, que es la dirección
+Queda intacto el camino de zoom continuo, y también la instancia de `Telescope`: la usa
+`updateStellariumFov()` para derivar la focal del ocular a partir del FOV, que es la dirección
 inversa a la que usaban los niveles.
 
 ### El FOV inicial
 
-Salía de  en el arranque, así que quitarlo dejaba la vista con el valor por
+Salía de `applyLensLevel()` en el arranque, así que quitarlo dejaba la vista con el valor por
 defecto del motor. Ahora se declara junto a las demás constantes de FOV, con los mismos dos valores
 que daba la tabla en cada rama.
 
-Al hacerlo apareció que el motor **nunca recibía ese valor**:  tenía las líneas
-de FOV comentadas y  no lo fijaba, así que la aplicación creía un FOV y el motor tenía
-otro. La asignación va ahora dentro de , y no en el arranque, porque  no se
+Al hacerlo apareció que el motor **nunca recibía ese valor**: `applyLensLevel(0)` tenía las líneas
+de FOV comentadas y `onReady` no lo fijaba, así que la aplicación creía un FOV y el motor tenía
+otro. La asignación va ahora dentro de `onReady`, y no en el arranque, porque `initEngine()` no se
 espera: allí el motor todavía no existe y la asignación se perdía por la guarda de
-.
+`updateStellariumFov()`.
 
 ## 2026-08-24 — El enfocador pasa a teclado
 
