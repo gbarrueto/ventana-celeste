@@ -118,33 +118,6 @@ anfitrión:
 
 **El teclado del dispositivo tiene que estar en inglés.** Medido en el aparato.
 
-## Entradas al aire y enumeración USB
-
-Medido en las dos placas: **una entrada analógica sin circuito conectado impide que Windows
-reconozca la placa.**
-
-Una entrada sin nada conectado no tiene tensión definida y su lectura salta sola, así que la
-condición de banda muerta se cumple casi en cada vuelta y la placa emite sin parar desde el primer
-instante. Ese caudal durante la ventana de enumeración la rompe, y la placa deja de reconocerse
-hasta que se le carga un sketch que no emita.
-
-| Placa | Sketch | Lee A1 | Emite sin circuito | Windows la reconoce |
-|---|---|---|---|---|
-| 2 | teclado, puente puesto | no emite nada | no | sí |
-| 1 | teclado | sí | ruido de `R` constante | no |
-| 1 | WebUSB | no lee A1 | no | sí |
-
-Android tolera el mismo caudal sin problema, así que el síntoma sólo aparece en el escritorio.
-
-Consecuencias:
-
-- `LEER_OCULAR` en `teclado_mediado` queda en `0` mientras el circuito del ocular no exista.
-- El ocular es removible por diseño, así que su entrada tiene que quedar definida también cuando no
-  hay ocular puesto. La forma que no agrega componentes es que el ocular aporte la resistencia de
-  arriba del divisor y la fija quede abajo, contra masa.
-- Para recuperar una placa que ya no se reconoce, basta cargarle un sketch que no emita:
-  `.\subir.ps1 rescate`.
-
 ## Versión de USB declarada: tiene que coincidir con el sketch
 
 La versión que el dispositivo declara en su descriptor debe corresponder con lo que el sketch
@@ -184,3 +157,29 @@ otro proyecto de esa instalación.
 **Cómo se llegó.** Lo señaló que una placa programada desde otra máquina funcionara y la misma placa
 programada desde esta, no. El sketch no era la variable: lo era el firmware que genera cada
 instalación, y la diferencia estaba en esa edición del core.
+
+## Entradas sin nada conectado
+
+Una entrada analógica al aire no tiene tensión definida: su lectura salta sola, la banda muerta se
+cumple en casi cada vuelta y la placa emite sin parar. Eso satura el canal HID y llena de ruido al
+anfitrión.
+
+El sketch lo resuelve solo, sin puentes ni configuración. Antes de emitir por un canal comprueba si
+hay algo conectado:
+
+1. Fuerza el pin a masa, lo suelta y mide enseguida.
+2. Fuerza el pin a 5 V, lo suelta y mide enseguida.
+
+Una fuente de baja impedancia —un potenciómetro, un divisor— recupera su tensión en microsegundos,
+así que las dos medidas convergen. Un pin al aire conserva la carga que se le dejó y las dos medidas
+quedan en extremos opuestos. Si difieren más que `UMBRAL_CONEXION`, el canal se considera ausente y
+no emite.
+
+La comprobación se repite cada dos segundos, no sólo al arrancar, porque **el ocular se cambia
+durante el uso**: hay que enterarse tanto de que apareció como de que se fue. Al reaparecer un canal
+se olvida su último valor, para que la primera lectura no quede tapada por la banda muerta.
+
+`UMBRAL_CONEXION` puede necesitar ajuste según la impedancia del circuito real.
+
+Esto es distinto del **pin de seguridad** de D4, que silencia la placa entera para poder
+programarla. Uno es automático y por canal; el otro es manual y global.

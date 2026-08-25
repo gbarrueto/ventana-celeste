@@ -61,8 +61,11 @@ Write-Host "USB $usbVersion ($(if ($usaWebUsb) { 'el sketch usa WebUSB' } else {
 $env:ARDUINO_DIRECTORIES_DATA = $datos
 $salida = Join-Path $carpeta 'build'
 
+# --clean fuerza reconstruir el core. USBCore.cpp es parte del core, y el core
+# compilado se cachea: sin esto se reutiliza un core.a armado con el valor
+# anterior y la redefinicion de USB_VERSION no llega a tener efecto.
 Write-Host "Compilando $Sketch..." -ForegroundColor Cyan
-& $cli compile --fqbn $Fqbn --libraries $libsIde --libraries $libsUsr --build-property "build.extra_flags=$flagsUsb" --output-dir $salida $carpeta
+& $cli compile --fqbn $Fqbn --libraries $libsIde --libraries $libsUsr --build-property "build.extra_flags=$flagsUsb" --clean --output-dir $salida $carpeta
 if ($LASTEXITCODE -ne 0) { Write-Host 'Fallo la compilacion.' -ForegroundColor Red; exit 1 }
 
 $hex = Join-Path $salida "$Sketch.ino.hex"

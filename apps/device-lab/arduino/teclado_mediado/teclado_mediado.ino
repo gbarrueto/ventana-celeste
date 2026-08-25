@@ -11,23 +11,15 @@
  * Keyboard envía códigos de tecla, no caracteres, así que con distribución
  * española el separador ':' llega como 'ñ'.
  *
- * ENTRADAS AL AIRE. Una entrada analógica sin nada conectado no tiene una
- * tensión definida y su lectura salta sola, así que la placa emite sin parar.
- * Medido: ese caudal durante la ventana de enumeración impide que Windows
- * reconozca la placa, y deja de reconocerla hasta que se le carga un sketch que
- * no emita. Por eso la lectura del ocular está apagada mientras su circuito no
- * exista.
+ * Este sketch declara USB 2.0. Si alguna vez se compila con el core editado a
+ * 2.1 —lo que piden las instrucciones de la librería WebUSB— Windows deja de
+ * reconocer la placa. Ver el README.
  *
  * PIN DE SEGURIDAD. Con D4 puenteado a GND la placa no teclea nada, lo cual
- * permite programarla como cualquier otra. Si aun así quedó inutilizable, está
- * ../rescate/ con el sketch limpio y el script que lo carga.
+ * permite programarla como cualquier otra.
  */
 
 #include <Keyboard.h>
-
-// Poner en 1 cuando el circuito del ocular esté armado. Con la entrada al aire,
-// A1 sólo produce ruido, y ese ruido es suficiente para romper la enumeración.
-#define LEER_OCULAR 0
 
 const int PIN_POT = A0;
 const int PIN_RES = A1;
@@ -38,13 +30,21 @@ const int PIN_SEGURO = 4;
 // una banda muerta chica llena el canal con el temblor propio del conversor.
 const int BANDA_MUERTA = 8;
 
+// Diferencia máxima entre las dos sondas para dar un canal por conectado. Puede
+// necesitar ajuste según la impedancia del circuito real.
+const int UMBRAL_CONEXION = 60;
+
 const unsigned long ESPERA_INICIAL_MS = 5000;
 const unsigned long PERIODO_MS = 20;
+const unsigned long CHEQUEO_MS = 2000;
 
 int ultimoPot = -1;
 int ultimoRes = -1;
 bool ultimaCam = false;
 bool tecleando = false;
+bool hayPot = false;
+bool hayRes = false;
+unsigned long ultimoChequeo = 0;
 
 // El conversor es uno solo, con un multiplexor y un condensador que retiene la
 // muestra. Al cambiar de pin, ese condensador arrastra parte de la lectura
@@ -53,6 +53,49 @@ bool tecleando = false;
 int leerAnalogico(int pin) {
   analogRead(pin);
   return analogRead(pin);
+}
+
+// Fuerza el pin a un extremo, lo suelta y mide enseguida.
+int leerTrasForzar(int pin, bool alto) {
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, alto ? HIGH : LOW);
+  delayMicroseconds(200);
+  pinMode(pin, INPUT);
+  delayMicroseconds(200);
+  return analogRead(pin);
+}
+
+// ¿Hay algo conectado a esta entrada?
+//
+// Una entrada al aire no tiene tensión definida: su lectura salta sola y la placa
+// emite sin parar, que es ruido para el anfitrión y desgaste del canal HID.
+//
+// La prueba: forzar el pin a masa, soltarlo y medir; después forzarlo a 5 V,
+// soltarlo y medir. Una fuente de baja impedancia —un potenciómetro, un divisor—
+// recupera su tensión en microsegundos, así que las dos medidas convergen. Un pin
+// al aire conserva la carga que se le dejó, así que las dos medidas quedan en
+// extremos opuestos.
+//
+// Forzar brevemente un pin conectado a un divisor hace circular una corriente
+// pequeña durante 200 us. Con resistencias de kilohmios es del orden del
+// miliamperio y no molesta.
+bool canalConectado(int pin) {
+  int desdeBajo = leerTrasForzar(pin, false);
+  int desdeAlto = leerTrasForzar(pin, true);
+  return abs(desdeAlto - desdeBajo) < UMBRAL_CONEXION;
+}
+
+// Se revisa de forma periódica y no sólo al arrancar, porque el ocular se cambia
+// durante el uso: hay que enterarse tanto de que apareció como de que se fue.
+void revisarCanales() {
+  bool antesPot = hayPot;
+  bool antesRes = hayRes;
+  hayPot = canalConectado(PIN_POT);
+  hayRes = canalConectado(PIN_RES);
+  // Al reaparecer un canal se olvida su último valor, para que la primera lectura
+  // se emita en lugar de quedar tapada por la banda muerta.
+  if (hayPot && !antesPot) ultimoPot = -1;
+  if (hayRes && !antesRes) ultimoRes = -1;
 }
 
 void setup() {
@@ -67,6 +110,9 @@ void setup() {
   // sesión por un contacto flojo.
   tecleando = digitalRead(PIN_SEGURO) == HIGH;
   if (tecleando) Keyboard.begin();
+
+  revisarCanales();
+  ultimoChequeo = millis();
 }
 
 void loop() {
@@ -79,23 +125,30 @@ void loop() {
     return;
   }
 
-  int pot = leerAnalogico(PIN_POT);
-  if (abs(pot - ultimoPot) > BANDA_MUERTA) {
-    Keyboard.print("P:");
-    Keyboard.print(pot);
-    Keyboard.write(KEY_RETURN);
-    ultimoPot = pot;
+  if (millis() - ultimoChequeo >= CHEQUEO_MS) {
+    revisarCanales();
+    ultimoChequeo = millis();
   }
 
-#if LEER_OCULAR
-  int res = leerAnalogico(PIN_RES);
-  if (abs(res - ultimoRes) > BANDA_MUERTA) {
-    Keyboard.print("R:");
-    Keyboard.print(res);
-    Keyboard.write(KEY_RETURN);
-    ultimoRes = res;
+  if (hayPot) {
+    int pot = leerAnalogico(PIN_POT);
+    if (abs(pot - ultimoPot) > BANDA_MUERTA) {
+      Keyboard.print("P:");
+      Keyboard.print(pot);
+      Keyboard.write(KEY_RETURN);
+      ultimoPot = pot;
+    }
   }
-#endif
+
+  if (hayRes) {
+    int res = leerAnalogico(PIN_RES);
+    if (abs(res - ultimoRes) > BANDA_MUERTA) {
+      Keyboard.print("R:");
+      Keyboard.print(res);
+      Keyboard.write(KEY_RETURN);
+      ultimoRes = res;
+    }
+  }
 
   bool cam = digitalRead(PIN_CAM) == LOW;
   if (cam != ultimaCam) {

@@ -45,52 +45,8 @@ librerías.
 nada, y la placa se programa como cualquier otra. El puente es la vía normal;
 este script es para cuando ya no hay puente que poner.
 
-## Si Windows sigue sin reconocer la placa
+## Nota
 
-Sintoma: Codigo 10 en el administrador de dispositivos, `STATUS_NO_SUCH_DEVICE`, y el telefono
-en cambio si la reconoce.
-
-Windows enlaza un controlador al par (VID/PID, identidad) y lo cachea. La identidad es el numero
-de serie cuando el dispositivo lo reporta, y la ruta del puerto cuando no:
-
-| Sketch | Modulos PluggableUSB | Numero de serie | Se presenta como |
-|---|---|---|---|
-| `webusb_potenciometro` | WebUSB | `WUART` | Compuesto |
-| `teclado_mediado` | Keyboard | `HIDPC` | Compuesto |
-| `rescate` | ninguno | sin serie | CDC simple |
-
-Al pasar de un sketch compuesto a uno simple en el mismo puerto, Windows carga el padre compuesto
-sobre un dispositivo que ya no lo es y falla. La placa esta sana.
-
-```powershell
-# consola de administrador
-powershell -ExecutionPolicy Bypass -File limpiar-usb.ps1
-```
-
-Borra los nodos guardados, incluidos los fantasmas de conexiones anteriores. Despues hay que
-desenchufar la placa y volver a enchufarla para que Windows la enumere desde cero.
-
-El puente de seguridad de `teclado_mediado` no sirve para esto: el objeto `Keyboard` se construye
-antes de `setup()` y registra la interfaz HID ahi mismo, asi que el puente impide teclear pero no
-cambia el descriptor.
-### La caché de descriptores
-
-Si tras borrar los nodos el problema sigue, falta una caché que `pnputil` no toca:
-
-```
-HKLM\SYSTEM\CurrentControlSet\Control\usbflags\<VID><PID><revision>
-```
-
-Guarda lo que Windows aprendió del dispositivo la primera vez. El valor `osvc` registra si soporta
-descriptores de sistema operativo de Microsoft, que es algo que la librería WebUSB instala para
-anunciar su URL y pedir `WinUSB`.
-
-Después de correr un sketch de WebUSB, esa marca queda puesta para el par VID/PID. Un sketch
-posterior que no los provee recibe igual la petición, y `usbccgp` —el controlador de dispositivo
-compuesto, que al Leonardo le corresponde porque declara asociación de interfaces— no arranca.
-Resultado: Código 10.
-
-`limpiar-usb.ps1` borra esa clave junto con los nodos.
-
-Que el gestor de arranque funcione mientras el sketch falla encaja: Caterina se declara CDC simple,
-sin asociación de interfaces, así que va directo a `usbser` y nunca pasa por `usbccgp`.
+El motivo por el que Windows dejaba de reconocer las placas resultó ser la versión de USB que
+declara el firmware. Está explicado en [](../README.md). Este sketch de rescate se
+conserva por si alguna vez hace falta dejar una placa muda para poder programarla.
