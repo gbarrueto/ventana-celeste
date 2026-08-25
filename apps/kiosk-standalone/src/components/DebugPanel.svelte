@@ -139,30 +139,6 @@
     margin-bottom: 8px;
   }
 
-  .lens-grid {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(32px, 1fr));
-    gap: 6px;
-  }
-
-  .card-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .card-remove-btn {
-    width: 100%;
-    margin-top: 8px;
-    background: rgba(255, 80, 80, 0.14);
-    border-color: rgba(255, 80, 80, 0.5);
-  }
-
-  .card-remove-btn:hover {
-    background: rgba(255, 80, 80, 0.3);
-  }
-
   button {
     background: rgba(0, 212, 255, 0.14);
     border: 1px solid rgba(0, 212, 255, 0.5);
