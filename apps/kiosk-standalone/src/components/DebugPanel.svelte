@@ -1,20 +1,16 @@
 <script>
   export let debug = {};
   export let onRecalibrate = () => {};
-  export let onSelectLens = () => {};
   export let onZoomIn = () => {};
   export let onZoomOut = () => {};
   export let onToggleVertical = () => {};
   export let onCancelCalibration = () => {};
-  export let onSimulateCardChange = () => {};
   export let invertVertical = true;
   export let onAddHour;
   export let onSubHour;
 
   const f = (n) => n.toFixed(2);
 
-  const lensLevels = [1, 2, 3, 4, 5, 6, 7, 8];
-  const simulatedCardLevels = [1, 2, 3, 4];
 
   function fmt(value, digits = 4) {
     return Number.isFinite(value) ? value.toFixed(digits) : "-";
@@ -76,7 +72,6 @@
     <h4>FOV</h4>
     <p><strong>Actual:</strong> {fmt(debug.fovRad)} rad | {fmt(debug.fovDeg, 2)} deg</p>
     <p><strong>Target log:</strong> {fmt(debug.targetLogFov)}</p>
-    <p><strong>ID lente:</strong> {debug.currentLensLevel ?? "-"}</p>
   </section>
 
   <section>

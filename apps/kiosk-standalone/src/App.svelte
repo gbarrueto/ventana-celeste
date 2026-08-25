@@ -16,8 +16,6 @@
   let overlayEl;
   let onDebugRecalibrate = () => {};
   let onDebugCancelCalibration = () => {};
-  let onDebugSelectLens = () => {};
-  let onDebugSimulateCardChange = () => {};
   let onDebugZoomIn = () => {};
   let onDebugZoomOut = () => {};
   let onDebugToggleVertical = () => {};
@@ -79,8 +77,7 @@
       coords: { yaw: 0, pitch: 0, yawDeg: 0, pitchDeg: 0 },
       fovRad: 0,
       fovDeg: 0,
-      targetLogFov: 0,
-      currentLensLevel: 0,
+      targetLogFov: 0,
       telescope: telescopeSnapshot(),
       engineTime: getEngineTime(),
       env: "-",
@@ -128,28 +125,17 @@
     const MAX_FOV = 3.228859;
     const MIN_FOV = 0.000005;
     const FOV_STEP = 0.1;
-    const LENS_FOCAL_LENGTHS = {
-      1: "eye",
-      2: 40,
-      3: 6,
-      4: 0.5,
-      5: "eye",
-      6: 40,
-      7: 6,
-      8: 0.5,
-    };
-    const NO_LENS_BLUR = 5;
-    const HUMAN_EYE_FOV = Math.PI / 3;
-
-    let currentLensLevel = 0;
-    let currentFov = MAX_FOV;
-    let logFov = Math.log(MAX_FOV);
+    // El FOV inicial salia de la tabla de oculares, via applyLensLevel(). Sin
+    // niveles hay que declararlo aca. Los dos valores son los que daba esa
+    // tabla en cada rama, para no cambiar de comportamiento al limpiar.
+    const FOV_INICIAL = CALIBRATE_ON_START ? MAX_FOV : Math.PI / 3;
+    let currentFov = FOV_INICIAL;
+    let logFov = Math.log(FOV_INICIAL);
 
     setDebug({
       fovRad: currentFov,
       fovDeg: toDegrees(currentFov),
-      targetLogFov: logFov,
-      currentLensLevel,
+      targetLogFov: logFov,
     });
 
     let warnedInvalidView = false;
@@ -207,58 +193,10 @@
           core.star_relative_scale = 1.0;
           core.stars.label_amount = 3.0;
           core.exposure_scale = 1;
+          // El FOV se fija aca y no en el arranque: initEngine() no se espera, asi
+          // que alli el motor todavia no existe y la asignacion se perdia.
+          core.fov = currentFov;
         },
-      });
-    }
-
-    function applyLensLevel(level) {
-      currentLensLevel = level;
-
-      if (level === 0) {
-        // currentFov = MAX_FOV;
-        // logFov = Math.log(currentFov);
-        // updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      const lens = LENS_FOCAL_LENGTHS[level];
-
-      if (lens === "eye") {
-        currentFov = HUMAN_EYE_FOV;
-        logFov = Math.log(currentFov);
-        updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      if (!lens) return;
-
-      telescope.setEyepieceFocalLength(lens);
-      const fov = telescope.fovFromEyepiece(lens);
-      currentFov = fov;
-      logFov = Math.log(fov);
-      updateStellariumFov({ fov });
-      setDebug({
-        currentLensLevel,
-        targetLogFov: logFov,
-        fovRad: currentFov,
-        fovDeg: toDegrees(currentFov),
-        telescope: telescopeSnapshot(),
       });
     }
 
@@ -326,16 +264,6 @@
       orientation.cancelCalibration();
     }
 
-    function triggerLens(level) {
-      applyLensLevel(level);
-      targetLogFov = logFov;
-      setDebug({ targetLogFov });
-    }
-
-    function triggerCardChange(level) {
-      triggerLens(level);
-    }
-
     function triggerZoomIn() {
       applyZoomDelta(-FOV_STEP);
     }
@@ -366,23 +294,13 @@
 
     onDebugRecalibrate = triggerRecalibration;
     onDebugCancelCalibration = triggerCancelCalibration;
-    onDebugSelectLens = triggerLens;
-    onDebugSimulateCardChange = triggerCardChange;
     onDebugZoomIn = triggerZoomIn;
     onDebugZoomOut = triggerZoomOut;
     onDebugToggleVertical = toggleVerticalMotion;
 
     const keyboardConnector = createKeyboardConnector({
       bindings: {
-        c: () => triggerRecalibration(),
-        1: () => triggerLens(1),
-        2: () => triggerLens(2),
-        3: () => triggerLens(3),
-        4: () => triggerLens(4),
-        5: () => triggerLens(5),
-        6: () => triggerLens(6),
-        7: () => triggerLens(7),
-        8: () => triggerLens(8),
+        c: () => triggerRecalibration(),
         "+": () => triggerZoomIn(),
         "=": () => triggerZoomIn(),
         "-": () => triggerZoomOut(),
@@ -396,8 +314,6 @@
     });
 
     orientation.start( CALIBRATE_ON_START );
-    const initialLensLevel = appConfig.calibrateOnStart ? 0 : 1;
-    applyLensLevel(initialLensLevel);
 
     const timeUpdateInterval = setInterval(() => {
       setDebug({ engineTime: getEngineTime() });
@@ -410,8 +326,6 @@
       lastZoomMotion = null;
       onDebugRecalibrate = () => {};
       onDebugCancelCalibration = () => {};
-      onDebugSelectLens = () => {};
-      onDebugSimulateCardChange = () => {};
       onDebugZoomIn = () => {};
       onDebugZoomOut = () => {};
       onDebugToggleVertical = () => {};
@@ -451,8 +365,6 @@
       invertVertical={invertVerticalMotion}
       onRecalibrate={onDebugRecalibrate}
       onCancelCalibration={onDebugCancelCalibration}
-      onSelectLens={onDebugSelectLens}
-      onSimulateCardChange={onDebugSimulateCardChange}
       onZoomIn={onDebugZoomIn}
       onZoomOut={onDebugZoomOut}
       onToggleVertical={onDebugToggleVertical}
