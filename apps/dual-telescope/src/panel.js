@@ -67,7 +67,7 @@ function guardar(role, ajustes) {
   try { localStorage.setItem(clave(role), JSON.stringify(ajustes)); } catch { /* modo privado */ }
 }
 
-export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, onRecalibrar }) {
+export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecalibrar }) {
   const esOcular = role === 'ocular';
 
   const capa = document.createElement('div');
@@ -227,14 +227,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   estado.className = 'op-estado';
   caja.appendChild(estado);
 
-  // El enfocador vive en el ocular, que es donde está el hardware.
-  const botonPair = document.createElement('button');
-  botonPair.className = 'op-pair';
-  botonPair.textContent = 'Emparejar enfocador';
-  botonPair.style.display = 'none';
-  botonPair.onclick = () => onPair?.(botonPair);
-  if (esOcular) caja.appendChild(botonPair);
-
   // Barra fija arriba de todo: con la vista en un extremo el hueco de ese lado es
   // cero y la caja se recorta al mínimo, así que estos dos botones tienen que
   // seguir alcanzables sin scrollear.
@@ -273,8 +265,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
 
   return {
     caja,
-    setEstado(texto) { estado.textContent = texto; },
-    mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
+    setEstado(texto) { estado.textContent = texto; },
     setDirecciones(lista) {
       direcciones = lista ?? [];
       iDir = 0;
