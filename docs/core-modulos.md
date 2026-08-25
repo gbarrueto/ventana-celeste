@@ -460,8 +460,21 @@ Contrato de lo que alimenta a una app con entrada externa. Qué hardware hay dif
 objeto de tecla en minúscula a función. Es lo que usa `kiosk-standalone`, donde el Arduino actúa
 como teclado USB.
 
-`dual-telescope` lee su placa por WebUSB, en `apps/dual-telescope/src/focuser.js`. La implementación
-vive ahí y no en `core` porque es específica de ese hardware.
+`createKeyboardLineSource({ onLine, onKey, preventDefault })` rearma líneas terminadas en Enter a
+partir de pulsaciones sueltas. Una placa que actúa como teclado no puede mandar un flujo de bytes:
+cada carácter llega como su propio `keydown`. Con esto, el código que interpreta un protocolo no
+necesita saber si los bytes vinieron de un teclado, de un puerto serie o de un endpoint bulk.
+
+`preventDefault` evita que las pulsaciones actúen además sobre la página. Importa sobre todo con
+Enter: un botón que conserve el foco se volvería a disparar con cada línea que manda la placa, y la
+placa manda hasta cincuenta por segundo.
+
+`onKey` entrega cada carácter suelto, para diagnóstico. La librería `Keyboard` de Arduino envía
+códigos de tecla, no caracteres, así que con otra distribución en el anfitrión llega un carácter
+distinto del que el sketch imprimió; verlo en crudo es la única forma de detectarlo.
+
+`dual-telescope` lo usa en `apps/dual-telescope/src/focuser.js`, que interpreta el protocolo del
+enfocador. Esa parte vive ahí y no en `core` porque es específica de ese hardware.
 
 ---
 

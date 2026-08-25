@@ -259,9 +259,6 @@ export async function startSky({ role, statusEl, canvas }) {
       if (clave === 'fraccion') ajustes.pos = ajustes.fraccion / 2;
       reacomodar();
     },
-    onPair: async (btn) => {
-      try { await focuser?.pair(); btn.style.display = 'none'; } catch (e) { say(`enfocador: ${e.message}`); }
-    },
     // El bias queda guardado, así que sin esto no habría forma de rehacerlo.
     onRecalibrar: () => controller?.startCalibration(),
   });
@@ -276,8 +273,11 @@ export async function startSky({ role, statusEl, canvas }) {
   }
 
   // --- Enfocador -------------------------------------------------------
-  // El hardware vive en el ocular, así que sólo ese rol lo abre. El guía no
+  // El hardware vive en el ocular, así que sólo ese rol lo escucha. El guía no
   // enfoca: en un tubo guía la imagen está siempre nítida.
+  //
+  // La placa se presenta como teclado, así que no hay conexión que gestionar ni
+  // gesto que pedir. Eso es lo que permite que el teléfono viva dentro del tubo.
   if (role === 'ocular') {
     focuser = createFocuser({
       onBlur: ({ blur, position }) => {
@@ -287,27 +287,31 @@ export async function startSky({ role, statusEl, canvas }) {
         // qué está pasando sin desarmarlo.
         bus.sendThrottled('focus', { blur, position }, other, 100);
       },
-      onStatus: ({ connected, message, requierePairing }) => {
+      onEyepiece: ({ eyepiece }) => {
+        panel?.setEstado(`ocular: ${eyepiece || 'ninguno'}`);
+        bus.send('eyepiece', { eyepiece }, other);
+      },
+      // La cámara se refleja y nada más. Qué debe hacer la aplicación cuando está
+      // presente todavía no está decidido, así que la conexión queda hecha sin
+      // interpretarla.
+      onCamera: ({ connected }) => {
+        bus.send('camera', { connected }, other);
+      },
+      onStatus: ({ message }) => {
         panel?.setEstado(`enfocador: ${message}`);
-        // El botón de emparejar se decidía sólo al arrancar, así que cuando
-        // Chrome revocaba el permiso había que recargar la página para que
-        // reapareciera. Ahora sigue al estado.
-        panel?.mostrarPair(requierePairing);
-        bus.send('focusStatus', { connected, message }, other);
+        bus.send('focusStatus', { message }, other);
       },
     });
 
-    // Sin gesto: si hay un permiso vigente para este origen, arranca solo. El
-    // botón de emparejar lo maneja onStatus, porque el permiso puede caerse en
-    // cualquier momento y no sólo al arrancar.
-    await focuser.autoConnect();
-
+    focuser.start();
     window.addEventListener('beforeunload', () => focuser.stop());
   } else {
     // El guía sólo refleja el estado, para poder diagnosticar sin sacar el
     // teléfono del tubo.
     bus.on('focus', ({ blur }) => say(`${cfg.label} · enfoque ${blur.toFixed(1)}px`));
     bus.on('focusStatus', ({ message }) => say(`${cfg.label} · enfocador: ${message}`));
+    bus.on('eyepiece', ({ eyepiece }) => say(`${cfg.label} · ocular ${eyepiece || 'ninguno'}`));
+    bus.on('camera', ({ connected }) => say(`${cfg.label} · cámara ${connected ? 'conectada' : 'ausente'}`));
   }
 
   bus.start({ onConnect: () => say(`${cfg.label} · conectado`) });

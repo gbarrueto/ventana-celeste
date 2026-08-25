@@ -53,6 +53,33 @@
   </div>
 
   <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">DESCRIPTORES USB</h2>
+    <div class="muted" style="margin-bottom:6px">
+      Lee los descriptores sin reclamar ninguna interfaz, asi que sirve para cualquier sketch.
+      Para comparar que declara cada uno cuando Windows acepta o rechaza la placa.
+    </div>
+    <button id="bDesc">Leer descriptores</button>
+    <pre id="descOut" style="margin:8px 0 0;white-space:pre-wrap;font-size:11px">—</pre>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">TECLADO HID (ARDUINO)</h2>
+    <div class="muted" style="margin-bottom:6px">
+      Sin permisos ni emparejamiento: la placa teclea. Enchufa el Leonardo con el sketch
+      <b>teclado_mediado</b> y mueve el potenciometro.
+    </div>
+    <div class="row"><span>lineas/s</span><span id="kbRate">0</span></div>
+    <div class="row"><span>total</span><span id="kbTotal">0</span></div>
+    <div class="row"><span>por prefijo</span><span id="kbPrefijos">—</span></div>
+    <div class="row"><span>separador</span><span id="kbSep">—</span></div>
+    <div class="muted" style="margin-top:8px">crudo, tal cual llega</div>
+    <pre id="kbCrudo" style="margin:2px 0 0;white-space:pre-wrap;word-break:break-all">—</pre>
+    <div class="muted" style="margin-top:6px">ultimas lineas</div>
+    <pre id="kbLineas" style="margin:2px 0 0">—</pre>
+    <button id="kbReset">Reiniciar contadores</button>
+  </div>
+
+  <div class="card">
     <h2 style="font-size:12px;margin:0 0 6px;color:rgba(232,236,245,.55)">PROBAR EN VIVO</h2>
     <button id="bSerial">Web Serial</button>
     <button id="bUsb">WebUSB</button>
@@ -79,6 +106,8 @@
   </div>
 
 <script type="module">
+import { createKeyboardLineSource } from '@ventanaceleste/core';
+
 const $ = (id) => document.getElementById(id);
 const log = (t) => { $('log').textContent = t; };
 const mark = (el, ok, txt) => { el.textContent = txt ?? (ok ? 'sí' : 'no'); el.className = ok ? 'ok' : 'bad'; };
@@ -284,6 +313,124 @@ if ('usb' in navigator) {
   });
   revisarAutorizados();
 }
+
+// --- Volcado de descriptores -------------------------------------------
+// Lee lo que la placa declara, sin reclamar ninguna interfaz, asi que funciona
+// con cualquier sketch. La comparacion entre un sketch que Windows acepta y uno
+// que rechaza es lo que senala la diferencia.
+//
+// El numero de serie importa especialmente: Windows lo usa como identidad del
+// dispositivo, y un sketch sin modulos PluggableUSB devuelve una cadena vacia.
+$('bDesc').onclick = async () => {
+  const out = $('descOut');
+  if (!('usb' in navigator)) { out.textContent = 'WebUSB no disponible.'; return; }
+  let dev = null;
+  try {
+    dev = await navigator.usb.requestDevice({ filters: [] });
+    const L = [];
+    L.push(`fabricante : ${dev.manufacturerName ?? '(sin dato)'}`);
+    L.push(`producto   : ${dev.productName ?? '(sin dato)'}`);
+    const serie = dev.serialNumber;
+    L.push(`serie      : ${serie === undefined ? '(no declara)' : serie === '' ? '(CADENA VACIA)' : '"' + serie + '"'}`);
+    L.push(`vid:pid    : ${dev.vendorId.toString(16).padStart(4, '0')}:${dev.productId.toString(16).padStart(4, '0')}`);
+    // bcdUSB: 2.1 significa que hay descriptor BOS, que es lo que agrega WebUSB.
+    L.push(`USB        : ${dev.usbVersionMajor}.${dev.usbVersionMinor}.${dev.usbVersionSubminor}`);
+    L.push(`revision   : ${dev.deviceVersionMajor}.${dev.deviceVersionMinor}.${dev.deviceVersionSubminor}`);
+    L.push(`clase disp : ${dev.deviceClass}/${dev.deviceSubclass}/${dev.deviceProtocol}` +
+           (dev.deviceClass === 0xEF ? '  (asociacion de interfaces)' : ''));
+    L.push(`configs    : ${dev.configurations.length}`);
+
+    await dev.open();
+    if (dev.configuration === null) await dev.selectConfiguration(1);
+    for (const cfg of dev.configurations) {
+      L.push(`config ${cfg.configurationValue}: ${cfg.interfaces.length} interfaces`);
+      for (const it of cfg.interfaces) {
+        for (const alt of it.alternates) {
+          const eps = alt.endpoints.map((e) => `${e.direction}/${e.type}/${e.endpointNumber}`).join(' ');
+          L.push(`  iface ${it.interfaceNumber} clase ${alt.interfaceClass}/${alt.interfaceSubclass}/${alt.interfaceProtocol}` +
+                 (eps ? `  ${eps}` : '  (sin endpoints)'));
+        }
+      }
+    }
+    out.textContent = L.join('\n');
+  } catch (e) {
+    out.textContent = 'Error: ' + e.name + ' — ' + e.message;
+  } finally {
+    try { await dev?.close(); } catch { /* puede no estar abierto */ }
+  }
+};
+
+// --- Sonda de teclado HID -----------------------------------------------
+// La placa con el sketch teclado_mediado escribe una linea por lectura. Aca no
+// se interpreta el contenido todavia: se mide si el canal sirve.
+//
+// Tres cosas a la vez:
+//   crudo      la libreria Keyboard de Arduino manda scancodes de teclado con
+//              distribucion US. Con otra distribucion en el telefono, el ':'
+//              puede llegar como otro caracter, y este campo es la unica forma
+//              de verlo.
+//   lineas/s   el caudal real. Cada caracter son dos informes HID, asi que a 50
+//              lineas por segundo hay bastante trafico.
+//   prefijos   cuantas lineas llegaron por canal, para detectar caracteres
+//              perdidos sin tener que parsear.
+const kbEstado = { total: 0, crudo: '', lineas: [], prefijos: new Map(), sellos: [] };
+
+function kbPintar() {
+  $('kbTotal').textContent = kbEstado.total;
+  $('kbCrudo').textContent = kbEstado.crudo || '—';
+  $('kbLineas').textContent = kbEstado.lineas.join('\n') || '—';
+  $('kbPrefijos').textContent = kbEstado.prefijos.size
+    ? [...kbEstado.prefijos].map(([k, n]) => `${k}:${n}`).join('  ')
+    : '—';
+
+  // Lineas en el ultimo segundo.
+  const ahora = performance.now();
+  kbEstado.sellos = kbEstado.sellos.filter((t) => ahora - t < 1000);
+  $('kbRate').textContent = kbEstado.sellos.length;
+
+  // Veredicto sobre el separador: es lo que decide si el protocolo sirve tal
+  // cual o hay que sacarle los signos.
+  const sep = $('kbSep');
+  if (!kbEstado.total) { sep.textContent = '—'; sep.className = ''; return; }
+  const conDosPuntos = kbEstado.lineas.some((l) => l.includes(':'));
+  if (conDosPuntos) {
+    sep.textContent = "':' llega bien";
+    sep.className = 'ok';
+  } else {
+    const raro = [...new Set(kbEstado.crudo.replace(/[0-9A-Za-z]/g, ''))].join(' ');
+    sep.textContent = `sin ':' — llega ${raro || '(nada)'}`;
+    sep.className = 'bad';
+  }
+}
+
+const kbFuente = createKeyboardLineSource({
+  onKey: (k) => { kbEstado.crudo = (kbEstado.crudo + k).slice(-40); },
+  onLine: (linea) => {
+    kbEstado.total += 1;
+    kbEstado.sellos.push(performance.now());
+    kbEstado.lineas.push(linea);
+    if (kbEstado.lineas.length > 5) kbEstado.lineas.shift();
+    // El prefijo es el primer caracter no numerico, sin asumir cual es.
+    const pref = /^[^0-9]/.test(linea) ? linea[0] : '(sin prefijo)';
+    kbEstado.prefijos.set(pref, (kbEstado.prefijos.get(pref) ?? 0) + 1);
+    kbPintar();
+  },
+});
+
+if (kbFuente.isSupported()) {
+  kbFuente.connect();
+  // El caudal decae solo, asi que hay que repintar aunque no llegue nada.
+  setInterval(kbPintar, 500);
+}
+
+$('kbReset').onclick = () => {
+  kbEstado.total = 0;
+  kbEstado.crudo = '';
+  kbEstado.lineas = [];
+  kbEstado.prefijos = new Map();
+  kbEstado.sellos = [];
+  kbPintar();
+};
 
 // Sonda del permiso tras una desconexion.
 //
