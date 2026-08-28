@@ -92,6 +92,27 @@ export function createOrientationController({
 
   persistBiasKey = null,
 
+  // 'relative' — RelativeOrientationSensor: gyro+accel, sin brújula. Su acimut
+  //   arranca en un origen arbitrario: la lectura al momento de crear el sensor
+  //   se reporta como cero, sea cual sea la dirección real a la que apunta el
+  //   aparato. Ese origen no lo fija esta página: lo fija la fusión de sensores
+  //   del sistema operativo, y en Android puede persistir entre recargas de
+  //   página — medido: recargar no lo reinicia, bloquear y desbloquear el
+  //   equipo sí. O sea que "apunta al norte" con este modo es coincidencia del
+  //   momento en que arrancó el sensor, no una propiedad del sensor.
+  // 'absolute' — AbsoluteOrientationSensor: suma el magnetómetro, así que el
+  //   acimut queda referido al norte magnético real en vez de a ese origen
+  //   arbitrario. A cambio se degrada cerca de metal, así que un montaje
+  //   metálico (un tubo de telescopio) puede volver la lectura inestable en vez
+  //   de mejorarla — es algo que sólo se verifica en el aparato real.
+  //
+  // No es lo mismo que 'relative'/'gyro' de `state.currentMode`: eso decide de
+  // qué camino sale el apuntado (quaternion vs. integración), y es ortogonal a
+  // esto, que decide contra qué está referido el acimut del propio quaternion.
+  //
+  // Por defecto 'relative', así que web-app y kiosk no cambian de comportamiento.
+  sensorReference = 'relative',
+
   mountingTransform = (yaw, pitch) => ({ yaw, pitch }),
 
   // Rotation applied to the raw sensor quaternion BEFORE it is decomposed into
@@ -682,14 +703,19 @@ export function createOrientationController({
     try {
       emitDebug({ activeSource: 'requesting-permission' });
       await requestIOSPermissionIfNeeded();
-      if (!('Gyroscope' in window) || !('RelativeOrientationSensor' in window)) {
-        throw new Error('Required sensors not available in this browser');
+      // El nombre de la clase global, y del sensor en los mensajes de error,
+      // sigue a sensorReference: no tiene sentido pedir RelativeOrientationSensor
+      // cuando lo que hace falta es que el acimut esté referido al norte real.
+      const RefSensor = sensorReference === 'absolute' ? window.AbsoluteOrientationSensor : window.RelativeOrientationSensor;
+      const refSensorName = sensorReference === 'absolute' ? 'AbsoluteOrientationSensor' : 'RelativeOrientationSensor';
+      if (!('Gyroscope' in window) || typeof RefSensor !== 'function') {
+        throw new Error(`Required sensors not available in this browser (${refSensorName})`);
       }
 
       state.gyroSensor = new Gyroscope({ frequency: gyroFreq });
-      state.relSensor = new RelativeOrientationSensor({ frequency: relFreq });
+      state.relSensor = new RefSensor({ frequency: relFreq });
       state.gyroSensor.addEventListener('error', (event) => handleSensorError('gyroscope', event));
-      state.relSensor.addEventListener('error', (event) => handleSensorError('relative-orientation', event));
+      state.relSensor.addEventListener('error', (event) => handleSensorError(refSensorName, event));
       state.relSensor.addEventListener('reading', onRelReading);
       emitDebug({ activeSource: 'sensors-created' });
 

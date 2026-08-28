@@ -70,6 +70,7 @@ una velocidad que no existe.
 | `relFreq` | `30` | Frecuencia del sensor de orientación, en Hz. |
 | `calibDuration` | `1` | Segundos de muestreo de bias. |
 | `persistBiasKey` | `null` | Clave de `localStorage` para el bias. `null` no persiste. |
+| `sensorReference` | `'relative'` | `'relative'` o `'absolute'`. Ver [Referencia del acimut](#referencia-del-acimut). |
 | `readinessGate` | `'stillness'` | Ver [Ciclo](#ciclo). |
 | `stillnessThreshold` | `0.05` | rad/s por debajo de los cuales se considera quieto. |
 | `stillnessHoldSeconds` | `2` | Segundos de quietud requeridos. |
@@ -157,6 +158,28 @@ puede pasar del cenit, lo que se limita es cuánto se amplifica el giro.
 
 `'euler'` es el default, así que `web-app` y `kiosk` no cambian de comportamiento.
 
+## Referencia del acimut
+
+`sensorReference` decide qué sensor entrega el quaternion, y con eso contra qué está referido el
+acimut.
+
+`'relative'` usa `RelativeOrientationSensor`: giroscopio y acelerómetro, sin brújula. Su acimut
+arranca en un origen arbitrario, la lectura del momento en que se crea el sensor, sea cual sea la
+dirección real a la que apunta el aparato. Ese origen no lo fija la página que lo usa: lo fija la
+fusión de sensores del sistema operativo. Medido en Android: recargar la página no lo reinicia,
+sólo bloquear y desbloquear el equipo. Que el aparato arranque apuntando al norte con este modo es
+coincidencia del momento en que arrancó el sensor, no una propiedad del sensor.
+
+`'absolute'` usa `AbsoluteOrientationSensor`, que suma el magnetómetro y refiere el acimut al
+norte magnético real en vez de a ese origen arbitrario. A cambio se degrada cerca de metal, así
+que un montaje metálico puede volver la lectura inestable en vez de mejorarla.
+
+No es lo mismo que `'relative'`/`'gyro'` de la conmutación de modo, más abajo: eso decide de qué
+camino sale el apuntado en cada instante, quaternion o integración de giroscopio, y es ortogonal a
+esto, que decide contra qué está referido el acimut del propio quaternion.
+
+Por defecto `'relative'`, así que `web-app` y `kiosk` no cambian de comportamiento.
+
 ## Conmutación de modo
 
 ```js
@@ -194,6 +217,7 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 | `dynamicThreshold` | default | default | `0.06` |
 | `smoothing` | default | default | `0.10` en ambos ejes |
 | `persistBiasKey` | — | `astrovis_gyro_bias` | `dual-telescope:gyro-bias` |
+| `sensorReference` | default | default | `'absolute'` |
 
 ## Utilidades exportadas
 

@@ -4,6 +4,32 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-08-25 — El norte queda referido al magnetómetro
+
+La entrada del 19 de agosto decía la referencia de norte «resuelta a favor del magnetómetro», pero
+esa decisión nunca se implementó: `createOrientationController()` sólo instanciaba
+`RelativeOrientationSensor`, y `dual-telescope` no tenía ninguna opción para cambiarlo. Lo que
+describía esa entrada era un plan, no código en producción.
+
+Apareció al investigar un síntoma intermitente: a veces `dual-telescope` arranca apuntando al norte
+real, y otras veces queda fijo en una dirección arbitraria. Medido en el aparato: recargar la página
+no reinicia esa referencia, sólo bloquear y desbloquear el equipo. Encaja exactamente con
+`RelativeOrientationSensor`, que no tiene norte absoluto — su acimut arranca en la lectura del
+momento en que se crea el sensor, y ese origen lo fija la fusión de sensores del sistema operativo,
+no la página. Que a veces coincida con el norte real es casualidad del instante en que arrancó.
+
+`createOrientationController()` gana la opción `sensorReference`, `'relative'` o `'absolute'`, que
+decide qué clase de sensor se instancia. Por defecto `'relative'`, así que `web-app` y `kiosk` no
+cambian. `dual-telescope` pasa a `'absolute'`, que suma el magnetómetro y refiere el acimut al norte
+real en vez de a ese origen arbitrario.
+
+Sin verificar todavía: `AbsoluteOrientationSensor` se degrada cerca de metal, y el tubo del
+telescopio lo es. Si la lectura resulta inestable en el aparato real, revertir es cambiar ese único
+valor a `'relative'`.
+
+`apps/device-lab/sky.html` ya tenía un selector para probar los dos sensores; con este cambio deja
+de ser sólo una prueba de banco y pasa a reflejar una opción real del controlador.
+
 ## 2026-08-25 — Limpieza de la iteración 1 de kiosk
 
 Las pruebas en museo fijaron el zoom como rueda continua, así que se retira el mecanismo de la

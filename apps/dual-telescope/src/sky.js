@@ -170,6 +170,15 @@ export async function startSky({ role, statusEl, canvas }) {
     controller = createOrientationController({
       pointingMode: 'vector',
       opticalAxis: '+y',
+      // RelativeOrientationSensor no tiene norte absoluto: su acimut arranca en
+      // un origen arbitrario, fijado por la fusión de sensores del sistema
+      // operativo. Medido en el aparato: recargar la página no lo reinicia,
+      // sólo bloquear y desbloquear el equipo — así que "apunta al norte" era
+      // coincidencia del momento en que arrancó el sensor, no algo confiable.
+      // AbsoluteOrientationSensor suma el magnetómetro y refiere el acimut al
+      // norte real. Si se degrada cerca del tubo metálico, revertir es cambiar
+      // este único valor a 'relative'.
+      sensorReference: 'absolute',
       // OJO con el sentido de la comparación: core elige modo con
       // `fov < fovThreshold ? 'gyro' : 'relative'`, así que un umbral **alto**
       // fuerza giroscopio, no quaternion. Con 0 nunca se cumple (el FOV siempre
