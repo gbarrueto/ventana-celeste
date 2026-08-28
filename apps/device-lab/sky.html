@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Sky Test — Orientation Lab</title>
+  <title>Sky Test — Device Lab</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #e8ecf5;
                  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
-    #stel-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    /* Posición, tamaño y rotación las fija acomodarVista() en JS: al rotar 90° o
+       270° hay que intercambiar ancho y alto, y eso no se expresa con inset:0. */
+    #stel-canvas { display: block; background: #000; }
     .panel { position: fixed; left: 8px; right: 8px; top: 44px; z-index: 10;
              background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
              border-radius: 10px; padding: 9px 11px; }
@@ -20,6 +22,7 @@
     button, select { background: rgba(255,255,255,.1); color: #e8ecf5;
       border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
       padding: 8px 12px; font: inherit; margin: 4px 4px 0 0; }
+    button.on { background: rgba(255,122,13,.22); border-color: #ff7a0d; color: #ff7a0d; }
     .crosshair { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px;
       margin: -13px 0 0 -13px; z-index: 5; pointer-events: none;
       border: 1px solid rgba(255,122,13,.85); border-radius: 50%; }
@@ -36,7 +39,6 @@
     .lab-nav a { color: rgba(232,236,245,.62); text-decoration: none; padding: 5px 10px;
       border-radius: 7px; }
     .lab-nav a.on { color: #e8ecf5; background: rgba(255,255,255,.12); }
-    .lab-pad { height: 36px; }
   </style>
 </head>
 <body>
@@ -51,21 +53,10 @@
 
   <div class="panel">
     <div>
-      compensación
-      <select id="axis"><option value="x">x</option><option value="y" selected>y</option><option value="z">z</option></select>
-      <select id="angle">
-        <option value="0">0° (crudo)</option>
-        <option value="-90" selected>−90°</option>
-        <option value="90">+90°</option>
-        <option value="180">180°</option>
-      </select>
-      <button id="apply">Aplicar</button>
-    </div>
-    <div style="margin-top:5px">
-      modo
-      <select id="mode">
-        <option value="vector" selected>vector (apuntado)</option>
-        <option value="euler">euler (core actual)</option>
+      sensor
+      <select id="sensorType">
+        <option value="relative" selected>relative (sin brújula)</option>
+        <option value="absolute">absolute (con magnetómetro)</option>
       </select>
       eje óptico
       <select id="optic">
@@ -73,36 +64,22 @@
         <option value="+y">+y</option><option value="-y" selected>−y</option>
         <option value="+z">+z</option><option value="-z">−z</option>
       </select>
+    </div>
+    <div style="margin-top:5px">
+      rotación
+      <span id="rot"></span>
       <label><input type="checkbox" id="invAz" /> −az</label>
       <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
     </div>
-    <div style="margin-top:5px">
-      sensor
-      <select id="sensorType">
-        <option value="relative" selected>relative (sin brújula)</option>
-        <option value="absolute">absolute (con magnetómetro)</option>
-      </select>
-      <label><input type="checkbox" id="clampAlt" /> limitar alt a 85°</label>
-    </div>
-    <div style="margin-top:5px" id="eulerOpts">
-      mapeo <span class="muted">(sólo modo euler)</span>
-      <label><input type="checkbox" id="swap" /> swap</label>
-      <label><input type="checkbox" id="invY" /> −yaw</label>
-      <label><input type="checkbox" id="invP" /> −pitch</label>
-    </div>
-    <div class="row" style="margin-top:5px"><span class="muted">θ (gimbal)</span><span id="theta">—</span></div>
-    <div class="row"><span class="muted">yaw / pitch enviados</span><span id="yp">—</span></div>
-    <div class="row"><span class="muted">az / alt (vector)</span><span id="azalt">—</span></div>
+    <div class="row" style="margin-top:5px"><span class="muted">sensor activo</span><span id="activo">—</span></div>
+    <div class="row"><span class="muted">az / alt</span><span id="azalt">—</span></div>
+    <div class="row"><span class="muted">az al arrancar</span><span id="azInicial">—</span></div>
   </div>
 
   <div id="status">iniciando…</div>
 
 <script type="module">
-import {
-  initializeStellariumEngine,
-  createOrientationController,
-  quaternionFromAxisAngle,
-} from '@ventanaceleste/core';
+import { initializeStellariumEngine } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 
@@ -114,15 +91,53 @@ if (!window.isSecureContext) {
   setStatus('Contexto NO seguro: los sensores no van a entregar nada. Abre por https://', 'bad');
 }
 
-// θ sólo para mostrar: es el ángulo que la descomposición de core nunca calcula,
-// y el que delata si el montaje está sobre la singularidad.
-function middleAngle(q) {
-  const [x, y, z, w] = q;
-  return Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x)))) * DEG;
+let engine = null;
+
+// ── Disposición de la vista ────────────────────────────────────────────
+// Reproduce el montaje de dual-telescope: la vista ocupa la mitad inferior de la
+// pantalla y se rota, porque el teléfono va acostado dentro del tubo. Tener el
+// mismo recorte acá permite comparar contra el prototipo sin desmontarlo.
+
+const FRACCION = 0.5;
+let rotacion = 270;
+
+function acomodarVista() {
+  const canvas = $('stel-canvas');
+  const mira = document.querySelector('.crosshair');
+  const altoArea = window.innerHeight * FRACCION;
+  const anchoArea = window.innerWidth;
+  // Al rotar 90° o 270° la huella en pantalla intercambia ancho y alto, así que
+  // el elemento se dibuja apaisado y la rotación lo presenta como se ve.
+  const rotado = Math.abs(rotacion % 180) === 90;
+  const centro = window.innerHeight * (1 - FRACCION / 2);
+  canvas.style.position = 'fixed';
+  canvas.style.left = '50%';
+  canvas.style.top = `${centro}px`;
+  canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
+  canvas.style.height = `${rotado ? anchoArea : altoArea}px`;
+  canvas.style.transform = `translate(-50%, -50%) rotate(${rotacion}deg)`;
+  canvas.style.transformOrigin = 'center';
+  if (mira) mira.style.top = `${centro}px`;
 }
 
-let engine = null;
-let controller = null;
+for (const g of [0, 90, 180, 270]) {
+  const b = document.createElement('button');
+  b.textContent = `${g}°`;
+  b.className = rotacion === g ? 'on' : '';
+  b.onclick = () => {
+    rotacion = g;
+    for (const o of $('rot').children) o.className = '';
+    b.className = 'on';
+    acomodarVista();
+  };
+  $('rot').appendChild(b);
+}
+
+acomodarVista();
+window.addEventListener('resize', acomodarVista);
+window.addEventListener('orientationchange', acomodarVista);
+
+// ── Apuntado ───────────────────────────────────────────────────────────
 
 // v' = q v q*. Verificado contra rotaciones conocidas.
 function rotateByQuat(q, v) {
@@ -152,128 +167,93 @@ function pointingAltAz(q) {
   return { alt, az: $('invAz').checked ? -az : az };
 }
 
-// Leído en cada llamada, así los toggles se aplican en vivo sin reiniciar el
-// controlador (y sin volver a calibrar).
-const tf = { swap: false, invY: false, invP: false };
-for (const k of ['swap', 'invY', 'invP']) {
-  document.getElementById(k).onchange = (e) => {
-    tf[k] = e.target.checked;
-    setStatus(`mapeo: ${tf.swap ? 'swap ' : ''}${tf.invY ? '−yaw ' : ''}${tf.invP ? '−pitch' : ''}` || 'mapeo: directo', 'ok');
-  };
-}
-
-function applyMapping(yaw, pitch) {
-  let y = yaw, p = pitch;
-  if (tf.swap) { const t = y; y = p; p = t; }
-  if (tf.invY) y = -y;
-  if (tf.invP) p = -p;
-  return { yaw: y, pitch: p };
-}
-
-function currentMount() {
-  const deg = parseFloat($('angle').value);
-  return deg === 0 ? null : quaternionFromAxisAngle($('axis').value, deg);
-}
-
-function startController() {
-  controller?.stop();
-  controller = createOrientationController({
-    mountQuaternion: currentMount(),
-    // 'relative' (camino del quaternion). core compara
-    // `fov < fovThreshold ? 'gyro' : 'relative'`, así que el umbral va en 0: un
-    // valor alto forzaría giroscopio, que es justo lo contrario.
-    fovThreshold: 0,
-    dynamicThreshold: 0,
-    readinessGate: 'immediate',
-    calibDuration: 1,
-    // El pre-giro del quaternion arregla la degeneración; esto reasigna qué
-    // ángulo va a qué eje del cielo. Son dos trabajos distintos y ninguno puede
-    // hacer el del otro.
-    mountingTransform: applyMapping,
-    onView: ({ yaw, pitch }) => {
-      if (!engine?.core?.observer) return;
-      engine.core.observer.yaw = -yaw;
-      engine.core.observer.pitch = pitch;
-      $('yp').textContent = `${(yaw * DEG).toFixed(1)}° / ${(pitch * DEG).toFixed(1)}°`;
-    },
-    onError: (e) => setStatus('Sensor: ' + e.message, 'bad'),
-  });
-  controller.start();
-  setStatus(`Corriendo. Compensación: ${$('axis').value} ${$('angle').value}°`, 'ok');
-}
-
 function applyGrid() {
   if (!engine?.core?.lines?.azimuthal) return;
   engine.core.lines.azimuthal.visible = $('grid').checked;
 }
 $('grid').onchange = applyGrid;
 
-function isVector() { return $('mode').value === 'vector'; }
+// ── Sensor ─────────────────────────────────────────────────────────────
 
-function applyMode() {
-  $('eulerOpts').style.opacity = isVector() ? '.35' : '1';
-  if (isVector()) {
-    controller?.stop();
-    controller = null;
-    setStatus('modo vector: apuntado desde el quaternion, sin descomposición Euler', 'ok');
-  } else {
-    startController();
-  }
-}
-
-$('apply').onclick = applyMode;
-$('mode').onchange = applyMode;
-
-// θ en vivo, leído directo del sensor (sin pasar por core) para que se vea
-// dónde está el montaje respecto de la singularidad.
 let sensor = null;
+let azInicial = null;
+let lecturas = 0;
 
+// `relative` no tiene norte absoluto: su origen de acimut queda fijado al
+// arrancar el sensor, así que apuntar al norte real es coincidencia. `absolute`
+// suma el magnetómetro y refiere el acimut al norte magnético, a cambio de
+// necesitar calibración de brújula y degradarse cerca de metal.
+//
+// El azimut al arrancar es el dato que distingue los dos casos: con `relative`
+// arranca cerca de cero pase lo que pase, porque ese es su origen. Con
+// `absolute` arranca en la dirección real a la que apunta el aparato.
 function startSensor() {
   try { sensor?.stop(); } catch { /* ya detenido */ }
+  azInicial = null;
+  lecturas = 0;
+  $('azInicial').textContent = '—';
+
   const absolute = $('sensorType').value === 'absolute';
+  const nombre = absolute ? 'AbsoluteOrientationSensor' : 'RelativeOrientationSensor';
   const Ctor = absolute ? window.AbsoluteOrientationSensor : window.RelativeOrientationSensor;
   if (typeof Ctor !== 'function') {
-    setStatus(`Este navegador no expone ${absolute ? 'AbsoluteOrientationSensor' : 'RelativeOrientationSensor'}.`, 'bad');
+    setStatus(`Este navegador no expone ${nombre}.`, 'bad');
+    $('activo').textContent = 'no disponible';
+    $('activo').className = 'bad';
     return;
   }
-  // absolute añade el magnetómetro, así que el azimut queda referido al norte
-  // magnético real en vez de a un origen arbitrario. A cambio necesita
-  // calibración de brújula y se degrada cerca de metal — y el tubo es metálico.
-  sensor = new Ctor({ frequency: 15 });
-  sensor.addEventListener('error', (e) =>
-    setStatus(`${absolute ? 'Absolute' : 'Relative'}OrientationSensor: ${e.error?.message || e.error?.name || 'error'}`, 'bad'));
-  sensor.addEventListener('reading', () => {
-    const q = sensor.quaternion;
-    const t = middleAngle(q);
-    const el = $('theta');
-    el.textContent = t.toFixed(1) + '°';
-    el.className = Math.abs(t) > 80 ? 'bad' : Math.abs(t) > 65 ? 'warn' : 'ok';
 
-    const { alt, az } = pointingAltAz(q);
+  sensor = new Ctor({ frequency: 15 });
+  sensor.addEventListener('error', (e) => {
+    setStatus(`${nombre}: ${e.error?.message || e.error?.name || 'error'}`, 'bad');
+    $('activo').textContent = 'error';
+    $('activo').className = 'bad';
+  });
+
+  sensor.addEventListener('reading', () => {
+    const { alt, az } = pointingAltAz(sensor.quaternion);
     const altDeg = alt * DEG;
+    lecturas += 1;
+
+    if (azInicial === null) {
+      azInicial = az * DEG;
+      $('azInicial').textContent = `${azInicial.toFixed(1)}°`;
+    }
+
     const azEl = $('azalt');
     azEl.textContent = `${(az * DEG).toFixed(1)}° / ${altDeg.toFixed(1)}°`;
     // El azimut se vuelve indefinido en el cenit: es la degeneración real del
-    // alt-az, no un fallo del mapeo. Marcarlo para poder distinguir "estoy en el
+    // alt-az, no un fallo del mapeo. Marcarlo permite distinguir "estoy en el
     // agujero" de "el mapeo está mal".
     azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
-    // En modo vector esto maneja la vista directamente. Sin el suavizado ni la
-    // fusión con giroscopio de core — aquí se está probando el mapeo, no la
-    // fluidez.
-    if (isVector() && engine?.core?.observer) {
-      const LIMIT = (85 * Math.PI) / 180;
-      const used = $('clampAlt').checked ? Math.max(-LIMIT, Math.min(LIMIT, alt)) : alt;
+
+    if (engine?.core?.observer) {
       engine.core.observer.yaw = az;
-      engine.core.observer.pitch = used;
-      $('yp').textContent = $('clampAlt').checked && used !== alt ? 'vector (alt limitada)' : 'vector';
+      engine.core.observer.pitch = alt;
     }
   });
+
   sensor.start();
+  $('activo').textContent = nombre.replace('OrientationSensor', '');
+  $('activo').className = 'ok';
   setStatus(`sensor: ${absolute ? 'absolute (brújula)' : 'relative (sin brújula)'}`, 'ok');
 }
 
+// Cuántas lecturas llegan por segundo. Un sensor que se declara disponible pero
+// no entrega nada se ve igual que uno que funciona si sólo se mira el nombre.
+setInterval(() => {
+  if (!sensor) return;
+  const el = $('activo');
+  const base = el.textContent.split('  ')[0];
+  el.textContent = `${base}  ${lecturas}/s`;
+  el.className = lecturas > 0 ? 'ok' : 'bad';
+  lecturas = 0;
+}, 1000);
+
 $('sensorType').onchange = startSensor;
 startSensor();
+
+// ── Motor ──────────────────────────────────────────────────────────────
 
 setStatus('cargando motor…');
 initializeStellariumEngine({
@@ -295,9 +275,7 @@ initializeStellariumEngine({
     stel.core.fov = 1.2;
     applyGrid();
   },
-})
-  .then(() => applyMode())
-  .catch((e) => setStatus('Motor: ' + e.message, 'bad'));
+}).catch((e) => setStatus('Motor: ' + e.message, 'bad'));
 </script>
 <script>
   // Marca la pestaña actual sin depender de rutas absolutas.
