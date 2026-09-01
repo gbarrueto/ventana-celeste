@@ -4,6 +4,93 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-01 — device-lab reproduce el apuntado de dual-telescope
+
+`device-lab/sky.html` no podía imitar exactamente el apuntado de `dual-telescope`, así que el mismo
+teléfono apuntaba a lugares distintos en las dos apps. Verificado con las doce combinaciones posibles
+de eje óptico e inversión de acimut: ninguna reproducía a la vez el acimut y la altura de
+`dual-telescope`. La razón es estructural, no de configuración: elegir el eje opuesto mueve el signo
+de la altura y desplaza el acimut 180° **a la vez, acoplados**, y `dual-telescope` necesita mover uno
+sin el otro — invierte sólo la altura, vía `mountingTransform`, dejando el acimut intacto.
+
+`device-lab` gana el checkbox `−alt`, que reproduce ese `mountingTransform`. Los tres controles
+pasan a arrancar en la configuración real de `dual-telescope` (`sensor absolute`, `eje +y`,
+`−alt` activado, `−az` apagado), así que abrir la página ya reproduce producción en vez de la
+configuración del experimento del giro de 90° que traía por defecto. Verificado sobre 5000
+quaternions al azar: acimut y altura coinciden exactos con la fórmula de `apps/dual-telescope/src/sky.js`.
+
+## 2026-09-01 — Acimut corregido 180° y arranque fuera de la zona dinámica
+
+Dos hallazgos verificados en el aparato tras cablear el magnetómetro.
+
+### El acimut estaba 180° invertido: Este por Oeste
+
+Medido: `dual-telescope` mostraba el Este cuando debía mostrar el Oeste. Antes, con
+`RelativeOrientationSensor`, esto era invisible — sin referencia absoluta, un desplazamiento
+constante en acimut no tenía cómo notarse. La verificación de montaje de esa época («medido en el
+montaje: el acimut queda bien, sólo se invierte arriba-abajo») comprobaba el **sentido de giro**
+—girar a la derecha panea a la derecha— y ese chequeo no distingue `'+y'` de `'-y'`: los dos ejes dan
+el mismo sentido de giro y sólo difieren en un desplazamiento constante de 180° en el acimut, que es
+exactamente lo invisible sin norte real.
+
+`opticalAxis` pasa de `'+y'` a `'-y'`, y se retira `mountingTransform`. Verificado: `'-y'` sin
+transformar da la misma altura que la configuración anterior y corrige el acimut exactamente 180°,
+sin necesidad de ningún ajuste adicional — negar sólo la altura arreglaba la altura pero no el
+acimut; negar las dos cambia el acimut por un espejo, no por el desplazamiento que hacía falta.
+
+`device-lab/sky.html` se actualiza con el mismo eje.
+
+### El ocular arrancaba dentro de la zona dinámica
+
+El FOV inicial del ocular (`0.05` rad) estaba por debajo del umbral de la zona dinámica (`0.06`),
+así que la app arrancaba ya dentro de ella: la posición se rige por integración de giroscopio en vez
+de leerse directo del quaternion. Confirmado en el aparato: recargar estando en la zona dinámica
+produce comportamiento errático que se corrige al alejar el zoom.
+
+Encontrados dos bugs de fondo, no sólo el orden de arranque. El camino rápido con bias guardado
+—el que corre en casi todos los arranques, salvo el primero— se salta la inicialización que hace
+`finishCalibration()`:
+
+- `state.lastTime` queda en `null`. La primera lectura calcula `dt` contra `null`, que en aritmética
+  de JavaScript se trata como `0`: en vez de los ~30 ms esperados entre lecturas, `dt` sale del
+  orden de segundos. Multiplicado dentro de la zona dinámica, produce un salto de golpe.
+- `state.oldX`/`state.oldY` quedan en `null`. La zona dinámica ancla su acumulador ahí en vez de en
+  el apuntado real, así que arranca cerca de `(0,0)` y sólo se corrige cuando se sale de la zona.
+
+Los dos se corrigen en `packages/core/src/orientation/controller.js`: el camino rápido ahora fija
+`lastTime` igual que `finishCalibration()`, y la zona dinámica espera una lectura real del sensor
+absoluto antes de sembrar su acumulador, en vez de arrancar a ciegas.
+
+Además, el FOV inicial del ocular sube por encima del umbral (`UMBRAL_DINAMICO * 1.3`), y las dos
+constantes pasan a vivir en el mismo archivo (`panel.js`) para que no puedan desincronizarse otra
+vez. Con eso la app no vuelve a arrancar dentro de la zona dinámica aunque cambie el umbral.
+
+## 2026-08-25 — El norte queda referido al magnetómetro
+
+La entrada del 19 de agosto decía la referencia de norte «resuelta a favor del magnetómetro», pero
+esa decisión nunca se implementó: `createOrientationController()` sólo instanciaba
+`RelativeOrientationSensor`, y `dual-telescope` no tenía ninguna opción para cambiarlo. Lo que
+describía esa entrada era un plan, no código en producción.
+
+Apareció al investigar un síntoma intermitente: a veces `dual-telescope` arranca apuntando al norte
+real, y otras veces queda fijo en una dirección arbitraria. Medido en el aparato: recargar la página
+no reinicia esa referencia, sólo bloquear y desbloquear el equipo. Encaja exactamente con
+`RelativeOrientationSensor`, que no tiene norte absoluto — su acimut arranca en la lectura del
+momento en que se crea el sensor, y ese origen lo fija la fusión de sensores del sistema operativo,
+no la página. Que a veces coincida con el norte real es casualidad del instante en que arrancó.
+
+`createOrientationController()` gana la opción `sensorReference`, `'relative'` o `'absolute'`, que
+decide qué clase de sensor se instancia. Por defecto `'relative'`, así que `web-app` y `kiosk` no
+cambian. `dual-telescope` pasa a `'absolute'`, que suma el magnetómetro y refiere el acimut al norte
+real en vez de a ese origen arbitrario.
+
+Sin verificar todavía: `AbsoluteOrientationSensor` se degrada cerca de metal, y el tubo del
+telescopio lo es. Si la lectura resulta inestable en el aparato real, revertir es cambiar ese único
+valor a `'relative'`.
+
+`apps/device-lab/sky.html` ya tenía un selector para probar los dos sensores; con este cambio deja
+de ser sólo una prueba de banco y pasa a reflejar una opción real del controlador.
+
 ## 2026-08-25 — Limpieza de la iteración 1 de kiosk
 
 Las pruebas en museo fijaron el zoom como rueda continua, así que se retira el mecanismo de la

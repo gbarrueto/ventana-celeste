@@ -6,7 +6,7 @@ import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.was
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
 import { createFocuser, aplicarBlur } from './focuser.js';
-import { cargarAjustes, crearPanel, PANTALLA_GRANDE } from './panel.js';
+import { cargarAjustes, crearPanel, PANTALLA_GRANDE, UMBRAL_DINAMICO } from './panel.js';
 
 // El guía simula un tubo buscador: campo amplio. El ocular va bastante más
 // cerrado, que es el punto del instrumento.
@@ -23,11 +23,11 @@ const ROLE = {
 // valor, el deslizador dejó de tener sentido. Se cambia acá, no en la UI.
 const SUAVIZADO = 0.10;
 
-// Umbral de la zona dinámica, en radianes. Por debajo de este FOV el giroscopio
-// se integra escalado por el zoom, para que un movimiento chico de la mano
-// recorra menos cielo cuanto más cerrado sea el campo. Verificado en el aparato,
-// así que va activa desde el arranque.
-const UMBRAL_DINAMICO = 0.06;
+// UMBRAL_DINAMICO se importa de panel.js: el FOV inicial del ocular tiene que
+// quedar siempre por encima, y con los dos valores en el mismo archivo no
+// pueden desincronizarse. Por debajo de este FOV el giroscopio se integra
+// escalado por el zoom, para que un movimiento chico de la mano recorra menos
+// cielo cuanto más cerrado sea el campo. Verificado en el aparato.
 
 // Catálogos remotos por ahora: todavía no hay copia local (§5.2d del plan). La
 // red se usa para preparar, no para operar.
@@ -165,11 +165,35 @@ export async function startSky({ role, statusEl, canvas }) {
   };
 
   if (isSource) {
-    // Modo vector y eje óptico +y: medido en el montaje. Sustituye al mapeo
-    // dependiente de la elevación por una constante (§5.1a).
+    // Modo vector: sustituye al mapeo dependiente de la elevación por una
+    // constante, el vector del dispositivo que apunta por el tubo (§5.1a).
+    //
+    // Eje '-y', sin mountingTransform. Antes era '+y' con la altura invertida a
+    // mano; daba la altura correcta y el sentido de giro correcto —girar a la
+    // derecha paneaba a la derecha—, así que la verificación de entonces lo dio
+    // por bueno. Pero esa prueba no podía distinguir '+y' de '-y': los dos ejes
+    // dan el mismo sentido de giro y sólo difieren en un desplazamiento
+    // constante de 180° en el acimut, invisible mientras el acimut no tenía
+    // referencia absoluta (RelativeOrientationSensor). Con el magnetómetro
+    // (sensorReference: 'absolute', más abajo) el desplazamiento se hizo
+    // visible: apuntaba al Este debiendo apuntar al Oeste. Medido en el aparato,
+    // frente a una dirección real conocida: '-y' sin transformar da la altura y
+    // el acimut correctos a la vez, cosa que ninguna combinación con '+y' podía
+    // dar — negar sólo la altura arregla la altura pero no el acimut; negar las
+    // dos cambia el acimut por un espejo, no por el desplazamiento de 180° que
+    // hacía falta.
     controller = createOrientationController({
       pointingMode: 'vector',
-      opticalAxis: '+y',
+      opticalAxis: '-y',
+      // RelativeOrientationSensor no tiene norte absoluto: su acimut arranca en
+      // un origen arbitrario, fijado por la fusión de sensores del sistema
+      // operativo. Medido en el aparato: recargar la página no lo reinicia,
+      // sólo bloquear y desbloquear el equipo — así que "apunta al norte" era
+      // coincidencia del momento en que arrancó el sensor, no algo confiable.
+      // AbsoluteOrientationSensor suma el magnetómetro y refiere el acimut al
+      // norte real. Si se degrada cerca del tubo metálico, revertir es cambiar
+      // este único valor a 'relative'.
+      sensorReference: 'absolute',
       // OJO con el sentido de la comparación: core elige modo con
       // `fov < fovThreshold ? 'gyro' : 'relative'`, así que un umbral **alto**
       // fuerza giroscopio, no quaternion. Con 0 nunca se cumple (el FOV siempre
@@ -183,15 +207,6 @@ export async function startSky({ role, statusEl, canvas }) {
       // El controlador lo consulta por lectura para decidir si está en la zona
       // dinámica. Sin esto quedaba en el valor por defecto y el zoom no influía.
       getLogFov: () => logFov,
-      // El teléfono apunta por su parte baja, no por la superior, así que la
-      // altura sale invertida. Medido en el montaje: el acimut queda bien, sólo
-      // se invierte arriba-abajo.
-      //
-      // Este es el ajuste que cambia con cada prototipo, porque cada diseño ubica
-      // el teléfono distinto. Va en mountingTransform y no en el eje óptico
-      // porque se aplica sólo en la salida, sin tocar el estado interno de
-      // continuidad de ángulos.
-      mountingTransform: (yaw, pitch) => ({ yaw, pitch: -pitch }),
       // La calibración corría con 'immediate', o sea apenas los sensores estaban
       // listos: promediaba el bias mientras se manipulaba el teléfono, y un bias
       // con movimiento adentro hace que la zona dinámica integre una velocidad
