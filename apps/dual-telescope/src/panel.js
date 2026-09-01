@@ -1,64 +1,27 @@
-// Panel de ajustes, compartido por los dos roles.
-//
-// Es un panel de **depuración**, no interfaz de producto. Igual que el de kiosk:
-// existe para calibrar el montaje y probar hipótesis en el aparato, y no debería
-// llegar a una instalación real. Que hoy sea útil no lo convierte en una
-// funcionalidad.
-//
-// Los dos roles necesitan lo mismo con otra configuración, así que el panel se
-// arma según el rol en vez de existir dos veces. Qué controles aparecen depende
-// de qué puede cambiar cada uno:
-//
-//   ocular — montado en el tubo: rotación y posición de la vista, tamaño fijo.
-//   guía   — se mira de frente: tamaño de la vista, siempre arriba, sin rotación.
-//
-// Los que dependen de los sensores (suavizado, zona dinámica, recalibrar) sólo
-// se arman en el rol que efectivamente los lleva, que lo decide el servidor.
+// Panel de depuración y ajustes para Ocular y Guía.
 import qrcode from 'qrcode-generator';
 import './ui.css';
 
-// Una clave por rol: en desarrollo las dos páginas se abren en el mismo
-// navegador, o sea el mismo origen y el mismo localStorage.
 const clave = (role) => `dual-telescope:${role}`;
 
-// Rango del zoom, en radianes. Cruza el umbral de la zona dinámica (0.06) para
-// poder entrar y salir de ella con el deslizador.
+// Rango de FOV (radianes).
 export const FOV_MIN = 0.0005;
 export const FOV_MAX = 1.5;
 
-// Ancho a partir del cual se considera pantalla de escritorio. Por debajo, la
-// vista se recorta como en el teléfono.
 export const PANTALLA_GRANDE = '(min-width: 900px)';
-
-// Umbral de la zona dinámica del zoom, en radianes. Vive acá y no en sky.js
-// porque el FOV inicial del ocular, más abajo, tiene que quedar siempre por
-// encima: arrancar ya adentro de la zona dinámica dejaba el apuntado a la
-// deriva del giroscopio desde el primer cuadro, en vez del quaternion directo.
-// Con los dos valores en el mismo archivo no pueden desincronizarse.
 export const UMBRAL_DINAMICO = 0.06;
 
-// Sólo lo que el panel ajusta. El suavizado y el umbral de la zona dinámica
-// quedaron fijados en código (ver sky.js): tenerlos acá los guardaría en
-// localStorage, y un valor viejo guardado le ganaría al del código.
 export const AJUSTES_POR_DEFECTO = {
   ocular: {
-    // 270 es la posición física del teléfono dentro del tubo.
     rot: 270,
-    // Medido contra el ocular real, así que no se expone como control.
     fraccion: 0.5,
-    // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
     pos: 0.75,
-    // Por encima de UMBRAL_DINAMICO a propósito: nunca debe arrancar dentro de
-    // la zona dinámica. El valor de óptica real (§ oculares, sin medir todavía)
-    // puede terminar más cerrado; cuando eso pase, hay que revisar el umbral
-    // junto con este valor, no éste solo.
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
   },
   guide: {
     rot: 0,
     fraccion: 0.5,
-    // Arriba. Se recalcula al cambiar el tamaño; el guía no mueve la vista.
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
@@ -106,8 +69,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     return d;
   };
 
-  // `escala` permite deslizadores logarítmicos: el zoom abarca tres órdenes de
-  // magnitud y en lineal el extremo cerrado sería inmanejable.
   const deslizador = (c, { min, max, paso, formato, escala = null }) => {
     const aCrudo = escala ? escala.a : (v) => v;
     const deCrudo = escala ? escala.de : (v) => v;
@@ -127,7 +88,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
 
   const pct = (v) => `${Math.round(v * 100)}%`;
 
-  // El ocular tiene tamaño fijo y posición móvil; el guía al revés.
   if (esOcular) {
     const ps = deslizador('pos', {
       min: ajustes.fraccion / 2, max: 1 - ajustes.fraccion / 2, paso: 0.01, formato: pct,
@@ -171,12 +131,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     caja.appendChild(recal);
   }
 
-  // Emparejamiento: QR con la URL del guía.
-  //
-  // La dirección la reporta el relay, porque una página no puede conocer la IP
-  // de LAN del equipo que la sirve. El protocolo y el puerto salen de `location`,
-  // así que la URL queda bien tanto en desarrollo, sobre Vite, como en
-  // producción, sin que el servidor tenga que saber en cuál de los dos está.
+  // QR con la URL del guía.
   const qrCaja = document.createElement('div');
   qrCaja.className = 'op-qr';
   qrCaja.style.display = 'none';
@@ -187,9 +142,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
 
   let direcciones = [];
   let iDir = 0;
-  // Arranca oculto: un QR legible ocupa casi todo el panel y taparía el canvas,
-  // y el emparejamiento se hace una vez por sesión de montaje. El SVG tampoco se
-  // genera hasta que se muestra.
   let qrVisible = false;
 
   function pintarQr() {
@@ -198,7 +150,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     if (!mostrar) return;
     const puerto = location.port || (location.protocol === 'https:' ? 443 : 80);
     const url = `${location.protocol}//${direcciones[iDir]}:${puerto}/guide.html`;
-    // Tipo 0 deja que la librería elija la versión mínima que entre.
     const qr = qrcode(0, 'M');
     qr.addData(url);
     qr.make();
@@ -208,9 +159,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
       : url;
   }
 
-  // Un teléfono puede tener a la vez la interfaz del punto de acceso y una de
-  // wifi. Cuál alcanza al guía depende de a cuál esté conectado, así que se
-  // pueden recorrer en vez de adivinar.
   qrCaja.onclick = () => {
     if (direcciones.length < 2) return;
     iDir = (iDir + 1) % direcciones.length;
@@ -229,7 +177,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
       pintarBoton();
       pintarQr();
     };
-    // El interruptor va antes del QR, así no se mueve de lugar al abrirlo.
     fila('QR del guía', qrBoton);
     caja.appendChild(qrCaja);
   }
@@ -238,16 +185,9 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
   estado.className = 'op-estado';
   caja.appendChild(estado);
 
-  // Barra fija arriba de todo: con la vista en un extremo el hueco de ese lado es
-  // cero y la caja se recorta al mínimo, así que estos dos botones tienen que
-  // seguir alcanzables sin scrollear.
   const barra = document.createElement('div');
   barra.className = 'op-barra';
 
-  // Anclaje manual arriba o abajo. Antes el alto se recortaba solo al hueco que
-  // dejaba la vista, lo cual en pantalla completa daba hueco cero y aplastaba el
-  // panel. Mover de lado alcanza: la caja mide lo que mide su contenido y deja
-  // ver el canvas del otro lado.
   const lado = document.createElement('button');
   lado.className = 'op-cerrar';
   const aplicarLado = () => {

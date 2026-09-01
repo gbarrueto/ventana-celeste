@@ -1,23 +1,8 @@
 /**
- * Device orientation sensors (gyroscope + RelativeOrientationSensor fusion).
+ * Control de orientación por fusión de sensores (giroscopio + RelativeOrientationSensor / AbsoluteOrientationSensor).
  *
- * Framework-agnostic: no DOM, no Svelte, no transport. A factory + callbacks,
- * so each app wires its own UI/transport around it.
- *
- * State machine: idle -> [readiness gate] -> calibrating (sampling) -> running.
- * The readiness gate is how each app decides *when* to start sampling:
- *   - 'stillness'  : wait until the device stops moving for N seconds (kiosk's
- *                    original behavior — good for an unattended installed device).
- *   - 'countdown'  : fixed N-second "get ready" timer, no motion check (web-app's
- *                    original behavior — good right after a user taps "Calibrate").
- *   - 'immediate'  : skip the gate, start sampling as soon as sensors are ready.
- *
- * Mounting transform: different physical mountings (phone in hand vs. taped
- * sideways to a Newtonian eyepiece, etc.) need different offsets applied to
- * the raw sensor reading before it becomes canonical yaw/pitch. Rather than
- * one controller implementation per mounting, `mountingTransform` adapts a
- * single implementation — it's applied only at the two output points
- * (onView/onCoords), never to the internal state used for continuity math.
+ * Estados: idle -> [readiness gate] -> calibrating -> running.
+ * Readiness gates: 'stillness', 'countdown', 'immediate'.
  */
 
 function unwrapAngle(angle, reference) {
@@ -46,9 +31,7 @@ function quaternionMultiply(a, b) {
   ];
 }
 
-// Builds a `mountQuaternion` readably: quaternionFromAxisAngle('y', -90).
-// Rota un vector por un quaternion (v' = q v q*). Verificado contra rotaciones
-// conocidas antes de usarlo.
+// Rota un vector por un quaternion (v' = q v q*).
 export function rotateVectorByQuaternion(q, v) {
   const [x, y, z, w] = q;
   const [a, b, c] = v;
@@ -92,77 +75,22 @@ export function createOrientationController({
 
   persistBiasKey = null,
 
-  // 'relative' — RelativeOrientationSensor: gyro+accel, sin brújula. Su acimut
-  //   arranca en un origen arbitrario: la lectura al momento de crear el sensor
-  //   se reporta como cero, sea cual sea la dirección real a la que apunta el
-  //   aparato. Ese origen no lo fija esta página: lo fija la fusión de sensores
-  //   del sistema operativo, y en Android puede persistir entre recargas de
-  //   página — medido: recargar no lo reinicia, bloquear y desbloquear el
-  //   equipo sí. O sea que "apunta al norte" con este modo es coincidencia del
-  //   momento en que arrancó el sensor, no una propiedad del sensor.
-  // 'absolute' — AbsoluteOrientationSensor: suma el magnetómetro, así que el
-  //   acimut queda referido al norte magnético real en vez de a ese origen
-  //   arbitrario. A cambio se degrada cerca de metal, así que un montaje
-  //   metálico (un tubo de telescopio) puede volver la lectura inestable en vez
-  //   de mejorarla — es algo que sólo se verifica en el aparato real.
-  //
-  // No es lo mismo que 'relative'/'gyro' de `state.currentMode`: eso decide de
-  // qué camino sale el apuntado (quaternion vs. integración), y es ortogonal a
-  // esto, que decide contra qué está referido el acimut del propio quaternion.
-  //
-  // Por defecto 'relative', así que web-app y kiosk no cambian de comportamiento.
+  // 'relative': RelativeOrientationSensor. 'absolute': AbsoluteOrientationSensor (norte magnético).
   sensorReference = 'relative',
 
   mountingTransform = (yaw, pitch) => ({ yaw, pitch }),
 
-  // Rotation applied to the raw sensor quaternion BEFORE it is decomposed into
-  // Euler angles. This is not the same knob as `mountingTransform`, and one
-  // cannot do the other's job: `mountingTransform` runs on the *result* of the
-  // decomposition, so it can offset or swap angles but cannot undo a degenerate
-  // decomposition.
-  //
-  // Why it exists: quaternionToEuler() below extracts two angles under a fixed
-  // convention whose middle angle is never computed, and that decomposition is
-  // singular when the middle angle reaches +-90 degrees. A phone rolled 90
-  // degrees about its Y axis lands exactly there — measured on device, the two
-  // angles then read 0 and 0 while the device is plainly rotated, and any motion
-  // is amplified by ~240x compared with the same samples decomposed off the
-  // singularity. Pre-rotating the quaternion moves the mount away from the
-  // singular attitude, which is the only place the problem can be fixed.
-  //
-  // Build it with quaternionFromAxisAngle(). null = no rotation, so apps that do
-  // not set it are bit-for-bit unaffected.
+  // Rotación previa aplicada al quaternion antes de descomponer a Euler.
   mountQuaternion = null,
 
-  // 'euler'  — descomposición Euler con convención fija (lo histórico).
-  // 'vector' — se rota el eje óptico por el quaternion y se leen alt/az del
-  //            vector resultante.
-  //
-  // Por qué existe 'vector': la descomposición Euler asume implícitamente qué eje
-  // del dispositivo corresponde a qué eje del cielo, y esa correspondencia sólo
-  // vale cerca de una elevación. Medido en el montaje: el eje de rotación que hay
-  // que usar para moverse en azimut se desplaza con la elevación, hasta que en el
-  // cenit la vista deja de responder. El modo vector no tiene convención: el
-  // montaje se reduce a *qué vector del dispositivo apunta por el tubo*, una
-  // constante. Tampoco tiene singularidad propia; la única que queda es la real
-  // del alt-az, azimut indefinido en el cenit.
-  //
-  // Por defecto 'euler', así que web-app y kiosk no cambian de comportamiento.
-  // Suavizado del seguimiento, como fracción del error corregida por lectura.
-  // 1 = sin suavizado (la vista salta a la lectura cruda); más chico = más
-  // suave y más retrasado. Importa sobre todo con zoom alto, donde un temblor
-  // de la mano se amplifica: el telescopio real tiene inercia, así que algo de
-  // suavizado es *más* realista, pero de más vuelve el instrumento pastoso.
-  // Los valores por defecto son los que tenían web-app y kiosk hardcodeados.
+  // 'euler' (descomposición Euler) o 'vector' (rotación del eje óptico).
   smoothing = { relative: 0.5, gyro: 0.1 },
 
   pointingMode = 'euler',
-  // Clave de OPTICAL_AXES o un vector [x, y, z]. Sólo se usa en modo 'vector'.
+  // Clave de OPTICAL_AXES o vector [x, y, z] para modo 'vector'.
   opticalAxis = '+y',
 
-  // Altura, en grados, a la que se topa la amplificación de la tasa de acimut.
-  // Sólo interviene en modo vector. No es un tope de apuntado: la vista puede
-  // pasar del cenit, lo que se limita es cuánto se amplifica el giro ahí.
+  // Límite de elevación (grados) para acotar la tasa de giro azimutal cerca del cenit.
   zenithRateGuardDeg = 85,
 
   getLogFov = () => 0.05,
@@ -204,13 +132,7 @@ export function createOrientationController({
     countdownTimer: null,
   };
 
-  // Copia mutable: se puede ajustar en caliente sin reconstruir el controlador,
-  // que es lo que permite calibrar el equilibrio realismo/usabilidad en el
-  // aparato en vez de a ciegas.
   const suavizado = { relative: 0.5, gyro: 0.1, ...smoothing };
-
-  // Igual que el suavizado: ajustable en caliente. Con 0 la zona dinámica queda
-  // desactivada, porque el FOV siempre es positivo.
   let umbralDinamico = dynamicThreshold;
 
   const opticalVector = Array.isArray(opticalAxis) ? opticalAxis : OPTICAL_AXES[opticalAxis];
@@ -218,12 +140,7 @@ export function createOrientationController({
     throw new Error(`createOrientationController: opticalAxis inválido "${opticalAxis}"`);
   }
 
-  // Único punto donde el quaternion se convierte en yaw/pitch. Los dos modos
-  // devuelven la misma forma, así que todo lo de abajo es indiferente al elegido.
-  //
-  // Nota: esto cubre el camino del quaternion (modo 'relative'). La integración
-  // del giroscopio, que se usa con FOV angosto, sigue leyendo los ejes crudos del
-  // dispositivo y necesitaría su propia corrección con un montaje rotado.
+  // Convierte el quaternion a yaw/pitch según pointingMode.
   function quaternionToPointing(q) {
     if (pointingMode !== 'vector') return quaternionToEuler(q);
     const v = rotateVectorByQuaternion(q, opticalVector);
@@ -234,32 +151,9 @@ export function createOrientationController({
     };
   }
 
-  // Tope de tan(altura) al derivar la tasa de acimut. Cerca del cenit el acimut
-  // se vuelve indefinido y su tasa diverge: es la degeneración alt-az de siempre,
-  // que en velocidades aparece como amplificación en vez de indefinición.
   const TAN_MAX = Math.tan((zenithRateGuardDeg * Math.PI) / 180);
 
-  // Tasas de acimut y altura a partir de la velocidad angular del giroscopio.
-  //
-  // Único punto donde ω se convierte en tasas, igual que quaternionToPointing()
-  // es el único donde el quaternion se convierte en posición. Los dos modos
-  // devuelven la misma forma.
-  //
-  // El camino histórico integra los ejes crudos del dispositivo: asume que
-  // gyro.z es acimut y gyro.x es altura, lo cual sólo vale con el aparato
-  // derecho. Peor: la correspondencia depende de la elevación, así que ninguna
-  // permutación fija de ejes la arregla — es el mismo error que la
-  // descomposición Euler tenía para la posición.
-  //
-  // En modo vector, ω se lleva al marco del mundo con el mismo quaternion que ya
-  // usa el apuntado y las tasas salen por proyección, sin convención de montaje:
-  //
-  //   d(altura)/dt = wx·cos(az) − wy·sin(az)
-  //   d(acimut)/dt = tan(alt)·(wx·sin(az) + wy·cos(az)) − wz
-  //
-  // Derivadas de yaw = atan2(vx, vy) y pitch = asin(vz), las mismas expresiones
-  // que quaternionToPointing, así que posición y tasa quedan consistentes y un
-  // cambio de modo no salta.
+  // Calcula tasas de acimut y altura a partir de la velocidad angular del giroscopio.
   function angularRates(omega, yaw, pitch) {
     if (pointingMode !== 'vector' || !state.relOrientLast) {
       return { yawRate: omega[2], pitchRate: omega[0] };
@@ -272,8 +166,7 @@ export function createOrientationController({
     };
   }
 
-  // El bias es una propiedad del sensor, así que se resta en el marco del
-  // dispositivo. La deadzone también: es ruido de lectura, no de apuntado.
+  // Aplica bias y deadzone en el marco del dispositivo.
   function omegaCorregida() {
     const w = [
       state.gyroSensor.x - state.gyroBias.x,
@@ -587,11 +480,6 @@ export function createOrientationController({
     const inDynamicZone = currentV < umbralDinamico;
 
     if (inDynamicZone) {
-      // Sin una posición previa, sembrar desde cero en vez de esperar la primera
-      // lectura real dejaba el acumulador anclado cerca de (0,0): el arranque
-      // con bias guardado no pasa por finishCalibration(), que es donde
-      // normalmente se siembra oldX/oldY desde el quaternion. Si todavía no hay
-      // lectura absoluta, se espera un tick más en vez de arrancar a ciegas.
       if (state.oldX === null || state.oldY === null) {
         if (!state.relOrientLast) return;
         const euler = quaternionToPointing(state.relOrientLast);
@@ -600,7 +488,6 @@ export function createOrientationController({
         return;
       }
 
-      // Referencia para la proyección: el apuntado que se está mostrando.
       const { yawRate, pitchRate } = angularRates(omegaCorregida(), state.oldX, state.oldY);
 
       const rawDeltaYaw = yawRate * dt;
@@ -662,18 +549,8 @@ export function createOrientationController({
     runApplicationLogic(state.orient.pitch, state.orient.yaw, currentV);
   }
 
-  // When zooming back out through the dynamic-zone boundary, blend the
-  // dynamic-zone drift back toward the real relative-orientation reading
-  // instead of snapping, so the view doesn't jump.
+  // Corrige la deriva acumulada por integración al salir de la zona dinámica.
   function blendTowardRelativeOnZoomIn(currentV) {
-    // El límite es el más ancho de los dos: por debajo de cualquiera de ellos
-    // hubo integración del giroscopio, y por lo tanto deriva que corregir.
-    //
-    // Antes miraba sólo `fovThreshold`, lo cual dejaba la corrección muerta en
-    // cualquier app que lo pusiera en 0 para quedarse en el camino del
-    // quaternion: la deriva de la zona dinámica no volvía nunca a la lectura
-    // absoluta. Con el máximo, kiosk y web-app conservan su límite anterior,
-    // que en las dos es el mayor.
     const umbral = Math.max(fovThreshold, umbralDinamico);
     if (umbral <= 0) return;
 
@@ -716,9 +593,6 @@ export function createOrientationController({
     try {
       emitDebug({ activeSource: 'requesting-permission' });
       await requestIOSPermissionIfNeeded();
-      // El nombre de la clase global, y del sensor en los mensajes de error,
-      // sigue a sensorReference: no tiene sentido pedir RelativeOrientationSensor
-      // cuando lo que hace falta es que el acimut esté referido al norte real.
       const RefSensor = sensorReference === 'absolute' ? window.AbsoluteOrientationSensor : window.RelativeOrientationSensor;
       const refSensorName = sensorReference === 'absolute' ? 'AbsoluteOrientationSensor' : 'RelativeOrientationSensor';
       if (!('Gyroscope' in window) || typeof RefSensor !== 'function') {
@@ -736,10 +610,6 @@ export function createOrientationController({
       if (savedBias) {
         state.gyroBias = savedBias;
         if (!state.sensorsStarted) {
-          // finishCalibration() fija esto antes de arrancar; este atajo se lo
-          // saltaba, así que la primera lectura calculaba dt contra `null`
-          // (coerce a 0), dando un dt de segundos en vez de milisegundos —
-          // multiplicado en la zona dinámica, un salto de golpe en el arranque.
           state.lastTime = performance.now();
           state.gyroSensor.addEventListener('reading', onSensorReading);
           state.gyroSensor.start();
@@ -775,10 +645,8 @@ export function createOrientationController({
     stop,
     startCalibration,
     cancelCalibration,
-    // Ajuste en caliente. Acepta uno solo de los dos.
     setSmoothing(partial) { Object.assign(suavizado, partial); },
     getSmoothing() { return { ...suavizado }; },
-    // Permite entrar y salir de la zona dinámica sin reconstruir el controlador.
     setDynamicThreshold(v) { umbralDinamico = v; },
     getDynamicThreshold() { return umbralDinamico; },
   };

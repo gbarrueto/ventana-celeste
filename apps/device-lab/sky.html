@@ -161,15 +161,7 @@ const AXES = {
   '+z': [0, 0, 1], '-z': [0, 0, -1],
 };
 
-// El marco local del sensor tiene Z hacia arriba, así que alt/az salen directo
-// del vector de apuntado. Sin ángulos de Euler de por medio no hay convención
-// que valga sólo cerca de una elevación: la única degeneración que queda es la
-// real del alt-az, azimut indefinido en el cenit.
-// `invAlt` reproduce mountingTransform de dual-telescope, que invierte sólo la
-// altura. No es intercambiable con elegir el eje opuesto: cambiar de eje mueve
-// el signo de la altura y desplaza el acimut 180° a la vez, acoplados, y
-// dual-telescope necesita mover uno sin el otro. Verificado: ninguna combinación
-// de eje + invAz reproduce esa configuración exacta, sólo invAlt sí.
+// Calcula alt/az a partir del vector del eje óptico rotado por el quaternion.
 function pointingAltAz(q) {
   const v = rotateByQuat(q, AXES[$('optic').value]);
   const n = Math.hypot(...v) || 1;
@@ -193,14 +185,7 @@ let sensor = null;
 let azInicial = null;
 let lecturas = 0;
 
-// `relative` no tiene norte absoluto: su origen de acimut queda fijado al
-// arrancar el sensor, así que apuntar al norte real es coincidencia. `absolute`
-// suma el magnetómetro y refiere el acimut al norte magnético, a cambio de
-// necesitar calibración de brújula y degradarse cerca de metal.
-//
-// El azimut al arrancar es el dato que distingue los dos casos: con `relative`
-// arranca cerca de cero pase lo que pase, porque ese es su origen. Con
-// `absolute` arranca en la dirección real a la que apunta el aparato.
+// Inicia el sensor de orientación seleccionado (Relative vs Absolute).
 function startSensor() {
   try { sensor?.stop(); } catch { /* ya detenido */ }
   azInicial = null;
@@ -236,9 +221,6 @@ function startSensor() {
 
     const azEl = $('azalt');
     azEl.textContent = `${(az * DEG).toFixed(1)}° / ${altDeg.toFixed(1)}°`;
-    // El azimut se vuelve indefinido en el cenit: es la degeneración real del
-    // alt-az, no un fallo del mapeo. Marcarlo permite distinguir "estoy en el
-    // agujero" de "el mapeo está mal".
     azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
 
     if (engine?.core?.observer) {

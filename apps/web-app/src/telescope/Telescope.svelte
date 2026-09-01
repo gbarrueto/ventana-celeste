@@ -14,10 +14,7 @@
   let currentModes = $state({ simple: true, advanced: false });
   let loading = $state(true);
   let menuOpen = $state(false);
-  // 'connecting' | 'connected' | 'timeout' | 'lost' — calibration must not start
-  // until the WebRTC link to the viewer (index.html) is actually up, otherwise the
-  // phone calibrates against a peer that may never exist. 'lost' means we were
-  // connected and the viewer stopped answering (refreshed, closed, or off-network).
+  // 'connecting' | 'connected' | 'timeout' | 'lost'
   let connectionStatus = $state('connecting');
   let connectionTimer = null;
 
@@ -57,9 +54,6 @@
       }
     }, CONNECTION_TIMEOUT_MS);
 
-    // Ongoing link state. Sensors keep running through a drop: the orientation
-    // state stays valid and simply has nowhere to go, so a brief blip recovers
-    // without recalibrating.
     setTelescopeStatusHandler(({ alive, everAlive }) => {
       if (alive) {
         connectionStatus = 'connected';

@@ -10,8 +10,6 @@
   let { onclose } = $props();
 
   let activeTab = $state(null); // 'location' | 'datetime' | null
-  // Derived from STEL_BUTTONS so the menu can't drift from the engine defaults
-  // the way a separate hardcoded list did.
   let activeButtons = $state(
     Object.fromEntries(Object.entries(STEL_BUTTONS).map(([name, info]) => [name, info.on])),
   );
