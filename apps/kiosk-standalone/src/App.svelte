@@ -6,8 +6,6 @@
     createOrientationController, initializeStellariumEngine,
     createKeyboardConnector,
   } from "@ventanaceleste/core";
-  // Copia única del motor en core/assets; antes se resolvía por la ruta por
-  // defecto de core, que apuntaba a la copia en public/ de esta app.
   import engineWasmUrl from "@ventanaceleste/core/assets/stellarium-web-engine.wasm?url";
   import engineScriptUrl from "@ventanaceleste/core/assets/stellarium-web-engine.js?url";
   import { loadConfig } from "./config";
@@ -125,9 +123,6 @@
     const MAX_FOV = 3.228859;
     const MIN_FOV = 0.000005;
     const FOV_STEP = 0.1;
-    // El FOV inicial salia de la tabla de oculares, via applyLensLevel(). Sin
-    // niveles hay que declararlo aca. Los dos valores son los que daba esa
-    // tabla en cada rama, para no cambiar de comportamiento al limpiar.
     const FOV_INICIAL = CALIBRATE_ON_START ? MAX_FOV : Math.PI / 3;
     let currentFov = FOV_INICIAL;
     let logFov = Math.log(FOV_INICIAL);
@@ -142,9 +137,6 @@
 
     function updateStellariumView({ h, v }) {
       if (!engine || !engine.core || !engine.core.observer) return;
-      // A malformed payload used to write NaN into observer.yaw/pitch, which looks
-      // exactly like "no readings are arriving" — the view simply never moves.
-      // Warn once (this runs per frame) instead of corrupting engine state.
       if (!Number.isFinite(h) || !Number.isFinite(v)) {
         if (!warnedInvalidView) {
           warnedInvalidView = true;
@@ -193,8 +185,6 @@
           core.star_relative_scale = 1.0;
           core.stars.label_amount = 3.0;
           core.exposure_scale = 1;
-          // El FOV se fija aca y no en el arranque: initEngine() no se espera, asi
-          // que alli el motor todavia no existe y la asignacion se perdia.
           core.fov = currentFov;
         },
       });
@@ -281,10 +271,6 @@
       getLogFov: () => logFov,
       onDebug: (partial) => setDebug(partial),
       onCoords: ({ yaw, pitch }) => setDebugCoords(yaw, pitch),
-      // core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords
-      // right above. This app speaks { h, v } toward Stellarium, so the
-      // translation belongs here. Destructuring { h, v } off the callback yields
-      // undefined and the view never moves.
       onView: ({ yaw, pitch }) => updateStellariumView({ h: yaw, v: pitch }),
       onCalibrationVisibility: (visible) => {
         if (overlayEl) overlayEl.style.display = visible ? "block" : "none";

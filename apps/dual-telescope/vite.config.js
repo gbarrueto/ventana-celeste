@@ -6,16 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// Una app, dos entradas (decisión 4.5): el Ocular lleva los sensores, el Guía
-// sólo recibe. Comparten core; se diferencian en qué conectan.
-//
-// HTTPS en desarrollo por la misma razón que en kiosk: los sensores necesitan
-// contexto seguro cuando la página se abre desde otro dispositivo por la LAN.
-// En producción el Ocular se sirve a sí mismo por localhost, que ya lo es.
-// En desarrollo el relay va montado sobre el propio servidor de Vite. Así la
-// página y el socket comparten origen y protocolo: con HTTPS el socket es wss://
-// automáticamente, que es lo que permite que los sensores funcionen (contexto
-// seguro) sin caer en mixed content.
+// Plugin de Vite para integrar el relay WebSocket y endpoints en desarrollo.
 function devRelay() {
   return {
     name: 'dual-telescope-relay',
@@ -25,17 +16,8 @@ function devRelay() {
       server.middlewares.use((req, res, next) => {
         if (!relay.handleRequest(req, res)) next();
       });
-      // Vite ya usa este servidor para su WebSocket de HMR: sólo se toma
-      // RELAY_PATH y el resto se deja pasar.
       server.httpServer?.on('upgrade', (req, socket, head) => relay.handleUpgrade(req, socket, head));
 
-      // Vite imprime sus URLs sin distinguir roles, y el guía vive en
-      // /guide.html, que había que escribir a mano cada vez. Se agregan las dos
-      // con el rol al lado.
-      //
-      // El ocular va por localhost porque los sensores exigen contexto seguro y
-      // sólo localhost lo es sin certificado de confianza. El guía necesita la
-      // dirección de red, porque se abre desde el otro dispositivo.
       const original = server.printUrls.bind(server);
       server.printUrls = () => {
         original();

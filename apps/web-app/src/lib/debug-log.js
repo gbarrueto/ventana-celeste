@@ -1,14 +1,5 @@
 /**
- * On-screen console for the telescope page.
- *
- * Protobject forwards the telescope's console to the viewer — but only *after*
- * a peer connection exists. Everything that happens before that (including the
- * reason a connection never happens) is invisible on a phone, and USB remote
- * debugging isn't always available. This mirrors console output into a panel
- * drawn on the page itself, so the phone can be diagnosed with no tooling.
- *
- * Enabled in dev builds, or anywhere via `?debug=1`. Never in a production
- * build unless explicitly asked for via the query param.
+ * Consola en pantalla para depuración en dispositivo móvil (?debug=1 o DEV).
  */
 
 const MAX_LINES = 200;
@@ -21,7 +12,7 @@ function shouldEnable() {
   try {
     if (new URLSearchParams(window.location.search).get('debug') === '1') return true;
   } catch {
-    // URL parsing shouldn't be able to break startup
+    // ignore
   }
   return Boolean(import.meta.env?.DEV);
 }
@@ -50,8 +41,6 @@ function createPanel() {
     left: '0',
     right: '0',
     bottom: '0',
-    // Above the calibration overlay (999999) so it stays readable while the
-    // page is still showing "Conectando…" — which is exactly when it's needed.
     zIndex: '2147483647',
     maxHeight: '45vh',
     display: 'flex',
@@ -153,13 +142,10 @@ export function initDebugLog() {
     const original = console[level].bind(console);
     console[level] = (...args) => {
       original(...args);
-      // Never let a rendering failure here swallow the real log call.
       try { append(level, args); } catch { /* no-op */ }
     };
   }
 
-  // Uncaught failures are the ones most likely to explain a page that just
-  // sits there, and are precisely what's invisible without a console.
   window.addEventListener('error', (event) => {
     append('error', [`uncaught: ${event.message}`, `@ ${event.filename}:${event.lineno}`]);
   });

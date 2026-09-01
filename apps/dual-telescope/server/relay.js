@@ -1,16 +1,9 @@
-// Relay de producción: sirve dist/ y hace de puente entre Ocular y Guía.
-//
-// Corre en el dispositivo principal, que por defecto es el mismo que lleva los
-// sensores. En desarrollo no se usa: ahí el relay va enganchado al dev server de
-// Vite para compartir su HTTPS (ver vite.config.js y docs/deployment.md).
+// Servidor de estáticos y relay WebSocket para dual-telescope.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, resolve, normalize } from 'node:path';
 import { createRelay, direccionesLan } from './relay-core.js';
 
-// Desde el directorio de trabajo, no desde la ubicación del archivo: así sirve
-// igual dentro del repo y en el paquete de despliegue, y evita `import.meta.url`,
-// que no sobrevive al bundleo.
 const DIST = resolve(process.env.DIST ?? process.cwd(), 'dist');
 const PORT = Number(process.env.PORT ?? 8080);
 const SENSOR_SOURCE = process.env.SENSOR_SOURCE ?? 'ocular';
@@ -54,8 +47,6 @@ server.listen(PORT, () => {
   console.log(`[relay] estáticos desde ${DIST}`);
   console.log('');
   console.log(`  Ocular (este equipo): http://localhost:${PORT}/`);
-  // Las direcciones salen de Node, no de `ip route` ni `hostname -i`: en Termux
-  // esas devuelven loopback, que el guía no puede alcanzar.
   const lan = direccionesLan();
   if (lan.length) {
     for (const { nombre, address } of lan) {

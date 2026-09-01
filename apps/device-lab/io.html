@@ -141,23 +141,15 @@ $('bSerial').onclick = async () => {
   } catch (e) { log('Web Serial: ' + e.name + ' — ' + e.message); }
 };
 
-// Enumerar el dispositivo no es leerlo: hay que abrirlo, reclamar la interfaz,
-// avisar que el host esta presente (equivalente a DTR) y recien ahi pedir datos.
-// La version anterior de este boton solo enumeraba, asi que mover el
-// potenciometro no podia hacer nada.
 let usbDevice = null;
 let usbLeyendo = false;
 
 async function usbLeer(devicePrevio) {
-  // Sin argumento hace falta un gesto del usuario (requestDevice).
-  // Con uno ya autorizado no: eso es lo que permite reconectar solo.
   const dev = devicePrevio ?? await navigator.usb.requestDevice({ filters: [] });
   usbDevice = dev;
   await dev.open();
   if (dev.configuration === null) await dev.selectConfiguration(1);
 
-  // Se busca la interfaz con un endpoint bulk de entrada en vez de hardcodear
-  // numeros: cambian segun la placa y la libreria.
   const mapa = [];
   let iface = null;
   let epIn = null;
@@ -168,11 +160,7 @@ async function usbLeer(devicePrevio) {
       mapa.push('  iface ' + it.interfaceNumber + ' clase ' + alt.interfaceClass + ': ' + (eps || '(sin endpoints)'));
       const bulkIn = alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
       if (!bulkIn) continue;
-      // Hay que quedarse con la interfaz **vendor-specific** (clase 255): es la
-      // que expone la libreria WebUSB. Un Leonardo presenta ademas las dos de
-      // CDC (clases 2 y 10), y la de datos CDC tambien tiene un bulk IN — quedarse
-      // con "el primero que aparezca" reclama esa, que no escribe nadie, y no
-      // llega nada aunque todo lo demas este bien.
+      // Selecciona interfaz vendor-specific (clase 255) para WebUSB.
       const esVendor = alt.interfaceClass === 255;
       if (iface === null || (esVendor && !vendorElegido)) {
         iface = it.interfaceNumber;
@@ -181,27 +169,16 @@ async function usbLeer(devicePrevio) {
       }
     }
   }
-  // El numero de serie decide si el permiso sobrevive a desenchufar el cable.
-  // Chrome revoca el permiso al desconectar cualquier dispositivo que no lo
-  // reporte, y ahi getDevices() vuelve vacio y no llega evento 'connect': hay
-  // que volver a emparejar con gesto. Con numero de serie, el permiso persiste.
-  const serie = dev.serialNumber
-    ? 'serie "' + dev.serialNumber + '" -> el permiso PERSISTE al desenchufar'
-    : 'SIN numero de serie -> Chrome revoca el permiso al desenchufar';
+  const serie = dev.serialNumber ? `serie "${dev.serialNumber}"` : 'sin número de serie';
   const resumen = 'WebUSB abierto:\n  ' + (dev.manufacturerName || '?') + ' ' +
     (dev.productName || '?') + '\n  ' + serie + '\n' + mapa.join('\n');
   if (iface === null) { log(resumen); throw new Error('sin endpoint bulk de entrada: esta placa no expone datos por WebUSB'); }
-  // Decir cual se eligio y por que: si cae en CDC en vez de la vendor-specific,
-  // no llega nada y desde afuera parece un problema de hardware.
   log(resumen + '\n  -> uso iface ' + iface + ' ep ' + epIn +
-    (vendorElegido ? ' (vendor-specific: la de WebUSB)'
-                   : ' (NO vendor-specific, probablemente CDC: revisar que este cargado el sketch WebUSB)'));
+    (vendorElegido ? ' (vendor-specific)' : ' (no vendor-specific)'));
 
   await dev.claimInterface(iface);
   try { await dev.selectAlternateInterface(iface, 0); } catch { /* no todas lo necesitan */ }
 
-  // 0x22 = SET_CONTROL_LINE_STATE, valor 1 = DTR. La libreria WebUSB de Arduino
-  // no manda nada hasta que el host se anuncia asi.
   await dev.controlTransferOut({
     requestType: 'class', recipient: 'interface', request: 0x22, value: 0x01, index: iface,
   });
@@ -238,10 +215,9 @@ $('bGp').onclick = () => {
   const pads = [...(navigator.getGamepads?.() ?? [])].filter(Boolean);
   log(pads.length
     ? pads.map((p) => `Gamepad: ${p.id}\n  ejes: ${p.axes.length}  botones: ${p.buttons.length}`).join('\n')
-    : 'Ningún gamepad visible. En la mayoría de los navegadores hay que mover un eje o apretar un botón para que aparezca.');
+    : 'Ningún gamepad visible.');
 };
 
-// Los ejes en vivo son la prueba real de si un potenciómetro sirve por esta vía.
 function pollAxes() {
   const pads = [...(navigator.getGamepads?.() ?? [])].filter(Boolean);
   if (!pads.length) {
@@ -257,16 +233,7 @@ function pollAxes() {
 }
 pollAxes();
 
-// --- Reconexion sin gesto -----------------------------------------------
-// El telefono del ocular queda dentro del telescopio: tocar un boton para dar
-// permiso no es viable en uso normal. requestDevice() exige gesto, pero
-// getDevices() devuelve lo ya autorizado para este origen y no lo exige. Asi el
-// permiso se da una sola vez, con el telefono en la mano, y despues cada arranque
-// reconecta solo.
-//
-// El permiso va atado al ORIGEN: hay que emparejar en la misma URL que se use
-// despues. Emparejar en el dev server y esperar que valga en produccion no
-// funciona.
+// --- Reconexión WebUSB sin gesto ----------------------------------------
 async function revisarAutorizados() {
   const el = document.getElementById('autorizados');
   if (!('usb' in navigator)) { el.textContent = 'WebUSB no disponible'; el.className = 'bad'; return []; }
@@ -295,7 +262,6 @@ document.getElementById('bAuto').onclick = async () => {
   }
 };
 
-// Enchufarlo despues de abrir la pagina tambien cuenta como evento sin gesto.
 if ('usb' in navigator) {
   navigator.usb.addEventListener('connect', async (e) => {
     log('Dispositivo conectado: ' + (e.device.productName || '?') + ' — intentando leer sin gesto…');
@@ -314,13 +280,7 @@ if ('usb' in navigator) {
   revisarAutorizados();
 }
 
-// --- Volcado de descriptores -------------------------------------------
-// Lee lo que la placa declara, sin reclamar ninguna interfaz, asi que funciona
-// con cualquier sketch. La comparacion entre un sketch que Windows acepta y uno
-// que rechaza es lo que senala la diferencia.
-//
-// El numero de serie importa especialmente: Windows lo usa como identidad del
-// dispositivo, y un sketch sin modulos PluggableUSB devuelve una cadena vacia.
+// --- Volcado de descriptores USB ----------------------------------------
 $('bDesc').onclick = async () => {
   const out = $('descOut');
   if (!('usb' in navigator)) { out.textContent = 'WebUSB no disponible.'; return; }
@@ -333,7 +293,6 @@ $('bDesc').onclick = async () => {
     const serie = dev.serialNumber;
     L.push(`serie      : ${serie === undefined ? '(no declara)' : serie === '' ? '(CADENA VACIA)' : '"' + serie + '"'}`);
     L.push(`vid:pid    : ${dev.vendorId.toString(16).padStart(4, '0')}:${dev.productId.toString(16).padStart(4, '0')}`);
-    // bcdUSB: 2.1 significa que hay descriptor BOS, que es lo que agrega WebUSB.
     L.push(`USB        : ${dev.usbVersionMajor}.${dev.usbVersionMinor}.${dev.usbVersionSubminor}`);
     L.push(`revision   : ${dev.deviceVersionMajor}.${dev.deviceVersionMinor}.${dev.deviceVersionSubminor}`);
     L.push(`clase disp : ${dev.deviceClass}/${dev.deviceSubclass}/${dev.deviceProtocol}` +
@@ -361,18 +320,6 @@ $('bDesc').onclick = async () => {
 };
 
 // --- Sonda de teclado HID -----------------------------------------------
-// La placa con el sketch teclado_mediado escribe una linea por lectura. Aca no
-// se interpreta el contenido todavia: se mide si el canal sirve.
-//
-// Tres cosas a la vez:
-//   crudo      la libreria Keyboard de Arduino manda scancodes de teclado con
-//              distribucion US. Con otra distribucion en el telefono, el ':'
-//              puede llegar como otro caracter, y este campo es la unica forma
-//              de verlo.
-//   lineas/s   el caudal real. Cada caracter son dos informes HID, asi que a 50
-//              lineas por segundo hay bastante trafico.
-//   prefijos   cuantas lineas llegaron por canal, para detectar caracteres
-//              perdidos sin tener que parsear.
 const kbEstado = { total: 0, crudo: '', lineas: [], prefijos: new Map(), sellos: [] };
 
 function kbPintar() {
@@ -383,13 +330,10 @@ function kbPintar() {
     ? [...kbEstado.prefijos].map(([k, n]) => `${k}:${n}`).join('  ')
     : '—';
 
-  // Lineas en el ultimo segundo.
   const ahora = performance.now();
   kbEstado.sellos = kbEstado.sellos.filter((t) => ahora - t < 1000);
   $('kbRate').textContent = kbEstado.sellos.length;
 
-  // Veredicto sobre el separador: es lo que decide si el protocolo sirve tal
-  // cual o hay que sacarle los signos.
   const sep = $('kbSep');
   if (!kbEstado.total) { sep.textContent = '—'; sep.className = ''; return; }
   const conDosPuntos = kbEstado.lineas.some((l) => l.includes(':'));
@@ -410,7 +354,6 @@ const kbFuente = createKeyboardLineSource({
     kbEstado.sellos.push(performance.now());
     kbEstado.lineas.push(linea);
     if (kbEstado.lineas.length > 5) kbEstado.lineas.shift();
-    // El prefijo es el primer caracter no numerico, sin asumir cual es.
     const pref = /^[^0-9]/.test(linea) ? linea[0] : '(sin prefijo)';
     kbEstado.prefijos.set(pref, (kbEstado.prefijos.get(pref) ?? 0) + 1);
     kbPintar();
@@ -419,7 +362,6 @@ const kbFuente = createKeyboardLineSource({
 
 if (kbFuente.isSupported()) {
   kbFuente.connect();
-  // El caudal decae solo, asi que hay que repintar aunque no llegue nada.
   setInterval(kbPintar, 500);
 }
 
@@ -432,18 +374,7 @@ $('kbReset').onclick = () => {
   kbPintar();
 };
 
-// Sonda del permiso tras una desconexion.
-//
-// Hay dos causas posibles y se arreglan distinto, asi que hay que separarlas:
-//
-//   getDevices() vuelve VACIO      -> Chrome solto el permiso. Nada que reabrir,
-//                                     hace falta requestDevice() con gesto.
-//   getDevices() DEVUELVE la placa -> el permiso sigue; si igual no se puede
-//                                     abrir, el que bloquea es Android por
-//                                     debajo, y el error de open() lo dice.
-//
-// Se muestrea varias veces porque reenumerar lleva su tiempo: preguntar una sola
-// vez justo al desconectar puede dar un resultado que despues cambia.
+// Sonda del estado de permisos tras desconexión.
 async function sondearPermiso() {
   for (const t of [0, 1000, 3000, 6000]) {
     setTimeout(async () => {
@@ -455,7 +386,6 @@ async function sondearPermiso() {
       const d = devs[0];
       log('  +' + t + 'ms  getDevices(): ' + (d.productName || '?') +
           ' serie "' + (d.serialNumber || '') + '" -> permiso vigente');
-      // Si el permiso sigue pero abrir falla, el nombre del error es el dato.
       if (usbLeyendo) return;
       try {
         await d.open();
