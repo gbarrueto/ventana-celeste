@@ -587,8 +587,21 @@ export function createOrientationController({
     const inDynamicZone = currentV < umbralDinamico;
 
     if (inDynamicZone) {
+      // Sin una posición previa, sembrar desde cero en vez de esperar la primera
+      // lectura real dejaba el acumulador anclado cerca de (0,0): el arranque
+      // con bias guardado no pasa por finishCalibration(), que es donde
+      // normalmente se siembra oldX/oldY desde el quaternion. Si todavía no hay
+      // lectura absoluta, se espera un tick más en vez de arrancar a ciegas.
+      if (state.oldX === null || state.oldY === null) {
+        if (!state.relOrientLast) return;
+        const euler = quaternionToPointing(state.relOrientLast);
+        state.oldX = euler.yaw;
+        state.oldY = euler.pitch;
+        return;
+      }
+
       // Referencia para la proyección: el apuntado que se está mostrando.
-      const { yawRate, pitchRate } = angularRates(omegaCorregida(), state.oldX ?? 0, state.oldY ?? 0);
+      const { yawRate, pitchRate } = angularRates(omegaCorregida(), state.oldX, state.oldY);
 
       const rawDeltaYaw = yawRate * dt;
       const rawDeltaPitch = pitchRate * dt;
@@ -723,6 +736,11 @@ export function createOrientationController({
       if (savedBias) {
         state.gyroBias = savedBias;
         if (!state.sensorsStarted) {
+          // finishCalibration() fija esto antes de arrancar; este atajo se lo
+          // saltaba, así que la primera lectura calculaba dt contra `null`
+          // (coerce a 0), dando un dt de segundos en vez de milisegundos —
+          // multiplicado en la zona dinámica, un salto de golpe en el arranque.
+          state.lastTime = performance.now();
           state.gyroSensor.addEventListener('reading', onSensorReading);
           state.gyroSensor.start();
           state.relSensor.start();

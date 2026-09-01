@@ -30,6 +30,13 @@ export const FOV_MAX = 1.5;
 // vista se recorta como en el teléfono.
 export const PANTALLA_GRANDE = '(min-width: 900px)';
 
+// Umbral de la zona dinámica del zoom, en radianes. Vive acá y no en sky.js
+// porque el FOV inicial del ocular, más abajo, tiene que quedar siempre por
+// encima: arrancar ya adentro de la zona dinámica dejaba el apuntado a la
+// deriva del giroscopio desde el primer cuadro, en vez del quaternion directo.
+// Con los dos valores en el mismo archivo no pueden desincronizarse.
+export const UMBRAL_DINAMICO = 0.06;
+
 // Sólo lo que el panel ajusta. El suavizado y el umbral de la zona dinámica
 // quedaron fijados en código (ver sky.js): tenerlos acá los guardaría en
 // localStorage, y un valor viejo guardado le ganaría al del código.
@@ -41,7 +48,11 @@ export const AJUSTES_POR_DEFECTO = {
     fraccion: 0.5,
     // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
     pos: 0.75,
-    fov: 0.05,
+    // Por encima de UMBRAL_DINAMICO a propósito: nunca debe arrancar dentro de
+    // la zona dinámica. El valor de óptica real (§ oculares, sin medir todavía)
+    // puede terminar más cerrado; cuando eso pase, hay que revisar el umbral
+    // junto con este valor, no éste solo.
+    fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
   },
   guide: {
@@ -265,7 +276,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
 
   return {
     caja,
-    setEstado(texto) { estado.textContent = texto; },
+    setEstado(texto) { estado.textContent = texto; },
     setDirecciones(lista) {
       direcciones = lista ?? [];
       iDir = 0;

@@ -213,6 +213,7 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 |---|---|---|---|
 | `readinessGate` | `'countdown'` | `'stillness'` | `'stillness'` |
 | `pointingMode` | `'euler'` | `'euler'` | `'vector'` |
+| `opticalAxis` | — | — | `'-y'` |
 | `fovThreshold` | `0.8` | `0.2` | `0` |
 | `dynamicThreshold` | default | default | `0.06` |
 | `smoothing` | default | default | `0.10` en ambos ejes |
