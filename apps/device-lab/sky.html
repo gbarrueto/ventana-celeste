@@ -55,19 +55,25 @@
     <div>
       sensor
       <select id="sensorType">
-        <option value="relative" selected>relative (sin brújula)</option>
-        <option value="absolute">absolute (con magnetómetro)</option>
+        <option value="relative">relative (sin brújula)</option>
+        <option value="absolute" selected>absolute (con magnetómetro)</option>
       </select>
       eje óptico
       <select id="optic">
         <option value="+x">+x</option><option value="-x">−x</option>
-        <option value="+y">+y</option><option value="-y" selected>−y</option>
+        <option value="+y" selected>+y</option><option value="-y">−y</option>
         <option value="+z">+z</option><option value="-z">−z</option>
       </select>
     </div>
     <div style="margin-top:5px">
       rotación
       <span id="rot"></span>
+      <!-- Estos dos por defecto reproducen dual-telescope tal cual está en
+           apps/dual-telescope/src/sky.js: eje '+y' y altura invertida, sin
+           invertir el acimut. Son dos correcciones independientes — invertir el
+           eje mueve las dos juntas, acopladas, y por eso ninguna combinación de
+           eje sola reproduce esa configuración. -->
+      <label><input type="checkbox" id="invAlt" checked /> −alt</label>
       <label><input type="checkbox" id="invAz" /> −az</label>
       <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
     </div>
@@ -159,12 +165,20 @@ const AXES = {
 // del vector de apuntado. Sin ángulos de Euler de por medio no hay convención
 // que valga sólo cerca de una elevación: la única degeneración que queda es la
 // real del alt-az, azimut indefinido en el cenit.
+// `invAlt` reproduce mountingTransform de dual-telescope, que invierte sólo la
+// altura. No es intercambiable con elegir el eje opuesto: cambiar de eje mueve
+// el signo de la altura y desplaza el acimut 180° a la vez, acoplados, y
+// dual-telescope necesita mover uno sin el otro. Verificado: ninguna combinación
+// de eje + invAz reproduce esa configuración exacta, sólo invAlt sí.
 function pointingAltAz(q) {
   const v = rotateByQuat(q, AXES[$('optic').value]);
   const n = Math.hypot(...v) || 1;
   const alt = Math.asin(Math.max(-1, Math.min(1, v[2] / n)));
   const az = Math.atan2(v[0] / n, v[1] / n);
-  return { alt, az: $('invAz').checked ? -az : az };
+  return {
+    alt: $('invAlt').checked ? -alt : alt,
+    az: $('invAz').checked ? -az : az,
+  };
 }
 
 function applyGrid() {

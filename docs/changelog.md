@@ -4,6 +4,21 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-01 — device-lab reproduce el apuntado de dual-telescope
+
+`device-lab/sky.html` no podía imitar exactamente el apuntado de `dual-telescope`, así que el mismo
+teléfono apuntaba a lugares distintos en las dos apps. Verificado con las doce combinaciones posibles
+de eje óptico e inversión de acimut: ninguna reproducía a la vez el acimut y la altura de
+`dual-telescope`. La razón es estructural, no de configuración: elegir el eje opuesto mueve el signo
+de la altura y desplaza el acimut 180° **a la vez, acoplados**, y `dual-telescope` necesita mover uno
+sin el otro — invierte sólo la altura, vía `mountingTransform`, dejando el acimut intacto.
+
+`device-lab` gana el checkbox `−alt`, que reproduce ese `mountingTransform`. Los tres controles
+pasan a arrancar en la configuración real de `dual-telescope` (`sensor absolute`, `eje +y`,
+`−alt` activado, `−az` apagado), así que abrir la página ya reproduce producción en vez de la
+configuración del experimento del giro de 90° que traía por defecto. Verificado sobre 5000
+quaternions al azar: acimut y altura coinciden exactos con la fórmula de `apps/dual-telescope/src/sky.js`.
+
 ## 2026-08-25 — El norte queda referido al magnetómetro
 
 La entrada del 19 de agosto decía la referencia de norte «resuelta a favor del magnetómetro», pero
