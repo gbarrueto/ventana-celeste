@@ -25,6 +25,7 @@ El proyecto se despliega en cuatro ejes, según quién opera el instrumento y d�
 | `kiosk-standalone` | No mediado | Instalación fija. Sensores y pantalla en el mismo dispositivo, entrada por Arduino. | 1 |
 | `dual-telescope` | Mediado | Un teléfono dentro del ocular, otro como tubo buscador. | 2, por WebSocket |
 | `device-lab` | — | Banco de pruebas de sensores y hardware. No es un producto. | 1 |
+| `entry-point` | Herramienta de desarrollo | Hub centralizador y lanzador bajo demanda con códigos QR y streaming de logs. | 1 (PC / LAN) |
 
 `web-app` es el núcleo: la versión más completa y la que se muestra como demostración del proyecto
 entero. Su trabajo actual es mantenimiento, búsqueda de bugs y mejoras de interfaz.
@@ -55,21 +56,32 @@ fuente.
 
 ## Comandos
 
-```bash
-pnpm --filter @ventanaceleste/web-app dev
-pnpm --filter @ventanaceleste/kiosk-standalone dev
-pnpm --filter @ventanaceleste/dual-telescope dev
-pnpm --filter @ventanaceleste/device-lab dev
+El entorno de desarrollo unificado se arranca desde la raíz:
 
-pnpm -r build          # compila las cuatro
+```bash
+pnpm dev               # Dev Hub bajo demanda en http://localhost:3000
+```
+
+Desde la interfaz del Dev Hub se puede encender, detener, monitorear y generar códigos QR (con selector
+para Wi-Fi local o Tailscale VPN) para cualquiera de las aplicaciones.
+
+También es posible levantar cada aplicación de manera individual en su puerto fijo:
+
+```bash
+pnpm --filter @ventanaceleste/web-app dev          # https://localhost:5173/
+pnpm --filter @ventanaceleste/kiosk-standalone dev # https://localhost:5174/
+pnpm --filter @ventanaceleste/dual-telescope dev   # https://localhost:5175/
+pnpm --filter @ventanaceleste/device-lab dev       # https://localhost:5176/
+
+pnpm -r build          # compila las aplicaciones
 ```
 
 `dual-telescope` sirve dos páginas y monta el relay sobre el mismo servidor:
 
 | Rol | URL |
 |---|---|
-| Ocular | `https://localhost:5173/` |
-| Guía | `https://<ip-de-la-PC>:5173/guide.html` |
+| Ocular | `https://localhost:5175/` |
+| Guía | `https://<ip-de-la-PC>:5175/guide.html` |
 
 Las dos las imprime el dev server al arrancar, con el rol al lado y resueltas al puerto real.
 
