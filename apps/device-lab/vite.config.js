@@ -12,7 +12,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 // so there is no copy here and no dev-server proxy for it.
 export default defineConfig({
   plugins: [basicSsl()],
-  server: { host: true },
+  server: {
+    host: true,
+    port: 5176,
+    strictPort: true,
+  },
   build: {
     rollupOptions: {
       input: {
