@@ -70,6 +70,7 @@ una velocidad que no existe.
 | `relFreq` | `30` | Frecuencia del sensor de orientación, en Hz. |
 | `calibDuration` | `1` | Segundos de muestreo de bias. |
 | `persistBiasKey` | `null` | Clave de `localStorage` para el bias. `null` no persiste. |
+| `sensorReference` | `'relative'` | `'relative'` o `'absolute'`. Ver [Referencia del acimut](#referencia-del-acimut). |
 | `readinessGate` | `'stillness'` | Ver [Ciclo](#ciclo). |
 | `stillnessThreshold` | `0.05` | rad/s por debajo de los cuales se considera quieto. |
 | `stillnessHoldSeconds` | `2` | Segundos de quietud requeridos. |
@@ -157,6 +158,28 @@ puede pasar del cenit, lo que se limita es cuánto se amplifica el giro.
 
 `'euler'` es el default, así que `web-app` y `kiosk` no cambian de comportamiento.
 
+## Referencia del acimut
+
+`sensorReference` decide qué sensor entrega el quaternion, y con eso contra qué está referido el
+acimut.
+
+`'relative'` usa `RelativeOrientationSensor`: giroscopio y acelerómetro, sin brújula. Su acimut
+arranca en un origen arbitrario, la lectura del momento en que se crea el sensor, sea cual sea la
+dirección real a la que apunta el aparato. Ese origen no lo fija la página que lo usa: lo fija la
+fusión de sensores del sistema operativo. Medido en Android: recargar la página no lo reinicia,
+sólo bloquear y desbloquear el equipo. Que el aparato arranque apuntando al norte con este modo es
+coincidencia del momento en que arrancó el sensor, no una propiedad del sensor.
+
+`'absolute'` usa `AbsoluteOrientationSensor`, que suma el magnetómetro y refiere el acimut al
+norte magnético real en vez de a ese origen arbitrario. A cambio se degrada cerca de metal, así
+que un montaje metálico puede volver la lectura inestable en vez de mejorarla.
+
+No es lo mismo que `'relative'`/`'gyro'` de la conmutación de modo, más abajo: eso decide de qué
+camino sale el apuntado en cada instante, quaternion o integración de giroscopio, y es ortogonal a
+esto, que decide contra qué está referido el acimut del propio quaternion.
+
+Por defecto `'relative'`, así que `web-app` y `kiosk` no cambian de comportamiento.
+
 ## Conmutación de modo
 
 ```js
@@ -190,10 +213,12 @@ gradualmente hacia la lectura del quaternion en vez de saltar.
 |---|---|---|---|
 | `readinessGate` | `'countdown'` | `'stillness'` | `'stillness'` |
 | `pointingMode` | `'euler'` | `'euler'` | `'vector'` |
+| `opticalAxis` | — | — | `'-y'` |
 | `fovThreshold` | `0.8` | `0.2` | `0` |
 | `dynamicThreshold` | default | default | `0.06` |
 | `smoothing` | default | default | `0.10` en ambos ejes |
 | `persistBiasKey` | — | `astrovis_gyro_bias` | `dual-telescope:gyro-bias` |
+| `sensorReference` | default | default | `'absolute'` |
 
 ## Utilidades exportadas
 
@@ -460,9 +485,21 @@ Contrato de lo que alimenta a una app con entrada externa. Qué hardware hay dif
 objeto de tecla en minúscula a función. Es lo que usa `kiosk-standalone`, donde el Arduino actúa
 como teclado USB.
 
-`createSerialConnector()` es un stub que lanza error. Se escribió cuando se suponía que Web Serial
-era el camino para el potenciómetro y el RFID. Web Serial no está disponible en Android, y el
-enfocador de `dual-telescope` usa WebUSB en `apps/dual-telescope/src/focuser.js`.
+`createKeyboardLineSource({ onLine, onKey, preventDefault })` rearma líneas terminadas en Enter a
+partir de pulsaciones sueltas. Una placa que actúa como teclado no puede mandar un flujo de bytes:
+cada carácter llega como su propio `keydown`. Con esto, el código que interpreta un protocolo no
+necesita saber si los bytes vinieron de un teclado, de un puerto serie o de un endpoint bulk.
+
+`preventDefault` evita que las pulsaciones actúen además sobre la página. Importa sobre todo con
+Enter: un botón que conserve el foco se volvería a disparar con cada línea que manda la placa, y la
+placa manda hasta cincuenta por segundo.
+
+`onKey` entrega cada carácter suelto, para diagnóstico. La librería `Keyboard` de Arduino envía
+códigos de tecla, no caracteres, así que con otra distribución en el anfitrión llega un carácter
+distinto del que el sketch imprimió; verlo en crudo es la única forma de detectarlo.
+
+`dual-telescope` lo usa en `apps/dual-telescope/src/focuser.js`, que interpreta el protocolo del
+enfocador. Esa parte vive ahí y no en `core` porque es específica de ese hardware.
 
 ---
 

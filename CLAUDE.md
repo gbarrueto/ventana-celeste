@@ -12,4 +12,4 @@ root `CONTEXT.md`. See `docs/agents/domain.md`.
 ### Documentation style
 
 Writing any `.md` in this repo: follow `.claude/skills/docs-style/SKILL.md`. Reference docs describe
-what exists; anything pending goes in `docs/pendientes.md`.
+what exists. Pending work is tracked in the issue tracker, not in the docs.

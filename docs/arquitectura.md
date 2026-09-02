@@ -41,7 +41,7 @@ Todo lo público sale de `src/index.js`.
 | `sync/` | Bus de mensajes agnóstico de transporte, más los adaptadores de Protobject, WebSocket y nulo. |
 | `time/` | Conversiones MJD y mutación del reloj del motor. |
 | `telescope/` | Óptica: aumento, FOV desde ocular, magnitud límite, escala Bortle. |
-| `io/` | Contrato de conectores de hardware. Implementación de teclado. |
+| `io/` | Contrato de conectores de hardware. Teclado por teclas y por líneas. |
 | `config/` | Carga de config por modo de Vite. |
 | `assets/` | Copia única de los binarios del motor. |
 
@@ -98,7 +98,18 @@ Qué rol lleva los sensores lo decide el servidor y lo consulta cada página en 
 con las IPv4 de LAN del equipo. Se cambia con la variable `SENSOR_SOURCE` del script de arranque,
 sin tocar código. El ocular muestra la URL del guía como QR.
 
-El enfocador es un potenciómetro sobre un Arduino Leonardo, leído por WebUSB desde el ocular.
+El enfocador es un potenciómetro sobre un Arduino Leonardo. La placa se presenta como teclado USB y
+escribe una línea por lectura, así que no hay permisos ni emparejamiento que gestionar: eso es lo
+que permite que el teléfono viva dentro del tubo, donde no se puede tocar la pantalla.
+
+| Línea | Canal |
+|---|---|
+| `P:<0..1023>` | posición del enfocador |
+| `R:<0..1023>` | circuito que identifica el ocular |
+| `C:TRUE` / `C:FALSE` | presencia de la cámara |
+
+El teclado del dispositivo tiene que estar en distribución inglesa: la librería envía códigos de
+tecla, no caracteres, y con distribución española el separador llega como otro signo.
 
 ## Comunicación
 

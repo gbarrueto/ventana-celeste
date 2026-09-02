@@ -6,8 +6,6 @@
     createOrientationController, initializeStellariumEngine,
     createKeyboardConnector,
   } from "@ventanaceleste/core";
-  // Copia única del motor en core/assets; antes se resolvía por la ruta por
-  // defecto de core, que apuntaba a la copia en public/ de esta app.
   import engineWasmUrl from "@ventanaceleste/core/assets/stellarium-web-engine.wasm?url";
   import engineScriptUrl from "@ventanaceleste/core/assets/stellarium-web-engine.js?url";
   import { loadConfig } from "./config";
@@ -16,8 +14,6 @@
   let overlayEl;
   let onDebugRecalibrate = () => {};
   let onDebugCancelCalibration = () => {};
-  let onDebugSelectLens = () => {};
-  let onDebugSimulateCardChange = () => {};
   let onDebugZoomIn = () => {};
   let onDebugZoomOut = () => {};
   let onDebugToggleVertical = () => {};
@@ -80,7 +76,6 @@
       fovRad: 0,
       fovDeg: 0,
       targetLogFov: 0,
-      currentLensLevel: 0,
       telescope: telescopeSnapshot(),
       engineTime: getEngineTime(),
       env: "-",
@@ -128,37 +123,20 @@
     const MAX_FOV = 3.228859;
     const MIN_FOV = 0.000005;
     const FOV_STEP = 0.1;
-    const LENS_FOCAL_LENGTHS = {
-      1: "eye",
-      2: 40,
-      3: 6,
-      4: 0.5,
-      5: "eye",
-      6: 40,
-      7: 6,
-      8: 0.5,
-    };
-    const NO_LENS_BLUR = 5;
-    const HUMAN_EYE_FOV = Math.PI / 3;
-
-    let currentLensLevel = 0;
-    let currentFov = MAX_FOV;
-    let logFov = Math.log(MAX_FOV);
+    const FOV_INICIAL = CALIBRATE_ON_START ? MAX_FOV : Math.PI / 3;
+    let currentFov = FOV_INICIAL;
+    let logFov = Math.log(FOV_INICIAL);
 
     setDebug({
       fovRad: currentFov,
       fovDeg: toDegrees(currentFov),
       targetLogFov: logFov,
-      currentLensLevel,
     });
 
     let warnedInvalidView = false;
 
     function updateStellariumView({ h, v }) {
       if (!engine || !engine.core || !engine.core.observer) return;
-      // A malformed payload used to write NaN into observer.yaw/pitch, which looks
-      // exactly like "no readings are arriving" — the view simply never moves.
-      // Warn once (this runs per frame) instead of corrupting engine state.
       if (!Number.isFinite(h) || !Number.isFinite(v)) {
         if (!warnedInvalidView) {
           warnedInvalidView = true;
@@ -207,58 +185,8 @@
           core.star_relative_scale = 1.0;
           core.stars.label_amount = 3.0;
           core.exposure_scale = 1;
+          core.fov = currentFov;
         },
-      });
-    }
-
-    function applyLensLevel(level) {
-      currentLensLevel = level;
-
-      if (level === 0) {
-        // currentFov = MAX_FOV;
-        // logFov = Math.log(currentFov);
-        // updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      const lens = LENS_FOCAL_LENGTHS[level];
-
-      if (lens === "eye") {
-        currentFov = HUMAN_EYE_FOV;
-        logFov = Math.log(currentFov);
-        updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      if (!lens) return;
-
-      telescope.setEyepieceFocalLength(lens);
-      const fov = telescope.fovFromEyepiece(lens);
-      currentFov = fov;
-      logFov = Math.log(fov);
-      updateStellariumFov({ fov });
-      setDebug({
-        currentLensLevel,
-        targetLogFov: logFov,
-        fovRad: currentFov,
-        fovDeg: toDegrees(currentFov),
-        telescope: telescopeSnapshot(),
       });
     }
 
@@ -326,16 +254,6 @@
       orientation.cancelCalibration();
     }
 
-    function triggerLens(level) {
-      applyLensLevel(level);
-      targetLogFov = logFov;
-      setDebug({ targetLogFov });
-    }
-
-    function triggerCardChange(level) {
-      triggerLens(level);
-    }
-
     function triggerZoomIn() {
       applyZoomDelta(-FOV_STEP);
     }
@@ -353,10 +271,6 @@
       getLogFov: () => logFov,
       onDebug: (partial) => setDebug(partial),
       onCoords: ({ yaw, pitch }) => setDebugCoords(yaw, pitch),
-      // core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords
-      // right above. This app speaks { h, v } toward Stellarium, so the
-      // translation belongs here. Destructuring { h, v } off the callback yields
-      // undefined and the view never moves.
       onView: ({ yaw, pitch }) => updateStellariumView({ h: yaw, v: pitch }),
       onCalibrationVisibility: (visible) => {
         if (overlayEl) overlayEl.style.display = visible ? "block" : "none";
@@ -366,8 +280,6 @@
 
     onDebugRecalibrate = triggerRecalibration;
     onDebugCancelCalibration = triggerCancelCalibration;
-    onDebugSelectLens = triggerLens;
-    onDebugSimulateCardChange = triggerCardChange;
     onDebugZoomIn = triggerZoomIn;
     onDebugZoomOut = triggerZoomOut;
     onDebugToggleVertical = toggleVerticalMotion;
@@ -375,14 +287,6 @@
     const keyboardConnector = createKeyboardConnector({
       bindings: {
         c: () => triggerRecalibration(),
-        1: () => triggerLens(1),
-        2: () => triggerLens(2),
-        3: () => triggerLens(3),
-        4: () => triggerLens(4),
-        5: () => triggerLens(5),
-        6: () => triggerLens(6),
-        7: () => triggerLens(7),
-        8: () => triggerLens(8),
         "+": () => triggerZoomIn(),
         "=": () => triggerZoomIn(),
         "-": () => triggerZoomOut(),
@@ -396,8 +300,6 @@
     });
 
     orientation.start( CALIBRATE_ON_START );
-    const initialLensLevel = appConfig.calibrateOnStart ? 0 : 1;
-    applyLensLevel(initialLensLevel);
 
     const timeUpdateInterval = setInterval(() => {
       setDebug({ engineTime: getEngineTime() });
@@ -410,8 +312,6 @@
       lastZoomMotion = null;
       onDebugRecalibrate = () => {};
       onDebugCancelCalibration = () => {};
-      onDebugSelectLens = () => {};
-      onDebugSimulateCardChange = () => {};
       onDebugZoomIn = () => {};
       onDebugZoomOut = () => {};
       onDebugToggleVertical = () => {};
@@ -451,8 +351,6 @@
       invertVertical={invertVerticalMotion}
       onRecalibrate={onDebugRecalibrate}
       onCancelCalibration={onDebugCancelCalibration}
-      onSelectLens={onDebugSelectLens}
-      onSimulateCardChange={onDebugSimulateCardChange}
       onZoomIn={onDebugZoomIn}
       onZoomOut={onDebugZoomOut}
       onToggleVertical={onDebugToggleVertical}

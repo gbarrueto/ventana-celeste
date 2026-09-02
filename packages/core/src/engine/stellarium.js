@@ -1,9 +1,4 @@
-// Stellarium Web Engine bootstrap: script loading + data source manifest.
-// Both apps load the exact same catalogs from the exact same URLs — this is
-// the most direct duplication found in the original codebase. Post-load
-// visual defaults (hints, exposure, etc.) are intentionally NOT unified here:
-// each app has different starting UI policy, so that stays in each app's
-// own `onReady` callback.
+// Inicialización de script y fuentes de datos de Stellarium Web Engine.
 
 import { computeDefaultObservationTime } from '../time/engineTime.js';
 
@@ -23,11 +18,7 @@ function buildDataSources(smalldataBaseUrl, bigdataBaseUrl, { extended = true, i
     sources.push({ loader: 'planets', config: { url: `${smalldataBaseUrl}surveys/sso/${planet}/v1`, key: planet } });
   });
 
-  // ORDER IS SIGNIFICANT for the two `dss` entries below. Both gaia and the DSS
-  // colour survey are registered on the same `core.dss` module, and the module
-  // keeps the last source added — so gaia must come FIRST and `surveys/dss/v1`
-  // LAST, or gaia silently replaces DSS and no deep-sky imagery renders. This is
-  // the order the pre-monorepo web-app used; swapping it broke DSS.
+  // Gaia debe preceder a surveys/dss/v1 en core.dss para que DSS se renderice.
   if (includeGaia) {
     sources.push({ loader: 'dss', config: { url: `${bigdataBaseUrl}surveys/gaia/v1`, key: 'gaia' } });
   }
@@ -48,8 +39,7 @@ function buildDataSources(smalldataBaseUrl, bigdataBaseUrl, { extended = true, i
   return sources;
 }
 
-// Loads stellarium-web-engine.js as a <script> tag if it isn't already on
-// the page (some apps load it directly from index.html; this is a no-op then).
+// Inyecta el <script> del motor si window.StelWebEngine no existe.
 export function ensureStellariumScript(scriptUrl = '/stellarium-web-engine.js') {
   if (typeof window.StelWebEngine === 'function') return Promise.resolve();
 
@@ -75,9 +65,7 @@ export async function loadStellariumDataSources(core, { smalldataBaseUrl, bigdat
   await Promise.all(sources.map(({ loader, config }) => core[loader].addDataSource(config)));
 }
 
-// location: { lat, lon, elev } in degrees/meters. time: passed through to
-// computeDefaultObservationTime (see time/engineTime.js) — pass
-// { fixedMJD } to pin a specific date instead of "midnight today".
+// location: { lat, lon, elev }. time: opciones para computeDefaultObservationTime.
 export async function initializeStellariumEngine({
   canvas,
   wasmFile = '/stellarium-web-engine.wasm',
@@ -88,10 +76,7 @@ export async function initializeStellariumEngine({
   includeGaia,
   location,
   time,
-  // If false, a data-source load failure is logged but init still resolves
-  // with whatever loaded (matches the original web-app behavior). If true
-  // (default), it's treated as fatal and rejects (matches kiosk's original
-  // behavior).
+  // Si es true, fallos al cargar catálogos rechazan la inicialización.
   strict = true,
   onReady = () => {},
   onError = () => {},

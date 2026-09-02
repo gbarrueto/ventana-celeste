@@ -1,19 +1,9 @@
-// Enfocador: potenciómetro por WebUSB -> desenfoque.
-//
-// La idea del instrumento es que el **punto de foco depende del ocular**: cada
-// ocular enfoca en una posición distinta del recorrido, así que cambiar de ocular
-// obliga a reenfocar. Eso es lo que pasa con un telescopio real, y es justamente
-// lo que se quiere que la persona experimente.
-//
-// El valor crudo del ADC no sale de este archivo: se normaliza a 0..1 acá, en el
-// borde. Cambiar de potenciómetro o de placa (el Leonardo da 0..1023, un ESP32
-// daría 0..4095) es cambiar `raw`, y nada más se entera.
+// Enfocador: simulación de desenfoque a partir de lecturas ADC del potenciómetro.
+import { createKeyboardLineSource } from '@ventanaceleste/core';
 
 const RAW_POR_DEFECTO = { min: 0, max: 1023 };
 
-// Posición del recorrido (0..1) en la que cada ocular queda enfocado.
-// La clave vacía es "sin ocular". Los valores son provisionales hasta poder
-// medirlos contra el hardware real.
+// Posición del recorrido (0..1) de foco para cada ocular.
 export const PUNTOS_DE_FOCO = {
   '': 0.5,
   len1: 0.2,
@@ -22,24 +12,24 @@ export const PUNTOS_DE_FOCO = {
   len4: 0.8,
 };
 
+// Tramos de ADC para identificar cada ocular.
+export const TRAMOS_OCULAR = [];
+
 export function createFocuser({
   onBlur = () => {},
   onStatus = () => {},
+  onEyepiece = () => {},
+  onCamera = () => {},
   raw = RAW_POR_DEFECTO,
   focusPoints = PUNTOS_DE_FOCO,
-  // Desenfoque máximo, en píxeles de filtro CSS.
+  eyepieceRanges = TRAMOS_OCULAR,
   maxBlur = 14,
-  // Qué tan lejos del punto de foco hay que estar para llegar al desenfoque
-  // máximo, como fracción del recorrido. Más chico = enfocar es más difícil.
   tolerancia = 0.35,
-  // >1 hace que cerca del foco la imagen mejore rápido y lejos sature: se parece
-  // más a enfocar de verdad que una rampa lineal.
   exponente = 1.6,
 } = {}) {
-  let device = null;
-  let leyendo = false;
   let ocular = '';
   let posicion = null;
+  let fuente = null;
 
   function calcularBlur(pos) {
     const foco = focusPoints[ocular] ?? focusPoints[''] ?? 0.5;
@@ -53,108 +43,79 @@ export function createFocuser({
     onBlur({ blur: calcularBlur(pos), position: pos, eyepiece: ocular });
   }
 
-  // El sketch manda líneas "P:<n>". Se acumula porque un paquete USB puede
-  // cortar una línea por la mitad.
-  let buffer = '';
-  function consumir(texto) {
-    buffer = (buffer + texto).slice(-200);
-    const lineas = buffer.split('\n');
-    buffer = lineas.pop() ?? '';
-    for (const linea of lineas) {
-      const m = linea.match(/P:(-?\d+)/);
-      if (!m) continue;
-      const crudo = Number(m[1]);
-      const span = (raw.max - raw.min) || 1;
-      emitir(Math.max(0, Math.min(1, (crudo - raw.min) / span)));
-    }
+  function normalizar(crudo) {
+    const span = (raw.max - raw.min) || 1;
+    return Math.max(0, Math.min(1, (crudo - raw.min) / span));
   }
 
-  async function abrir(dev) {
-    device = dev;
-    await dev.open();
-    if (dev.configuration === null) await dev.selectConfiguration(1);
+  function ocularDeValor(crudo) {
+    for (const { min, max, key } of eyepieceRanges) {
+      if (crudo >= min && crudo <= max) return key;
+    }
+    return null;
+  }
 
-    // La interfaz vendor-specific (clase 255) es la de WebUSB. Un Leonardo
-    // expone además las dos de CDC, y la de datos CDC también tiene un bulk de
-    // entrada — reclamar esa deja todo aparentemente bien y sin datos.
-    let iface = null;
-    let epIn = null;
-    for (const it of dev.configuration.interfaces) {
-      for (const alt of it.alternates) {
-        const bulkIn = alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
-        if (bulkIn && alt.interfaceClass === 255) { iface = it.interfaceNumber; epIn = bulkIn.endpointNumber; }
+  // Procesa líneas del sketch: P:<0..1023>, R:<0..1023>, C:TRUE|FALSE.
+  function consumir(linea) {
+    const m = linea.match(/^([PRC]):(.+)$/);
+    if (!m) return;
+    const [, canal, valor] = m;
+
+    if (canal === 'P') {
+      const crudo = Number(valor);
+      if (Number.isFinite(crudo)) emitir(normalizar(crudo));
+      return;
+    }
+
+    if (canal === 'R') {
+      const crudo = Number(valor);
+      if (!Number.isFinite(crudo)) return;
+      const clave = ocularDeValor(crudo);
+      if (clave === null) {
+        onStatus({ message: `ocular sin clasificar (R:${crudo})`, raw: crudo });
+        return;
       }
+      if (clave !== ocular) setEyepiece(clave);
+      return;
     }
-    if (iface === null) throw new Error('la placa no expone la interfaz WebUSB');
 
-    await dev.claimInterface(iface);
-    try { await dev.selectAlternateInterface(iface, 0); } catch { /* no siempre hace falta */ }
-    // La librería de Arduino no manda nada hasta que el host se anuncia.
-    await dev.controlTransferOut({
-      requestType: 'class', recipient: 'interface', request: 0x22, value: 0x01, index: iface,
-    });
+    onCamera({ connected: valor === 'TRUE' });
+  }
 
-    leyendo = true;
-    onStatus({ connected: true, message: 'enfocador conectado' });
-
-    while (leyendo) {
-      const r = await dev.transferIn(epIn, 64);
-      if (r.status !== 'ok' || !r.data?.byteLength) continue;
-      consumir(new TextDecoder().decode(r.data));
-    }
+  function setEyepiece(key) {
+    ocular = key ?? '';
+    onEyepiece({ eyepiece: ocular });
+    if (posicion !== null) emitir(posicion);
   }
 
   return {
-    // Sin gesto del usuario: sólo dispositivos ya autorizados para este origen.
-    // Es lo que permite que el teléfono viva dentro del telescopio, donde tocar
-    // un botón no es viable. El emparejamiento se hace una vez, antes de montar,
-    // y en la MISMA URL que se usa después: el permiso va atado al origen.
-    async autoConnect() {
-      if (!('usb' in navigator)) {
-        onStatus({ connected: false, message: 'WebUSB no disponible' });
+    start() {
+      fuente = createKeyboardLineSource({
+        onLine: consumir,
+        preventDefault: true,
+      });
+      if (!fuente.isSupported()) {
+        onStatus({ message: 'sin teclado disponible' });
         return false;
       }
-      const devs = await navigator.usb.getDevices();
-      if (!devs.length) {
-        onStatus({ connected: false, message: 'enfocador sin emparejar' });
-        return false;
-      }
-      try {
-        abrir(devs[0]).catch((e) => onStatus({ connected: false, message: e.message }));
-        return true;
-      } catch (e) {
-        onStatus({ connected: false, message: e.message });
-        return false;
-      }
+      fuente.connect();
+      onStatus({ message: 'enfocador a la escucha' });
+      return true;
     },
 
-    // Con gesto: el emparejamiento inicial.
-    async pair() {
-      const dev = await navigator.usb.requestDevice({ filters: [] });
-      abrir(dev).catch((e) => onStatus({ connected: false, message: e.message }));
-    },
-
-    // Cambiar de ocular mueve el punto de foco, así que lo que estaba nítido deja
-    // de estarlo sin que el potenciómetro se haya movido.
-    setEyepiece(key) {
-      ocular = key ?? '';
-      if (posicion !== null) emitir(posicion);
-    },
+    setEyepiece,
 
     stop() {
-      leyendo = false;
-      device?.close().catch(() => {});
+      fuente?.disconnect();
+      fuente = null;
     },
 
-    get connected() { return leyendo; },
+    get eyepiece() { return ocular; },
+    get position() { return posicion; },
   };
 }
 
-// Engancha el desenfoque donde corresponda. Hoy va directo al canvas del cielo:
-// con los efectos de seeing apagados, el filtro CSS es todo lo que hace falta y
-// el pipeline WebGL de turbulencia no aportaría nada. Cuando ese overlay se
-// traiga (y se mejore, que falta), esto pasa a apuntar a su canvas y nada más
-// cambia.
+// Aplica filtro CSS de desenfoque al elemento.
 export function aplicarBlur(el, blur) {
   if (!el) return;
   el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : '';

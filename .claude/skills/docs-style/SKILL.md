@@ -56,6 +56,26 @@ bien  Gaia y DSS se registran sobre core.dss y el módulo conserva la última fu
       agregada. Gaia va primero. Invertido, DSS no se renderiza y no hay error.
 ```
 
+### La alternativa descartada
+
+Una decisión se registra sola. Lo que se descartó ya está descartado y no es información: sólo hace
+la frase más larga y deja al lector cargando una opción que no existe.
+
+```
+mal   Señales eléctricas leídas por el Arduino, no RFID.
+bien  Señales eléctricas leídas por el Arduino.
+
+mal   Se usa WebUSB en vez de Web Serial, que no está disponible en Android.
+bien  Se usa WebUSB.
+```
+
+Distinto de un contraste que sí lleva información, como corregir una suposición probable
+("la degeneración es física, no un defecto de la implementación") o precisar un comportamiento
+("enruta por rol, no por identificador de conexión"). Ahí el segundo término es el que evita el
+error.
+
+Si la razón del descarte importa para no repetirlo, va al changelog o a un ADR, no a la referencia.
+
 ### Contexto a medias
 
 Una afirmación incompleta es peor que ninguna. Si algo vale distinto según el entorno, el

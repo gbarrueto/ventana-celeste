@@ -1,12 +1,5 @@
 /**
- * Protobject message routing for both viewer and telescope sides.
- * Consolidates: util/protobject.js, telescope/utils/protobject.js, eventManager.js
- *
- * The msg/handler dispatch and outgoing throttling live in
- * @ventanaceleste/core's transport-agnostic messageBus — this file just
- * plugs in the Protobject/WebRTC transport and registers this app's
- * message handlers. Swapping transports later (e.g. WebSocket for
- * dual-telescope) only touches the `createProtobjectTransport()` call below.
+ * Enrutamiento de mensajes Protobject para visor (Viewer) y telescopio (Telescope).
  */
 import { createMessageBus, createProtobjectTransport } from '@ventanaceleste/core';
 import { createPeerMonitor } from './connection.js';
@@ -22,17 +15,7 @@ import { getMagFromLonLat } from './light-pollution.js';
 
 const bus = createMessageBus(createProtobjectTransport());
 
-// Protobject.Core.onConnected fires once as soon as this page's own socket
-// joins the Protobject relay — before any remote peer has paired — and then
-// fires again for each real peer connection. Wrap onConnect handlers with
-// this so "connected" means "a peer is actually here", not "we're online".
-//
-// Verified on-device: on telescope.html the second call fires reliably when
-// the peer link to index.html comes up. On index.html the second call has
-// NOT been observed to fire at all — the library appears asymmetric between
-// "outgoing" and "incoming" sides. Because of that, the viewer does NOT rely
-// on onConnect to detect the telescope; see the `telescopeConnected` message
-// handshake below instead. Kept here (both sides) purely for diagnostics.
+// Filtra el evento de conexión inicial del relay para disparar solo ante conexiones remotas.
 function skipFirstCall(fn) {
   let calls = 0;
   return (...args) => {
@@ -45,8 +28,6 @@ function skipFirstCall(fn) {
   };
 }
 
-// Kept as `eventManager.sendThrottled(payload, target, interval)` — the
-// shape every call site in this app already uses.
 export const eventManager = {
   sendThrottled(payload, target, interval) {
     bus.sendThrottled(payload.msg, payload.values, target, interval);
@@ -58,8 +39,6 @@ export const eventManager = {
 let seeingOptionHandler = null;
 export function setSeeingOptionHandler(fn) { seeingOptionHandler = fn; }
 
-// Reports ongoing link state to the viewer UI: { alive, everAlive }. Not a
-// fire-once handler, so the QR can come back when the phone goes away.
 let connectionStatusHandler = null;
 export function setConnectionStatusHandler(fn) {
   connectionStatusHandler = fn;
@@ -71,23 +50,14 @@ export function initViewerProtobject() {
   bus.on('toggleEyepiece', toggleEyepieceOverlay);
   bus.on('updateFov', updateStellariumFov);
   bus.on('updateBlur', updateStellariumBlur);
-  // Orientation doubles as the densest liveness signal we have (~50 Hz while the
-  // phone is streaming), so a drop is noticed from real traffic rather than from
-  // the next missed 1 Hz heartbeat. Costs nothing: the message already arrives.
   bus.on('updateView', (v) => {
     viewerPeer?.markSeen();
     updateStellariumView(v);
   });
-  // Explicit handshake from the telescope (sent as soon as *its* connection
-  // is confirmed — see initTelescopeProtobject below) — this is what actually
-  // hides the QR. Not onConnect: see the note on skipFirstCall above.
   bus.on('telescopeConnected', () => {
     console.log('[Protobject] viewer: received telescopeConnected handshake');
     viewerPeer?.markSeen();
   });
-  // Any heartbeat also proves the phone is alive — this is what brings the QR
-  // back when it stops arriving, and what recovers if the phone reconnects
-  // without a fresh handshake (e.g. it was briefly backgrounded).
   bus.on('telescopeHeartbeat', () => viewerPeer?.markSeen());
   bus.on('applyLocation', applyLocation);
   bus.on('setSpeed', setEngineSpeed);
@@ -110,10 +80,6 @@ export function initViewerProtobject() {
     }),
   });
 
-  // Started immediately rather than on first pairing: before any phone arrives
-  // the monitor simply reports "not alive", which is exactly the initial UI state
-  // (QR showing). It also means a phone connecting to an already-running viewer is
-  // picked up by its heartbeat alone.
   viewerPeer = createPeerMonitor({
     sendHeartbeat: () => bus.send('viewerHeartbeat', {}, 'telescope.html'),
     onChange: ({ alive, everAlive }) => {
@@ -184,8 +150,6 @@ export function initTelescopeProtobject() {
     bus.send('applyLocation', data, 'index.html');
   });
 
-  // The viewer's heartbeat is how the phone notices the viewer went away — e.g.
-  // the main page was refreshed or closed. There is no disconnect event to rely on.
   onTelescopeMessage('viewerHeartbeat', () => telescopePeer?.markSeen());
 
   telescopePeer = createPeerMonitor({

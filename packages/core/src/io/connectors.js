@@ -1,18 +1,6 @@
-// I/O connector contract: something that feeds external hardware/network
-// input into an app (telescope orientation, zoom, focus, recalibration).
-//
-// Every deployment has some form of physical control hardware, but *what*
-// hardware differs per app (today: kiosk's Arduino sends keystrokes over
-// USB-HID; dual-telescope will need real Web Serial for RFID + potentiometer
-// input). Core only defines the shape a connector should have; concrete
-// implementations live where the actual hardware integration happens.
-//
-// Shape: { isSupported(): boolean, connect(): Promise<void>|void,
-//          disconnect(): Promise<void>|void }
+// Contrato de conectores I/O: { isSupported, connect, disconnect }.
 
-// Maps keydown events to actions. This is what kiosk's Arduino integration
-// actually is today (the Arduino acts as a USB-HID keyboard) — extracted so
-// it's not re-implemented inline per app.
+// Mapea eventos keydown a acciones.
 export function createKeyboardConnector({ bindings = {}, onError = () => {} } = {}) {
   let handler = null;
 
@@ -41,20 +29,43 @@ export function createKeyboardConnector({ bindings = {}, onError = () => {} } = 
   return { isSupported, connect, disconnect };
 }
 
-// Web Serial connector shape, for real Arduino integration (RFID lens
-// changes, potentiometer focus) — not implemented yet, no hardware to
-// build/test it against. Kept as a stub matching the intended contract so
-// it's a clear starting point rather than a surprise when it's picked up.
-export function createSerialConnector({ onError = () => {} } = {}) {
+// Reconstruye líneas delimitadas por Enter a partir de eventos keydown.
+export function createKeyboardLineSource({
+  onLine = () => {},
+  onKey = () => {},
+  preventDefault = false,
+  maxLineLength = 64,
+} = {}) {
+  let buffer = '';
+  let handler = null;
+
   function isSupported() {
-    return typeof navigator !== 'undefined' && 'serial' in navigator;
+    return typeof window !== 'undefined';
   }
 
-  async function connect() {
-    onError(new Error('Serial connector not implemented yet'));
+  function connect() {
+    if (handler || !isSupported()) return;
+    handler = (e) => {
+      if (e.key === 'Enter') {
+        if (preventDefault) e.preventDefault();
+        const linea = buffer;
+        buffer = '';
+        if (linea) onLine(linea);
+        return;
+      }
+      if (e.key.length !== 1) return;
+      if (preventDefault) e.preventDefault();
+      onKey(e.key);
+      buffer = (buffer + e.key).slice(-maxLineLength);
+    };
+    window.addEventListener('keydown', handler);
   }
 
-  async function disconnect() {}
+  function disconnect() {
+    if (handler) window.removeEventListener('keydown', handler);
+    handler = null;
+    buffer = '';
+  }
 
   return { isSupported, connect, disconnect };
 }

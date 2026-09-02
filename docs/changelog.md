@@ -4,6 +4,232 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-01 — device-lab reproduce el apuntado de dual-telescope
+
+`device-lab/sky.html` no podía imitar exactamente el apuntado de `dual-telescope`, así que el mismo
+teléfono apuntaba a lugares distintos en las dos apps. Verificado con las doce combinaciones posibles
+de eje óptico e inversión de acimut: ninguna reproducía a la vez el acimut y la altura de
+`dual-telescope`. La razón es estructural, no de configuración: elegir el eje opuesto mueve el signo
+de la altura y desplaza el acimut 180° **a la vez, acoplados**, y `dual-telescope` necesita mover uno
+sin el otro — invierte sólo la altura, vía `mountingTransform`, dejando el acimut intacto.
+
+`device-lab` gana el checkbox `−alt`, que reproduce ese `mountingTransform`. Los tres controles
+pasan a arrancar en la configuración real de `dual-telescope` (`sensor absolute`, `eje +y`,
+`−alt` activado, `−az` apagado), así que abrir la página ya reproduce producción en vez de la
+configuración del experimento del giro de 90° que traía por defecto. Verificado sobre 5000
+quaternions al azar: acimut y altura coinciden exactos con la fórmula de `apps/dual-telescope/src/sky.js`.
+
+## 2026-09-01 — Acimut corregido 180° y arranque fuera de la zona dinámica
+
+Dos hallazgos verificados en el aparato tras cablear el magnetómetro.
+
+### El acimut estaba 180° invertido: Este por Oeste
+
+Medido: `dual-telescope` mostraba el Este cuando debía mostrar el Oeste. Antes, con
+`RelativeOrientationSensor`, esto era invisible — sin referencia absoluta, un desplazamiento
+constante en acimut no tenía cómo notarse. La verificación de montaje de esa época («medido en el
+montaje: el acimut queda bien, sólo se invierte arriba-abajo») comprobaba el **sentido de giro**
+—girar a la derecha panea a la derecha— y ese chequeo no distingue `'+y'` de `'-y'`: los dos ejes dan
+el mismo sentido de giro y sólo difieren en un desplazamiento constante de 180° en el acimut, que es
+exactamente lo invisible sin norte real.
+
+`opticalAxis` pasa de `'+y'` a `'-y'`, y se retira `mountingTransform`. Verificado: `'-y'` sin
+transformar da la misma altura que la configuración anterior y corrige el acimut exactamente 180°,
+sin necesidad de ningún ajuste adicional — negar sólo la altura arreglaba la altura pero no el
+acimut; negar las dos cambia el acimut por un espejo, no por el desplazamiento que hacía falta.
+
+`device-lab/sky.html` se actualiza con el mismo eje.
+
+### El ocular arrancaba dentro de la zona dinámica
+
+El FOV inicial del ocular (`0.05` rad) estaba por debajo del umbral de la zona dinámica (`0.06`),
+así que la app arrancaba ya dentro de ella: la posición se rige por integración de giroscopio en vez
+de leerse directo del quaternion. Confirmado en el aparato: recargar estando en la zona dinámica
+produce comportamiento errático que se corrige al alejar el zoom.
+
+Encontrados dos bugs de fondo, no sólo el orden de arranque. El camino rápido con bias guardado
+—el que corre en casi todos los arranques, salvo el primero— se salta la inicialización que hace
+`finishCalibration()`:
+
+- `state.lastTime` queda en `null`. La primera lectura calcula `dt` contra `null`, que en aritmética
+  de JavaScript se trata como `0`: en vez de los ~30 ms esperados entre lecturas, `dt` sale del
+  orden de segundos. Multiplicado dentro de la zona dinámica, produce un salto de golpe.
+- `state.oldX`/`state.oldY` quedan en `null`. La zona dinámica ancla su acumulador ahí en vez de en
+  el apuntado real, así que arranca cerca de `(0,0)` y sólo se corrige cuando se sale de la zona.
+
+Los dos se corrigen en `packages/core/src/orientation/controller.js`: el camino rápido ahora fija
+`lastTime` igual que `finishCalibration()`, y la zona dinámica espera una lectura real del sensor
+absoluto antes de sembrar su acumulador, en vez de arrancar a ciegas.
+
+Además, el FOV inicial del ocular sube por encima del umbral (`UMBRAL_DINAMICO * 1.3`), y las dos
+constantes pasan a vivir en el mismo archivo (`panel.js`) para que no puedan desincronizarse otra
+vez. Con eso la app no vuelve a arrancar dentro de la zona dinámica aunque cambie el umbral.
+
+## 2026-08-25 — El norte queda referido al magnetómetro
+
+La entrada del 19 de agosto decía la referencia de norte «resuelta a favor del magnetómetro», pero
+esa decisión nunca se implementó: `createOrientationController()` sólo instanciaba
+`RelativeOrientationSensor`, y `dual-telescope` no tenía ninguna opción para cambiarlo. Lo que
+describía esa entrada era un plan, no código en producción.
+
+Apareció al investigar un síntoma intermitente: a veces `dual-telescope` arranca apuntando al norte
+real, y otras veces queda fijo en una dirección arbitraria. Medido en el aparato: recargar la página
+no reinicia esa referencia, sólo bloquear y desbloquear el equipo. Encaja exactamente con
+`RelativeOrientationSensor`, que no tiene norte absoluto — su acimut arranca en la lectura del
+momento en que se crea el sensor, y ese origen lo fija la fusión de sensores del sistema operativo,
+no la página. Que a veces coincida con el norte real es casualidad del instante en que arrancó.
+
+`createOrientationController()` gana la opción `sensorReference`, `'relative'` o `'absolute'`, que
+decide qué clase de sensor se instancia. Por defecto `'relative'`, así que `web-app` y `kiosk` no
+cambian. `dual-telescope` pasa a `'absolute'`, que suma el magnetómetro y refiere el acimut al norte
+real en vez de a ese origen arbitrario.
+
+Sin verificar todavía: `AbsoluteOrientationSensor` se degrada cerca de metal, y el tubo del
+telescopio lo es. Si la lectura resulta inestable en el aparato real, revertir es cambiar ese único
+valor a `'relative'`.
+
+`apps/device-lab/sky.html` ya tenía un selector para probar los dos sensores; con este cambio deja
+de ser sólo una prueba de banco y pasa a reflejar una opción real del controlador.
+
+## 2026-08-25 — Limpieza de la iteración 1 de kiosk
+
+Las pruebas en museo fijaron el zoom como rueda continua, así que se retira el mecanismo de la
+primera iteración: niveles discretos de ocular seleccionados por tarjeta.
+
+Se van `LENS_FOCAL_LENGTHS`, `currentLensLevel`, `applyLensLevel()`, `triggerLens()`,
+`triggerCardChange()`, las teclas `1`–`8`, los enganches `onDebugSelectLens` y
+`onDebugSimulateCardChange`, y `HUMAN_EYE_FOV` junto con `NO_LENS_BLUR`, que ya no tenía uso. En el
+panel de depuración se van sus props, `lensLevels` y `simulatedCardLevels` —declarados y sin usar— y
+la línea «ID lente».
+
+Queda intacto el camino de zoom continuo, y también la instancia de `Telescope`: la usa
+`updateStellariumFov()` para derivar la focal del ocular a partir del FOV, que es la dirección
+inversa a la que usaban los niveles.
+
+### El FOV inicial
+
+Salía de `applyLensLevel()` en el arranque, así que quitarlo dejaba la vista con el valor por
+defecto del motor. Ahora se declara junto a las demás constantes de FOV, con los mismos dos valores
+que daba la tabla en cada rama.
+
+Al hacerlo apareció que el motor **nunca recibía ese valor**: `applyLensLevel(0)` tenía las líneas
+de FOV comentadas y `onReady` no lo fijaba, así que la aplicación creía un FOV y el motor tenía
+otro. La asignación va ahora dentro de `onReady`, y no en el arranque, porque `initEngine()` no se
+espera: allí el motor todavía no existe y la asignación se perdía por la guarda de
+`updateStellariumFov()`.
+
+## 2026-08-24 — El enfocador pasa a teclado
+
+El teléfono del ocular va dentro del tubo y su pantalla no queda accesible cuando se conecta el USB.
+WebUSB exige un gesto del usuario para autorizar el dispositivo, así que ese camino no encaja con el
+montaje. Un Arduino que actúa como teclado no pide permiso ni gesto: funciona desde el instante en
+que se conecta el cable.
+
+### La versión de USB que declara el firmware
+
+Encontrar esto llevó la mayor parte de la sesión, y conviene que quede escrito porque el síntoma
+apunta a cualquier lado menos a la causa.
+
+Windows dejaba de reconocer las placas: dispositivo compuesto con Código 10, «se ha especificado un
+dispositivo inexistente». Ocurría en tres máquinas y con dos placas, con cualquier sketch salvo el de
+WebUSB, y Android nunca tuvo problema.
+
+La causa es una edición del core que piden las instrucciones de instalación de la librería WebUSB:
+poner `USB_VERSION` en `0x210` en `cores/arduino/USBCore.h`. Declarar USB 2.1 significa, según la
+especificación, «tengo descriptor BOS». El core no lo implementa; la librería WebUSB sí. Así que a
+partir de esa edición **todos** los sketches de esa instalación prometen un descriptor que no tienen,
+y el único que cumple es el de WebUSB. Windows pide el descriptor, no lo recibe y `usbccgp` no
+arranca. Android no lo pide, y por eso ahí el síntoma no aparece.
+
+Lo señaló que una placa programada desde otra máquina funcionara y la misma placa programada desde
+esta, no. El sketch no era la variable: lo era el firmware que genera cada instalación.
+
+La versión declarada tiene que coincidir con lo que el sketch entrega, así que se decide por sketch y
+no por instalación. `subir.ps1` busca `WebUSB.h` y elige `0x210` o `0x200`. Hace falta `--clean`:
+`USBCore.cpp` es parte del core, el core compilado se cachea, y sin eso se reutiliza uno armado con
+el valor anterior.
+
+Detalle relacionado: la librería `Keyboard` envía códigos de tecla, no caracteres, así que el
+teclado del dispositivo tiene que estar en distribución inglesa. Con distribución española el
+separador `:` del protocolo llega como `ñ`.
+
+### El enfocador
+
+`createKeyboardLineSource()` en `core` rearma líneas terminadas en Enter a partir de pulsaciones
+sueltas, con el mismo contrato que el resto de los conectores. Deja la fuente intercambiable: el
+código que interpreta el protocolo no sabe de dónde vinieron los bytes.
+
+`focuser.js` pasó de 258 a 166 líneas. Desapareció el ciclo de conexión completo —permisos,
+emparejamiento, reintentos, eventos de conexión, bucle de lectura, selección de interfaz— porque con
+teclado no hay conexión que gestionar. Quedó la lógica del instrumento.
+
+Los tres canales del sketch quedan cableados:
+
+| Canal | Destino |
+|---|---|
+| `P:<0..1023>` | Posición del enfocador, normalizada a 0..1 en el borde |
+| `R:<0..1023>` | Ocular, resuelto a una clave por tramos del ADC |
+| `C:TRUE` / `C:FALSE` | Presencia de la cámara, reflejada al guía |
+
+La cámara se reporta y no se interpreta: qué debe hacer la aplicación cuando está presente todavía no
+está decidido.
+
+`TRAMOS_OCULAR` queda vacío. Sin medir las resistencias reales no se puede clasificar, así que el
+canal avisa «ocular sin clasificar» con el valor crudo en lugar de inventar una clave. Con eso el
+propio instrumento sirve para tomar la medida.
+
+Se eliminó el botón de emparejar del panel.
+
+### Herramientas de placa
+
+- `subir.ps1` compila y carga cualquier sketch por la ventana del gestor de arranque, sin depender
+  del puerto COM ni del IDE.
+- `rescate/` deja una placa muda para poder programarla cuando un sketch de teclado la vuelve
+  inoperable.
+- `device-lab` gana una sonda de teclado, que mide caudal y distribución, y un volcado de
+  descriptores USB.
+
+## 2026-08-19 — Repaso de pendientes
+
+El backlog sale del repo. Los problemas abiertos se siguen en el gestor de issues, y los documentos
+de referencia describen sólo lo que existe.
+
+Cerrados por verificación en el aparato: el clamp de altitud a 85° (el dispositivo se comporta bien
+en elevaciones altas y el prototipo físico no llega tan arriba), la entrada del Arduino en `kiosk`
+(las teclas `+` y `-` responden), la IP estática del principal, y mover el enfocador al dispositivo
+de control, que no aplica porque ese dispositivo es externo y remoto.
+
+Cerrada también la reconexión sin gesto del enfocador. Perder la conexión exige desenchufar el cable
+o reiniciar la placa, o sea pasos de montaje, no fallos espontáneos. El plan B por teclado queda
+abierto sólo por si resulta molesto en uso real.
+
+La referencia de norte quedó resuelta a favor del magnetómetro, que entrega norte real, y en el
+camino apareció un error de 180° en acimut: el eje óptico está declarado como `'+y'` cuando el
+teléfono apunta por su parte baja, o sea `'-y'`.
+
+El desfase del guía en desarrollo quedó anotado en el README: es una rareza del entorno, no una
+tarea.
+
+Los cuatro problemas del arranque de `kiosk` —rama de deploy, comandos de build, empaquetado de
+catálogos y modo `development`— se condensaron en uno solo, porque los cuatro se resuelven
+replicando la arquitectura de arranque de `dual-telescope`.
+
+## 2026-08-19 — Verificaciones en producción y decisiones de hardware
+
+Verificado en el prototipo desplegado: el emparejamiento por QR funciona, y la latencia con dos
+motores WASM y un teléfono haciendo de punto de acceso es buena. En desarrollo el guía va con algo
+de desfase, atribuible a que ahí la topología es otra.
+
+**La transformación newtoniana ya está cubierta.** Un newtoniano refleja dos veces, en el primario y
+en el secundario, así que la imagen sale rotada 180° y no reflejada. Por ser una rotación pura se
+compone con la rotación del montaje en un solo valor, que es el control que el panel ya tiene. El
+glosario lo decía mal.
+
+**El cambio de ocular no usará RFID.** Se resolverá con señales eléctricas leídas por el Arduino. Se
+eliminaron las referencias, incluido el stub de `createSerialConnector` en `core`, cuya premisa
+estaba doblemente muerta: Web Serial no existe en Android y el RFID quedó descartado. No lo usaba
+ninguna app.
+
 ## 2026-08-18 — Montaje, orientación y emparejamiento
 
 Sesión sobre el montaje real del teléfono en el tubo. Verificado en el aparato: la calibración

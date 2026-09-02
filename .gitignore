@@ -7,3 +7,5 @@ data/
 deploy/
 .deploy-worktree/
 old-docs/
+# Salida de compilación de sketches de Arduino
+apps/device-lab/arduino/*/build/

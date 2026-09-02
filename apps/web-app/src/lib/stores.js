@@ -29,14 +29,7 @@ export const SEEING_THROTTLE_MS = 100;
 export const POLLUTION_THROTTLE_MS = 100;
 export const LOCATION_SEND_MS = 50;
 
-// Stellarium option button config
-// `on` is the state the viewer's engine actually starts in, and it drives how
-// the telescope's menu paints each toggle before the user touches anything.
-// The telescope has no engine of its own to read, so this mirrors the engine's
-// defaults rather than observing them — if a default changes (or the viewer's
-// onReady starts overriding one), it has to be updated here too, or the button
-// will show the opposite of reality. That drift is exactly how `dss` ended up
-// painted off while the viewer was rendering it.
+// Configuración y estado inicial de botones de Stellarium.
 export const STEL_BUTTONS = {
   constellations: { label: 'Constelaciones', img: 'constellations', path: 'constellations', attr: 'lines_visible', on: false },
   atmosphere: { label: 'Atmosfera', img: 'atmosphere', path: 'atmosphere', attr: 'visible', on: true },
