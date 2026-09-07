@@ -59,6 +59,34 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
   caja.className = 'op-caja';
   capa.appendChild(caja);
 
+  // Los ajustes del seeing son veintidós y no tienen nada que ver con los de
+  // vista, así que van en su propia pestaña en vez de alargar una sola lista.
+  const pestanas = document.createElement('div');
+  pestanas.className = 'op-tabs';
+  const hojaVista = document.createElement('div');
+  const hojaSeeing = document.createElement('div');
+  hojaSeeing.hidden = true;
+  caja.append(pestanas, hojaVista, hojaSeeing);
+
+  const botonPestana = (texto, hoja, activa = false) => {
+    const b = document.createElement('button');
+    b.textContent = texto;
+    b.className = activa ? 'on' : '';
+    b.onclick = () => {
+      for (const o of pestanas.children) o.className = '';
+      b.className = 'on';
+      hojaVista.hidden = hoja !== hojaVista;
+      hojaSeeing.hidden = hoja !== hojaSeeing;
+    };
+    pestanas.appendChild(b);
+    return b;
+  };
+  botonPestana('Vista', hojaVista, true);
+  if (esOcular) botonPestana('Seeing', hojaSeeing);
+
+  // Destino de las filas que se agregan a continuación.
+  let hoja = hojaVista;
+
   const abridor = document.createElement('button');
   abridor.className = 'op-abridor';
   abridor.textContent = '≡';
@@ -73,7 +101,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     const l = document.createElement('span');
     l.textContent = etiqueta;
     d.append(l, control, valorEl ?? document.createElement('span'));
-    caja.appendChild(d);
+    hoja.appendChild(d);
     return d;
   };
 
@@ -119,6 +147,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
   // El FWHM va arriba y separado: es el único que la app expone al público, y
   // el resto describe el modelo o el instrumento.
   if (esOcular) {
+    hoja = hojaSeeing;
     const deslizadorSeeing = (spec) => {
       const input = document.createElement('input');
       Object.assign(input, {
@@ -143,7 +172,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
       const d = document.createElement('div');
       d.className = 'op-sec';
       d.textContent = t;
-      caja.appendChild(d);
+      hoja.appendChild(d);
     };
 
     titulo('SEEING');
@@ -161,6 +190,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
       const d = deslizadorSeeing(spec);
       fila(spec.lbl.toLowerCase(), d.input, d.valor);
     }
+    hoja = hojaVista;
   }
 
   if (esOcular) {

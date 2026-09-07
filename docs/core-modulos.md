@@ -562,6 +562,7 @@ iniciales.
 | `blurMul` | multiplicador | `0.72` | Desenfoque residual, sobre la fracción que deja D/r₀. |
 | `diffMul` | multiplicador | `1` | Límite de difracción del instrumento. `0` lo desactiva. |
 | `lucky` | 0–1 | `0.5` | Profundidad de los instantes de nitidez. |
+| `saturation` | multiplicador | `1.15` | Saturación del resultado, escalada por la apertura. Ver [Apertura y desenfoque](#apertura-y-desenfoque). |
 | `model` | 0–3 | `3` | `3` es el modelo completo. `0` es el shader de ondas original, `1` warp fBm, `2` gradiente de una capa. |
 | `fovGateArcmin` | arcominutos | `0` | Campo por encima del cual el efecto se desvanece. `0` lo desactiva. |
 | `legacyAmount` | — | `80` | Amplitud del modelo `0`. |
@@ -652,6 +653,11 @@ instrumento, 1.03 λ/D:
 Los valores de atmósfera corresponden a seeing 1″ con `intensity` en 1. Los dos términos van en
 sentidos opuestos y el mínimo cae cerca de D ≈ 2 r₀. Más apertura ya no afina la imagen: reúne más
 luz y permite exposiciones más cortas.
+
+La saturación va atada a la apertura por la raíz cúbica de D respecto de la del telescopio del
+proyecto, acotada entre 0.55 y 1.5. El color se percibe con luz suficiente, y una apertura pequeña
+entrega una imagen que el ojo lee más cerca de la visión escotópica. En la apertura de referencia el
+factor vale 1.
 
 El término de difracción queda fuera de la envolvente, porque describe el instrumento y no la
 noche. Ni `intensity` ni `intermit` lo tocan, y `lucky` no puede bajar de él: alcanzar el límite de

@@ -45,6 +45,7 @@ const ARCSEC = 4.8481368e-6;   // radianes por arcosegundo
 const LAMBDA = 550e-9;         // longitud de onda visual de referencia, m
 const H_SUELO = 100;           // altura asumida de la capa límite, m
 const GATE_FADE = 1.8;         // factor de FOV en que se desvanece la compuerta
+const D_REFERENCIA = TELESCOPIO.aperture / 1000;   // apertura donde satAperture vale 1
 
 export const SEEING_DEFAULTS = {
   // Ajustados en el banco de device-lab contra el motor, en el rango de campo
@@ -81,6 +82,12 @@ export const SEEING_DEFAULTS = {
   blurMul: 0.72,        // desenfoque residual, sobre la fracción que deja D/r₀
   diffMul: 0.4,           // límite de difracción del instrumento. 0 lo desactiva.
   lucky: 0.5,           // profundidad de los instantes de nitidez
+
+  // Saturación del resultado. Va atada a la apertura: el color se percibe con
+  // luz suficiente, y una apertura chica entrega una imagen que el ojo lee más
+  // cerca de la visión escotópica, sin color. En la apertura de referencia el
+  // factor vale 1 y este número es la saturación final.
+  saturation: 1.15,
 
   // Compuerta por campo. No es física — el seeing existe a todo campo, sólo que
   // por debajo de un píxel de desplazamiento no hay nada que ver. Sirve para
@@ -124,6 +131,7 @@ export const SEEING_PARAMS = [
   { k: 'blurMul',       scope: 'debug', grupo: 'Óptica',       lbl: 'Desenfoque residual',min: 0,   max: 3,   step: 0.01, u: '×' },
   { k: 'diffMul',       scope: 'debug', grupo: 'Óptica',       lbl: 'Difracción',         min: 0,   max: 2,   step: 0.05, u: '×' },
   { k: 'lucky',         scope: 'debug', grupo: 'Óptica',       lbl: 'Lucky imaging',      min: 0,   max: 1,   step: 0.01, u: ''  },
+  { k: 'saturation',    scope: 'debug', grupo: 'Óptica',       lbl: 'Saturación',         min: 0,   max: 2,   step: 0.05, u: '×' },
 
   { k: 'fovGateArcmin', scope: 'debug', grupo: 'Render',       lbl: 'Aparece bajo',       min: 0,   max: 120, step: 1,    u: '′' },
   { k: 'resolutionScale', scope: 'debug', grupo: 'Render',     lbl: 'Resolución',         min: 0.4, max: 1,   step: 0.05, u: '×' },
@@ -210,6 +218,11 @@ export function computeSeeingPhysics(params, fov, viewHeightPx) {
   // empeoraba la imagen, cuando en el instrumento hace las dos cosas a la vez.
   const diffArcsec = (1.03 * LAMBDA / D) / ARCSEC;
 
+  // Factor de saturación por apertura, referido a la del telescopio del
+  // proyecto. Raíz cúbica para que el recorrido completo de aperturas cambie el
+  // color por un factor dos y no por uno de ocho.
+  const satAperture = Math.min(1.5, Math.max(0.55, Math.cbrt(D / D_REFERENCIA)));
+
   // Compuerta por campo, con desvanecimiento en un factor 1.8 de FOV para que no
   // aparezca de golpe. Vale 1 en el umbral o más cerrado, 0 a 1.8 veces el
   // umbral. En logaritmo, porque el campo se recorre en factores y no en sumas.
@@ -221,7 +234,7 @@ export function computeSeeingPhysics(params, fov, viewHeightPx) {
 
   return {
     r0, D, DR, tiltArcsec, pxPerArcsec, fovArcsec, fovArcmin, gate, blurFrac, diffArcsec,
-    rFresnel, altFactor, apFactor,
+    rFresnel, altFactor, apFactor, satAperture,
     r0Suelo, vSuelo, driftArcminPerSec,
     hCentelleo, scintAtten,
   };
@@ -263,6 +276,7 @@ uniform float u_scintPx;
 uniform vec2  u_jetDrift;
 uniform float u_blurPx;
 uniform float u_blurFloor;
+uniform float u_saturation;
 uniform float u_legacyAmt;
 uniform vec4  u_octW;
 varying vec2 v_uv;
@@ -398,6 +412,9 @@ void main() {
   }
 
   col *= gain;
+  // Saturación sobre la luminancia Rec.709.
+  float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  col = mix(vec3(luma), col, u_saturation);
   if (u_split > 0.001 && abs(v_uv.x - u_split) < 0.0009) col = vec3(0.48, 0.59, 0.94);
   gl_FragColor = vec4(col, 1.0);
 }
@@ -514,6 +531,10 @@ export function createSeeingOverlay({
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  // El navegador aplica su conversión de perfil de color al subir una textura
+  // desde un canvas. Con el motor eso llega como una pérdida de saturación
+  // respecto de lo que se ve sin overlay.
+  gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
   const P = { ...SEEING_DEFAULTS, ...params };
   let fovRad = fov;
@@ -629,6 +650,7 @@ export function createSeeingOverlay({
     set2f('u_jetDrift', Math.cos(jetR) * jetPx, Math.sin(jetR) * jetPx);
     set1f('u_blurPx', blurPx);
     set1f('u_blurFloor', ph.diffArcsec * P.diffMul * ph.pxPerArcsec * 0.85);
+    set1f('u_saturation', Math.max(0, P.saturation * ph.satAperture));
     set1f('u_legacyAmt', P.legacyAmount);
     set4f('u_octW', oct.w[0], oct.w[1], oct.w[2], oct.w[3]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

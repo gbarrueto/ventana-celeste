@@ -47,6 +47,13 @@
 /* Blancos de toque generosos: esto se ajusta con el telescopio armado. */
 .op-row input[type=range] { width:100%; height:28px; accent-color:#ff7a0d; }
 
+/* Pestañas del panel. Separan los ajustes de vista de los del seeing, que son
+   veintidós y de otra naturaleza. */
+.op-tabs { display:flex; gap:6px; margin-bottom:12px; }
+.op-tabs button { flex:1; padding:9px 0; font:inherit; color:#e8ecf5; cursor:pointer;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); border-radius:8px; }
+.op-tabs button.on { background:rgba(255,122,13,.22); border-color:#ff7a0d; color:#ff7a0d; }
+
 /* Encabezado de sección dentro del panel. Separa los grupos del seeing, que
    son muchos y de otra naturaleza que los de vista. */
 .op-sec { margin:14px 0 4px; padding-top:8px; font-size:11px; letter-spacing:.09em;

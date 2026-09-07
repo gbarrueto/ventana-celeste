@@ -57,28 +57,23 @@ export function initializeSeeingOverlay({ getFov = null } = {}) {
   // El desenfoque del enfocador es óptico y no atmosférico, así que va como
   // filtro CSS sobre el canvas visible en vez de entrar al shader: un filtro no
   // altera el buffer, y aplicarlo al canvas del motor sería invisible para el
-  // overlay, que lee de ahí.
-  // `focus` y `saturation` no son parámetros del modelo: describen el ocular y
-  // la pantalla. Se resuelven acá, sobre el canvas visible.
-  let saturacion = 1;
+  // overlay, que lee de ahí. La saturación sí es del modelo, porque va atada a
+  // la apertura.
   let desenfoque = 0;
   const repintarFiltros = () => {
-    const sat = saturacion === 1 ? '' : ` saturate(${saturacion.toFixed(2)})`;
-    effectCanvas.style.filter =
-      (desenfoque > 0.05 ? `blur(${desenfoque.toFixed(2)}px)` : '') + sat;
+    effectCanvas.style.filter = desenfoque > 0.05 ? `blur(${desenfoque.toFixed(2)}px)` : '';
   };
 
   return {
     /**
      * Aplica un valor llegado por mensaje. `target` es una clave de
-     * SEEING_DEFAULTS, o `focus` y `saturation`, que son del ocular.
+     * SEEING_DEFAULTS, o `focus`, que es del enfocador.
      * Devuelve `false` si la clave no existe, para que el emisor se entere.
      */
     set(target, value) {
       const v = parseFloat(value);
       if (!Number.isFinite(v)) return false;
       if (target === 'focus') { desenfoque = Math.max(0, v); repintarFiltros(); return true; }
-      if (target === 'saturation') { saturacion = Math.max(0, v); repintarFiltros(); return true; }
       if (!(target in SEEING_DEFAULTS)) return false;
       params[target] = v;
       overlay.setParams({ [target]: v });
