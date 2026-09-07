@@ -52,7 +52,7 @@ export const SEEING_DEFAULTS = {
   // corriente; SEEING_PRESETS cubre el resto de la escala.
 
   // Atmósfera
-  seeing: 2.0,          // FWHM en arcosegundos. Rango operativo 0.3 a 3.
+  seeing: 1.0,          // FWHM en arcosegundos. Rango operativo 0.3 a 3.
   intermit: 0.35,       // 0..1 — rachas y calmas en escala de segundos.
 
   // Cuánto del efecto físico se muestra. Va por debajo de 1 a propósito: el
@@ -69,7 +69,7 @@ export const SEEING_DEFAULTS = {
 
   // Capas altas: desenfoque y brillo, nunca deformación. Valores altos granulan
   // la Luna antes de que las estrellas lleguen a titilar.
-  compress: 1.5,        // multiplica la divergencia del warp, cuya base ya es física
+  compress: 0.1,        // multiplica la divergencia del warp, cuya base ya es física
   scint: 0.34,          // amplitud antes de la supresión por altura y apertura
   scintArcsec: 7,       // θc = √(λ/h). Implica capa baja y poco centelleo.
   jetDrift: 7,          // arcmin/s con que barren las bandas de brillo
@@ -79,7 +79,7 @@ export const SEEING_DEFAULTS = {
   aperture: TELESCOPIO.aperture,   // mm, desde Telescope.js
   tipTilt: 0.97,        // multiplicador sobre el movimiento global calculado
   blurMul: 0.72,        // desenfoque residual, sobre la fracción que deja D/r₀
-  diffMul: 1,           // límite de difracción del instrumento. 0 lo desactiva.
+  diffMul: 0.4,           // límite de difracción del instrumento. 0 lo desactiva.
   lucky: 0.5,           // profundidad de los instantes de nitidez
 
   // Compuerta por campo. No es física — el seeing existe a todo campo, sólo que
