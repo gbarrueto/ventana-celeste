@@ -4,6 +4,31 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-07 — La coordenada del ruido del seeing crecía sin límite
+
+En un teléfono la imagen se rompía en bloques a los diez o doce segundos, siempre a la misma altura
+desde que se reiniciaba el render, y sin aparecer en un monitor. El síntoma se parecía a un cuadro
+sin sincronía vertical.
+
+Se descartaron tres explicaciones antes de dar con la buena, y ninguna dejaba rastro en consola:
+falta de sincronía entre los dos contextos WebGL, para la que se probó una copia intermedia a un
+canvas 2D; la frecuencia de la pantalla, de 120 Hz; y el factor de píxeles del dispositivo. Ninguna
+cambió el comportamiento.
+
+La causa es precisión. El desplazamiento del campo salía de multiplicar una tasa por el tiempo
+transcurrido, así que la coordenada crecía sin límite: con el arrastre en 0.4 avanzaba dieciséis
+celdas por segundo y la cuarta octava la multiplica por ocho, de modo que a los doce segundos iba en
+1800. Ahí el `fract()` de las GPU móviles se queda sin bits y el campo colapsa.
+
+Lo que fijó el diagnóstico fue el conjunto de condiciones que lo agravaban: frecuencia de hervor y
+número de octavas aceleran el crecimiento, el seeing y la intensidad sólo lo hacen más visible, y
+poner el arrastre en cero lo elimina. Ese último dato también explicó por qué el eje temporal, que
+crece igual, no se nota: degrada la animación, no la geometría.
+
+El retículo pasa a ser periódico, 256 celdas en el espacio y 4096 en el tiempo, y los
+desplazamientos se integran por incrementos y se envuelven en ese período. La lacunaridad baja de
+2.11 a 2 para que envolver la coordenada base envuelva también cada octava.
+
 ## 2026-09-07 — Costo del seeing medido en el aparato
 
 Medido en `device-lab` contra Saturno, con el medidor de costo que compara los cuadros con el efecto

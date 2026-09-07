@@ -532,7 +532,7 @@ const seeing = createSeeingOverlay({
   onActiveChange: (on) => { effectCanvas.style.visibility = on ? 'visible' : 'hidden'; },
 });
 
-seeing.setParams({ seeing: 2.4, aperture: 200 });
+seeing.setParams({ seeing: 2.4 });
 ```
 
 Devuelve `null` si el contexto WebGL no está disponible.
@@ -568,6 +568,10 @@ de hervor no.
 Sólo la capa límite produce deformación visible. Por encima de un kilómetro las celdas quedan bajo
 el límite de resolución y sobre la fusión de parpadeo.
 
+La tabla es la derivación de primeros principios. El `cellArcmin` configurado está por debajo de
+ella: el temblor se lee más localizado con celdas finas, y ese valor sale de comparar contra el
+motor en el instrumento.
+
 El desplazamiento es el gradiente de un campo de fase, que es la relación entre ángulo de llegada y
 frente de onda. La divergencia de ese mismo campo da la compresión del haz, con dos muestreos ya
 disponibles.
@@ -584,7 +588,7 @@ iniciales.
 
 | Parámetro | Unidad | Por defecto | Controla |
 |---|---|---|---|
-| `seeing` | arcosegundos | `2.0` | FWHM del disco de seeing. Rango operativo 0.3 a 3. |
+| `seeing` | arcosegundos | `1.0` | FWHM del disco de seeing. Rango operativo 0.3 a 3. |
 | `intermit` | 0–1 | `0.35` | Rachas y calmas en escala de segundos. |
 | `intensity` | multiplicador | `0.3` | Escala maestra de todo el efecto. Ver [Intensidad y seeing](#intensidad-y-seeing). |
 | `cellArcmin` | arcominutos | `0.57` | Tamaño angular de celda de la capa límite. |
@@ -592,15 +596,15 @@ iniciales.
 | `octaves` | 1–4 | `3` | Escalas superpuestas del campo de fase. La amplitud está normalizada, así que cambia el carácter del temblor y no su tamaño. |
 | `frozen` | 0–1 | `0` | Reparto entre arrastre por viento y hervor en el lugar. Ver la trampa de precisión. |
 | `windDir` | grados | `227` | Dirección del arrastre. |
-| `compress` | multiplicador | `1.5` | Escala la divergencia del warp. La base ya es física, del orden del 1 %. |
+| `compress` | multiplicador | `0.1` | Escala la divergencia del warp. La base ya es física, del orden del 1 %. |
 | `scint` | 0–1 | `0.34` | Amplitud del centelleo antes de la supresión física. Ver [Centelleo](#centelleo). |
-| `scintArcsec` | arcosegundos | `7` | θc = √(λ/h). Rango físico 1.5–5″. |
+| `scintArcsec` | arcosegundos | `7` | θc = √(λ/h), y con ello la altura de la capa. Ver [Centelleo](#centelleo). |
 | `jetDrift` | arcmin/s | `7` | Deriva de las bandas de brillo. |
 | `jetDir` | grados | `186` | Dirección de esa deriva. |
 | `aperture` | mm | desde `Telescope.js` | Vía D/r₀, reparte entre movimiento global y desenfoque. Ver [Apertura y desenfoque](#apertura-y-desenfoque). |
 | `tipTilt` | multiplicador | `0.97` | Escala el movimiento global calculado. |
 | `blurMul` | multiplicador | `0.72` | Desenfoque residual, sobre la fracción que deja D/r₀. |
-| `diffMul` | multiplicador | `1` | Límite de difracción del instrumento. `0` lo desactiva. |
+| `diffMul` | multiplicador | `0.4` | Límite de difracción del instrumento. `0` lo desactiva. |
 | `lucky` | 0–1 | `0.5` | Profundidad de los instantes de nitidez. |
 | `saturation` | multiplicador | `0.25` | Saturación del resultado, escalada por la apertura. Ver [Saturación](#saturación). |
 | `model` | 0–3 | `3` | `3` es el modelo completo. `0` es el shader de ondas original, `1` warp fBm, `2` gradiente de una capa. |
@@ -609,9 +613,11 @@ iniciales.
 | `resolutionScale` | 0.25–1 | `1` | Fracción de la resolución nativa a la que se renderiza. |
 | `maxFps` | fps | `60` | Tope de cuadros del overlay. `0` lo deja al ritmo de la pantalla. |
 
-`scintArcsec` fuera del rango 1.5–5″ rompe la discriminación entre fuentes puntuales y extendidas.
-A su escala física, una estrella no resuelta entra en una sola celda y titila con amplitud plena,
-mientras que una superficie extendida abarca cientos de celdas descorrelacionadas que se promedian.
+`scintArcsec` fija la altura de la capa: 1.5″ corresponden a 10 km y 7″ a unos 480 m. Cuanto más
+baja la capa, menos centellea, y la supresión por altura y apertura lo aplica sola. La escala
+angular es además lo que separa una fuente puntual de una extendida: una estrella no resuelta entra
+en una sola celda y titila con amplitud plena, mientras que una superficie abarca cientos de celdas
+descorrelacionadas que se promedian.
 
 ## Métodos
 
@@ -650,16 +656,15 @@ características del instrumento.
 `seeing` es una magnitud física. De ella dependen r₀, D/r₀, la amplitud del movimiento global y la
 atenuación automática del centelleo sobre objetos extendidos. Además no escala el efecto de forma
 pareja: la deformación va con seeing¹ y el movimiento global con seeing^(5/6), de modo que cambiarlo
-altera el carácter además del tamaño. Con `seeing` por debajo de 0.5″ la atenuación del centelleo
-satura en 1 y deja de suprimir el granulado de las superficies extendidas.
+altera el carácter además del tamaño.
 
 `intensity` escala el efecto completo por igual y deja esas magnitudes intactas. Es el control para
 mostrar menos turbulencia sin cambiar la noche que se está describiendo. El valor por defecto de 0.3
 es una decisión de puesta en escena: el seeing real a gran aumento resulta excesivo en una pieza que
 se mira de pie y durante poco tiempo.
 
-Los defaults corresponden a una noche corriente vista con 200 mm, ajustados contra el motor en el
-rango de campo que alcanza `dual-telescope`, de 1.72′ a 10′.
+Los defaults corresponden a una noche corriente vista con la apertura de `createDefaultTelescope()`,
+ajustados contra el motor en el rango de campo que alcanza `dual-telescope`, de 1.72′ a 10′.
 
 ## Apertura y desenfoque
 
@@ -723,6 +728,10 @@ se aplican sobre `scint`:
 | 4.0″ | 1.5 km | 0.064 |
 | 7.0″ | 478 m | 0.021 |
 
+El primer factor de `scintAtten`, `min(1, scintArcsec/seeing)`, satura en 1 mientras `scintArcsec`
+supere al seeing, que con el valor configurado es todo el rango operativo. La supresión efectiva
+sale entonces de la altura y de la apertura.
+
 Una capa alta y una apertura pequeña centellean; una capa baja vista con una apertura grande
 prácticamente no. Es la razón por la que las estrellas titilan a ojo desnudo y casi no lo hacen a
 través de un telescopio.
@@ -736,6 +745,7 @@ cada píxel. La discriminación queda sólo en la escala angular y en estas supr
 |---|---|---|---|
 | `dual-telescope` | Sólo el rol `ocular`. `acomodarVista()` coloca los dos canvas con la misma geometría. | `panel.js`, construido desde `SEEING_PARAMS` | Todo, con el FWHM separado arriba |
 | `web-app` | `apps/web-app/src/lib/seeing-overlay.js` | La página de control, otro dispositivo | Sólo el FWHM, por `seeingOption` |
+| `device-lab` | `sky.html`, pestaña de seeing | Construido desde `SEEING_PARAMS` | Todo, más los cuatro modelos y la comparación A/B |
 
 El guía de `dual-telescope` no monta overlay: trabaja a campo amplio, donde el efecto es sub-píxel.
 
@@ -751,9 +761,9 @@ Los ajustes del seeing viven anidados en `ajustes.seeing`. `cargarAjustes()` fus
 aparte, porque un objeto anidado no se combina con el spread de un nivel y un parámetro nuevo no
 llegaría a quien ya tenga ajustes guardados.
 
-`focus` y `saturation` no son parámetros del modelo: describen el ocular y la pantalla. Se aplican
-como filtro CSS sobre el canvas de efecto. Un filtro no altera el buffer, así que aplicarlo al canvas
-del motor sería invisible para el overlay, que lee de ahí.
+El desenfoque del enfocador no es parámetro del modelo: describe el ocular y se aplica como filtro
+CSS sobre el canvas de efecto. Un filtro no altera el buffer, así que aplicarlo al canvas del motor
+sería invisible para el overlay, que lee de ahí.
 
 ## Saturación
 
@@ -841,7 +851,15 @@ Función pura, sin instancia. `fov` en radianes, `viewHeightPx` en píxeles fís
 | `vSuelo` | m/s | Viento implícito de la capa límite. |
 | `driftArcminPerSec` | arcmin/s | Deriva angular de la capa límite. |
 | `hCentelleo` | metros | Altura implícita de la capa de centelleo. |
-| `scintAtten` | 0–1 | Atenuación del centelleo por el disco de seeing. |
+| `rFresnel` | metros | √(λh) de esa capa. |
+| `altFactor` | — | Supresión del centelleo por altura de capa. |
+| `apFactor` | — | Supresión del centelleo por promediado de apertura. |
+| `scintAtten` | 0–1 | Producto de las dos anteriores por el recorte del disco de seeing. |
+| `blurFrac` | 0–1 | Fracción del seeing que sobrevive como desenfoque. |
+| `diffArcsec` | arcosegundos | Límite de difracción, 1.03 λ/D. |
+| `satAperture` | — | Factor de saturación por apertura. |
+| `fovArcsec`, `fovArcmin` | — | El campo recibido, en las dos unidades. |
+| `gate` | 0–1 | Estado de la compuerta por campo. |
 
 Los campos implícitos existen para detectar combinaciones de parámetros sin correlato físico. Un
 `vSuelo` sobre 12 m/s no corresponde a una capa límite nocturna.
@@ -862,11 +880,14 @@ el paso expresado en el espacio de cada una. Un paso único deja la octava más 
 propio retículo y agregarla no cambia el resultado: el rms del gradiente pasa de 0.791 a 0.788 al
 sumar la cuarta octava, contra 0.818 a 0.966 con el paso por octava.
 
-**Escala de la deformación.** El tamaño de celda base corresponde a D/h, la separación angular a la
-que dos haces dejan de compartir camino en la capa. Con 150 mm a 100 m son unos 5 arcominutos. La
-estructura fina no sale de reducir ese número sino de `octaves`: los pesos siguen a Kolmogorov, la
-fase decae 0.56 por octava y el gradiente la multiplica por la frecuencia, así que la deformación
-crece con la frecuencia y las octavas finas dominan el temblor localizado.
+**Escala de la deformación.** La derivación da un tamaño de celda base de D/h, la separación angular
+a la que dos haces dejan de compartir camino en la capa: con 150 mm a 100 m son unos 5 arcominutos.
+El valor configurado está muy por debajo, porque comparado contra el motor el temblor se lee más
+localizado con celdas finas.
+
+`octaves` es la otra vía hacia esa estructura fina, y la más barata en amplitud: los pesos siguen a
+Kolmogorov, la fase decae 0.56 por octava y el gradiente la multiplica por la frecuencia, así que la
+deformación crece con la frecuencia y las octavas finas dominan el temblor localizado.
 
 **Precisión de la coordenada del ruido.** La imagen se rompe en bloques a los diez o doce segundos
 en algunas GPU móviles, siempre a la misma altura desde que se reinicia el render. La coordenada del
@@ -883,9 +904,6 @@ acotada y la degradación deja de ser divergente.
 El arrastre es el único término que empuja la coordenada espacial lejos del origen, y la coordenada
 espacial es la que se ve como geometría rota; la temporal sólo se percibe como una animación a
 saltos. Por eso `frozen` viene en 0.
-
-La copia intermedia a un canvas 2D no corrige nada de esto: la hipótesis de que los dos contextos
-WebGL entregaban un buffer a medio dibujar quedó descartada.
 
 **Eje del FOV.** `fovAxis` declara si el FOV que reporta el motor abarca el alto o el ancho del
 canvas. Equivocarse escala todas las amplitudes por el factor de aspecto y el efecto sale débil o
