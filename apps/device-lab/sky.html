@@ -176,7 +176,8 @@
       </div>
       <div style="margin-top:6px">
         <label><input type="checkbox" id="limpio" checked /> solo estrellas (sin grilla ni figuras)</label><br>
-        <label><input type="checkbox" id="fovAncho" checked /> el FOV del motor es horizontal</label>
+        <label><input type="checkbox" id="fovAncho" checked /> el FOV del motor es horizontal</label><br>
+        <label><input type="checkbox" id="copia2d" /> copia intermedia (contra la imagen partida)</label>
       </div>
       <div style="margin-top:6px">
         preset
@@ -450,6 +451,7 @@ const SPEC = [
   { k: 'lucky',      lbl: 'lucky imaging',      min: 0,   max: 1,   step: .01, d: 2, u: '' },
   { g: 'Render' },
   { k: 'resolutionScale', lbl: 'resolución',    min: .4,  max: 1,   step: .05, d: 2, u: '×' },
+  { k: 'maxFps',     lbl: 'tope de cuadros',    min: 0,   max: 120, step: 5,   d: 0, u: ' fps' },
   { k: 'legacyAmount',lbl: 'amplitud modelo 0', min: 0,   max: 200, step: 1,   d: 0, u: '' },
 ];
 
@@ -626,6 +628,11 @@ $('seeOn').onclick = () => {
     // alto, todas las amplitudes salen chicas por el factor de aspecto. Es lo
     // que hacía falta exagerar los valores respecto del banco.
     fovAxis: $('fovAncho').checked ? 'width' : 'height',
+    // Los dos contextos WebGL no comparten sincronización. En algunos
+    // controladores móviles la lectura directa devuelve un buffer a medio
+    // dibujar y la imagen sale partida; la copia intermedia fuerza una
+    // instantánea coherente a cambio de un blit por cuadro.
+    copyVia: $('copia2d').checked ? 'canvas2d' : 'direct',
     // El canvas arranca oculto para que no se vea un frame en negro antes de
     // que haya algo dibujado encima del cielo.
     onActiveChange: (on) => {
@@ -672,7 +679,10 @@ function aplicarLimpio() {
 }
 $('limpio').onchange = aplicarLimpio;
 // Cambiar el eje obliga a recrear el overlay: se fija al construirlo.
-$('fovAncho').onchange = () => { if (seeing) { $('seeOn').click(); $('seeOn').click(); } };
+// Las dos se fijan al construir el overlay, así que hay que rehacerlo.
+const recrear = () => { if (seeing) { $('seeOn').click(); $('seeOn').click(); } };
+$('fovAncho').onchange = recrear;
+$('copia2d').onchange = recrear;
 
 $('model').onchange = (e) => {
   P.model = parseInt(e.target.value, 10);

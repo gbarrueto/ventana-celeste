@@ -100,6 +100,7 @@ export const SEEING_DEFAULTS = {
   model: 3,             // 3 = modelo completo. 0..2 existen para comparar en el banco.
   legacyAmount: 80,     // amplitud del modelo 0, el shader de ondas original
   resolutionScale: 1,   // < 1 renderiza a menos píxeles y estira, para equipos lentos
+  maxFps: 60,           // 0 lo deja al ritmo de la pantalla
 };
 
 // Metadatos de cada parámetro: rango, unidad y a quién se le expone. `scope`
@@ -136,6 +137,7 @@ export const SEEING_PARAMS = [
 
   { k: 'fovGateArcmin', scope: 'debug', grupo: 'Render',       lbl: 'Aparece bajo',       min: 0,   max: 120, step: 1,    u: '′' },
   { k: 'resolutionScale', scope: 'debug', grupo: 'Render',     lbl: 'Resolución',         min: 0.4, max: 1,   step: 0.05, u: '×' },
+  { k: 'maxFps',        scope: 'debug', grupo: 'Render',       lbl: 'Tope de cuadros',    min: 0,   max: 120, step: 5,    u: ' fps' },
   { k: 'model',         scope: 'debug', grupo: 'Render',       lbl: 'Modelo',             min: 0,   max: 3,   step: 1,    u: ''  },
   { k: 'legacyAmount',  scope: 'debug', grupo: 'Render',       lbl: 'Amplitud modelo 0',  min: 0,   max: 200, step: 1,    u: ''  },
 ];
@@ -477,6 +479,13 @@ export function createSeeingOverlay({
   // todas las amplitudes: el efecto sale débil o exagerado por el factor de
   // aspecto. 'height' es lo que asumía este módulo desde el principio.
   fovAxis = 'height',
+  // Cómo llega el contenido del motor a la textura. 'direct' lo sube desde su
+  // canvas, que es lo barato. 'canvas2d' pasa por una copia intermedia, que
+  // cuesta un blit por cuadro y a cambio fuerza una instantánea coherente:
+  // los dos contextos WebGL no comparten sincronización, y en algunos
+  // controladores móviles la lectura directa devuelve un buffer a medio
+  // dibujar, que se ve como una imagen partida.
+  copyVia = 'direct',
   // Se llama con true cuando el overlay empieza a dibujar y con false cuando la
   // compuerta lo apaga. La app lo usa para mostrar u ocultar su canvas: con el
   // efecto apagado el canvas conservaría el último frame dibujado.
@@ -541,6 +550,11 @@ export function createSeeingOverlay({
   // respecto de lo que se ve sin overlay.
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
+  // Buffer intermedio del modo 'canvas2d'. No se agrega al documento: es un
+  // destino de dibujo, no un elemento de la página.
+  const copyCanvas = copyVia === 'canvas2d' ? document.createElement('canvas') : null;
+  const copyCtx = copyCanvas ? copyCanvas.getContext('2d') : null;
+
   const P = { ...SEEING_DEFAULTS, ...params };
   let fovRad = fov;
   let compareModel = null;   // null = sin comparación A/B
@@ -563,6 +577,7 @@ export function createSeeingOverlay({
     W = w; H = h;
     effectCanvas.width = W;
     effectCanvas.height = H;
+    if (copyCanvas) { copyCanvas.width = W; copyCanvas.height = H; }
     gl.viewport(0, 0, W, H);
   }
   sincronizarTamaño();
@@ -571,6 +586,7 @@ export function createSeeingOverlay({
 
   let t0 = null;
   let cuadros = 0;
+  let ultimoDibujo = -1e9;
 
   function animar(ms) {
     if (!corriendo) return;
@@ -592,6 +608,12 @@ export function createSeeingOverlay({
 
     // Con la compuerta cerrada no se sube la textura ni se dibuja. Subirla es lo
     // caro del frame, así que apagar acá es lo que ahorra de verdad.
+    // Tope de cuadros. Una pantalla de 120 Hz duplica el trabajo sin que el
+    // efecto se vea distinto, y sube al doble la presión sobre la lectura del
+    // canvas del motor.
+    if (P.maxFps > 0 && ms - ultimoDibujo < 1000 / P.maxFps - 0.5) return;
+    ultimoDibujo = ms;
+
     if (!habilitado || ph.gate <= 0) {
       if (activo !== false) { activo = false; onActiveChange?.(false); }
       return;
@@ -605,7 +627,12 @@ export function createSeeingOverlay({
     // tarde, y los callbacks corren en orden de registro.
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, skyCanvas);
+    let fuente = skyCanvas;
+    if (copyCtx) {
+      copyCtx.drawImage(skyCanvas, 0, 0, W, H);
+      fuente = copyCanvas;
+    }
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fuente);
 
     // Intermitencia: rachas y calmas en escala de segundos. Una intensidad
     // perfectamente constante delata que hay una máquina detrás.

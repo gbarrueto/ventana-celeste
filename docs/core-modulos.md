@@ -506,6 +506,7 @@ Devuelve `null` si el contexto WebGL no está disponible.
 | `fov` | FOV inicial en radianes. |
 | `getFov` | La provee la app y devuelve el FOV actual en radianes. Se lee por frame. |
 | `fovAxis` | `'height'` o `'width'`: a qué lado del canvas corresponde ese FOV. Por defecto `'height'`. |
+| `copyVia` | `'direct'` o `'canvas2d'`: cómo llega el contenido del motor a la textura. Por defecto `'direct'`. |
 | `onActiveChange` | Recibe `true` cuando el overlay empieza a dibujar y `false` cuando la compuerta lo apaga. |
 
 El motor atiende la rueda del ratón y los gestos de zoom por su cuenta. Sin `getFov`, el overlay
@@ -568,6 +569,7 @@ iniciales.
 | `fovGateArcmin` | arcominutos | `0` | Campo por encima del cual el efecto se desvanece. `0` lo desactiva. |
 | `legacyAmount` | — | `80` | Amplitud del modelo `0`. |
 | `resolutionScale` | 0.25–1 | `1` | Fracción de la resolución nativa a la que se renderiza. |
+| `maxFps` | fps | `60` | Tope de cuadros del overlay. `0` lo deja al ritmo de la pantalla. |
 
 `scintArcsec` fuera del rango 1.5–5″ rompe la discriminación entre fuentes puntuales y extendidas.
 A su escala física, una estrella no resuelta entra en una sola celda y titila con amplitud plena,
@@ -810,6 +812,15 @@ que dos haces dejan de compartir camino en la capa. Con 150 mm a 100 m son unos 
 estructura fina no sale de reducir ese número sino de `octaves`: los pesos siguen a Kolmogorov, la
 fase decae 0.56 por octava y el gradiente la multiplica por la frecuencia, así que la deformación
 crece con la frecuencia y las octavas finas dominan el temblor localizado.
+
+**Imagen partida en móviles.** El overlay lee el canvas del motor desde otro contexto WebGL, y los
+dos no comparten sincronización. Algunos controladores devuelven un buffer a medio dibujar, que se
+ve como la imagen cortada por una línea horizontal, igual que un cuadro sin sincronía vertical. La
+lectura no falla ni emite error.
+
+`copyVia: 'canvas2d'` pasa por una copia intermedia y fuerza una instantánea coherente, a cambio de
+un blit por cuadro. `maxFps` reduce la frecuencia de la lectura, que en una pantalla de 120 Hz es el
+doble de la necesaria.
 
 **Eje del FOV.** `fovAxis` declara si el FOV que reporta el motor abarca el alto o el ancho del
 canvas. Equivocarse escala todas las amplitudes por el factor de aspecto y el efecto sale débil o
