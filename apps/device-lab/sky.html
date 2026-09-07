@@ -152,7 +152,10 @@
         <!-- El recorte a media pantalla reproduce el teléfono acostado dentro del
              tubo. En un monitor sólo desperdicia área, así que arranca apagado
              ahí y encendido en celular. -->
-        <label><input type="checkbox" id="montaje" /> simular montaje (media pantalla)</label>
+        <label><input type="checkbox" id="montaje" /> simular montaje (media pantalla)</label><br>
+        <!-- Apuntar el aparato a la dirección real de un objeto no siempre es
+             posible bajo techo. Con esto la vista se arrastra con el dedo. -->
+        <label><input type="checkbox" id="sinSensores" /> sin sensores (apuntar arrastrando)</label>
       </div>
       <div class="row" style="margin-top:5px"><span class="muted">sensor activo</span><span id="activo">—</span></div>
       <div class="row"><span class="muted">az / alt</span><span id="azalt">—</span></div>
@@ -209,6 +212,7 @@
 import {
   initializeStellariumEngine,
   createSeeingOverlay, SEEING_DEFAULTS, SEEING_PRESETS, computeSeeingPhysics,
+  createFreeLook, acotarPitch,
 } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
@@ -284,6 +288,22 @@ for (const g of [0, 90, 180, 270]) {
 }
 
 $('montaje').onchange = (e) => { montaje = e.target.checked; acomodarVista(); };
+
+const freeLook = createFreeLook({
+  canvas: $('stel-canvas'),
+  getFov: () => engine?.core?.fov,
+  getRotationDeg: () => rotacion,
+  onPan: ({ dYaw, dPitch }) => {
+    const obs = engine?.core?.observer;
+    if (!obs) return;
+    obs.yaw += dYaw;
+    obs.pitch = acotarPitch(obs.pitch + dPitch);
+  },
+});
+$('sinSensores').onchange = (e) => {
+  freeLook?.setEnabled(e.target.checked);
+  setStatus(e.target.checked ? 'apuntado libre: arrastrar sobre el cielo' : 'sensores activos', 'ok');
+};
 
 acomodarVista();
 window.addEventListener('resize', acomodarVista);
@@ -369,7 +389,9 @@ function startSensor() {
     azEl.textContent = `${(az * DEG).toFixed(1)}° / ${altDeg.toFixed(1)}°`;
     azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
 
-    if (engine?.core?.observer) {
+    // Con el apuntado libre activo el sensor sigue leyendo y reportando, pero no
+    // escribe en la vista: sirve para ver los números mientras se apunta a mano.
+    if (engine?.core?.observer && !$('sinSensores').checked) {
       engine.core.observer.yaw = az;
       engine.core.observer.pitch = alt;
     }

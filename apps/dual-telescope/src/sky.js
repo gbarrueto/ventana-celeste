@@ -4,7 +4,7 @@ import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.was
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
 import { createFocuser, aplicarBlur } from './focuser.js';
-import { createSeeingOverlay, SEEING_DEFAULTS } from '@ventanaceleste/core';
+import { createSeeingOverlay, SEEING_DEFAULTS, createFreeLook, acotarPitch } from '@ventanaceleste/core';
 import { cargarAjustes, crearPanel, PANTALLA_GRANDE, UMBRAL_DINAMICO } from './panel.js';
 
 const ROLE = {
@@ -174,41 +174,18 @@ export async function startSky({ role, statusEl, canvas }) {
     engine.core.observer.pitch = pitch;
   };
 
-  (function apuntadoLibre() {
-    let ultimo = null;
-    const desde = (e) => (e.touches ? e.touches[0] : e);
-    const empezar = (e) => {
-      if (!libre) return;
-      const p = desde(e);
-      ultimo = { x: p.clientX, y: p.clientY };
-    };
-    const mover = (e) => {
-      if (!libre || !ultimo || !engine?.core?.observer) return;
-      const p = desde(e);
-      const dx = p.clientX - ultimo.x;
-      const dy = p.clientY - ultimo.y;
-      ultimo = { x: p.clientX, y: p.clientY };
-
-      // El canvas va rotado, así que el desplazamiento en pantalla se lleva al
-      // marco del canvas antes de convertirlo en ángulo.
-      const r = (ajustes.rot * Math.PI) / 180;
-      const cx = dx * Math.cos(r) + dy * Math.sin(r);
-      const cy = -dx * Math.sin(r) + dy * Math.cos(r);
-
-      const fov = engine.core.fov ?? 1;
-      const porPx = fov / Math.max(1, canvas.clientHeight);
-      const obs = engine.core.observer;
-      obs.yaw -= cx * porPx;
-      obs.pitch = Math.max(-1.5533, Math.min(1.5533, obs.pitch + cy * porPx));
-      e.preventDefault();
-    };
-    const soltar = () => { ultimo = null; };
-
-    canvas.addEventListener('pointerdown', empezar);
-    window.addEventListener('pointermove', mover, { passive: false });
-    window.addEventListener('pointerup', soltar);
-    window.addEventListener('pointercancel', soltar);
-  })();
+  const freeLook = createFreeLook({
+    canvas,
+    enabled: libre,
+    getFov: () => engine?.core?.fov,
+    getRotationDeg: () => ajustes.rot,
+    onPan: ({ dYaw, dPitch }) => {
+      const obs = engine?.core?.observer;
+      if (!obs) return;
+      obs.yaw += dYaw;
+      obs.pitch = acotarPitch(obs.pitch + dPitch);
+    },
+  });
 
   if (isSource) {
     controller = createOrientationController({
@@ -268,7 +245,11 @@ export async function startSky({ role, statusEl, canvas }) {
     esFuente: isSource,
     onChange: (clave) => {
       if (clave === 'fov') { aplicarFov(ajustes.fov); return; }
-      if (clave === 'sinSensores') { libre = ajustes.sinSensores; return; }
+      if (clave === 'sinSensores') {
+        libre = ajustes.sinSensores;
+        freeLook?.setEnabled(libre);
+        return;
+      }
       if (clave.startsWith('seeing.')) {
         seeing?.setParams({ [clave.slice(7)]: ajustes.seeing[clave.slice(7)] });
         return;

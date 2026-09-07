@@ -247,6 +247,45 @@ esperando indefinidamente.
 ve igual que un dispositivo quieto. El controlador los reporta por `onError` con el nombre del
 sensor que falló.
 
+## Apuntado libre
+
+`packages/core/src/orientation/freeLook.js`
+
+Sustituye a los sensores mientras se prueba: la vista se arrastra con el dedo o el ratón. Apuntar el
+aparato a la dirección real de un objeto no siempre es posible bajo techo.
+
+```js
+import { createFreeLook, acotarPitch } from '@ventanaceleste/core';
+
+const freeLook = createFreeLook({
+  canvas,
+  getFov: () => engine.core.fov,
+  getRotationDeg: () => ajustes.rot,
+  onPan: ({ dYaw, dPitch }) => {
+    engine.core.observer.yaw += dYaw;
+    engine.core.observer.pitch = acotarPitch(engine.core.observer.pitch + dPitch);
+  },
+});
+freeLook.setEnabled(true);
+```
+
+Entrega incrementos en radianes y no decide dónde escribirlos. Tampoco detiene los sensores: quien
+lo usa ignora sus lecturas mientras está activo, de modo que siguen reportando a los paneles de
+diagnóstico.
+
+| Opción | Uso |
+|---|---|
+| `canvas` | Dónde se escucha el arrastre. |
+| `getFov` | Campo en radianes. Fija cuánto cielo recorre un píxel, así el gesto se siente igual en todo el rango de zoom. |
+| `getRotationDeg` | Rotación CSS del canvas. Sin ella el arrastre mueve el cielo en la dirección equivocada en las vistas rotadas. |
+| `onPan` | Recibe `{ dYaw, dPitch }` en radianes. |
+| `enabled` | Estado inicial. Por defecto `false`. |
+
+`acotarPitch()` acota la altura a ±89°, para no cruzar el cenit donde el acimut queda indefinido.
+
+Lo usan `dual-telescope` con la casilla del panel, `device-lab` con la de la pestaña de orientación
+y `kiosk-standalone` con el botón del panel de depuración. `web-app` no lo monta.
+
 ---
 
 # Tiempo

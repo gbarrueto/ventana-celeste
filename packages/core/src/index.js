@@ -3,6 +3,7 @@ export * from './time/conversions.js';
 export * from './time/engineTime.js';
 export * from './telescope/Telescope.js';
 export * from './orientation/controller.js';
+export * from './orientation/freeLook.js';
 export * from './engine/stellarium.js';
 export * from './sky/seeing.js';
 export * from './sync/messageBus.js';
