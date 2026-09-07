@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ventana Celeste — Dev Hub & Entry Point</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔭</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🔭</div>
+        <div class="brand-title">
+          <h1>Ventana Celeste</h1>
+          <p>Monorepo Dev Hub & On-Demand Launcher</p>
+        </div>
+      </div>
+
+      <div class="network-badge" id="lan-badge" title="Dirección IP de red para conexiones móviles">
+        <span>🌐 Red:</span>
+        <select id="global-ip-select" class="ip-select" title="Seleccionar red (Wi-Fi, Tailscale, etc.)"></select>
+        <button id="copy-lan-btn" title="Copiar dirección IP">📋</button>
+      </div>
+
+      <div class="header-actions">
+        <button id="start-all-btn" class="btn btn-secondary btn-sm">▶ Iniciar Todas</button>
+        <button id="stop-all-btn" class="btn btn-danger btn-sm">⏹ Detener Todas</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Applications Grid -->
+      <section class="apps-grid" id="apps-grid">
+        <!-- Rendered dynamically via app.js -->
+        <div class="loading-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted);">
+          Cargando aplicaciones del monorepo...
+        </div>
+      </section>
+
+      <!-- Logs Terminal Drawer -->
+      <section class="logs-section">
+        <div class="logs-header">
+          <div class="logs-tabs" id="logs-tabs">
+            <!-- Tabs rendered dynamically -->
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; cursor: pointer;">
+              <input type="checkbox" id="autoscroll-chk" checked> Auto-scroll
+            </label>
+            <button id="clear-logs-btn" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Limpiar</button>
+          </div>
+        </div>
+        <div class="logs-terminal" id="logs-terminal">
+          <div class="log-line" style="color: var(--text-dim);">[Hub] Esperando actividad de las aplicaciones...</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- QR Code Modal -->
+    <div class="modal-overlay" id="qr-modal">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+        <h3 id="modal-title" style="margin-bottom: 0.25rem;">Abrir en Celular</h3>
+        <p id="modal-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;">Escanea con la cámara de tu teléfono móvil</p>
+        
+        <div class="qr-ip-group">
+          <label for="modal-ip-select">📡 Red asignada al QR:</label>
+          <select id="modal-ip-select" class="ip-select"></select>
+        </div>
+
+        <div class="qr-box" id="qr-target">
+          <!-- QR SVG injected here -->
+        </div>
+
+        <div class="modal-url" id="modal-url-text">https://...</div>
+        
+        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
+          <button id="copy-modal-url-btn" class="btn btn-secondary btn-sm">📋 Copiar Enlace</button>
+          <a id="modal-open-link" href="#" target="_blank" class="btn btn-primary btn-sm">🔗 Abrir en Navegador</a>
+        </div>
+
+        <p class="modal-tip">
+          💡 <strong>Nota sobre HTTPS:</strong> Si es la primera vez que abres en el celular, el navegador te pedirá aceptar el certificado autofirmado (<em>Avanzado &gt; Continuar</em>). Esto es necesario para habilitar los sensores de orientación del teléfono.
+        </p>
+      </div>
+    </div>
+
+    <footer>
+      <p>Ventana Celeste · Monorepo Platform · Stellarium Web Engine Integration</p>
+    </footer>
+  </div>
+
+  <script src="qrcode.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+

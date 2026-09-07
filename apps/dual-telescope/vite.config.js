@@ -37,7 +37,11 @@ function devRelay() {
 
 export default defineConfig(({ mode }) => ({
   plugins: mode === 'production' ? [devRelay()] : [basicSsl(), devRelay()],
-  server: { host: true },
+  server: {
+    host: true,
+    port: 5175,
+    strictPort: true,
+  },
   build: {
     rollupOptions: {
       input: {

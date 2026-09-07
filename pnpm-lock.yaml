@@ -43,6 +43,8 @@ importers:
         specifier: ^8.18.0
         version: 8.21.1
 
+  apps/entry-point: {}
+
   apps/kiosk-standalone:
     dependencies:
       '@ventanaceleste/core':

@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: true,
+    port: 5174,
+    strictPort: true,
     watch: {
       ignored: ["**/data/bigdata/**", "**/data/smalldata/**"],
     },

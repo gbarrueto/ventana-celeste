@@ -9,7 +9,8 @@ apps/
 ├── web-app             visor + teléfono como control, por WebRTC
 ├── kiosk-standalone    un dispositivo, sensores y pantalla en el mismo lugar
 ├── dual-telescope      dos teléfonos, ocular y guía, por WebSocket
-└── device-lab          banco de pruebas de sensores y hardware
+├── device-lab          banco de pruebas de sensores y hardware
+└── entry-point         hub de desarrollo y lanzador bajo demanda (puerto 3000)
 packages/
 └── core                @ventanaceleste/core
 ```
@@ -111,6 +112,20 @@ que permite que el teléfono viva dentro del tubo, donde no se puede tocar la pa
 El teclado del dispositivo tiene que estar en distribución inglesa: la librería envía códigos de
 tecla, no caracteres, y con distribución española el separador llega como otro signo.
 
+### entry-point
+
+Hub de desarrollo centralizado (`apps/entry-point`). Corre en un servidor Node.js HTTP/SSE ligero en
+el puerto `3000` (`http://localhost:3000`).
+
+- **Orquestación bajo demanda**: Inicia y detiene subprocesos de Vite sólo cuando se necesitan, evitando
+  sobrecargar memoria con múltiples instancias innecesarias.
+- **Puertos deterministas**: Fija cada aplicación a un puerto estricto (`web-app: 5173`, `kiosk: 5174`,
+  `dual-telescope: 5175`, `device-lab: 5176`).
+- **Soporte Multi-IP y Tailscale**: Detecta interfaces de red locales (Wi-Fi, Ethernet) y VPNs como
+  Tailscale para permitir el emparejamiento desde redes restrictivas.
+- **Códigos QR y streaming de logs**: Genera al vuelo códigos QR con la IP deseada para escaneo móvil y
+  transmite la salida de consola en tiempo real vía Server-Sent Events (SSE).
+
 ## Comunicación
 
 Todas las apps usan el mismo bus, `createMessageBus(transport)`, con mensajes de forma
@@ -165,9 +180,11 @@ funciona como punto de partida conocido donde el cielo se ve en todo su esplendo
 
 - pnpm 11 con workspaces. `shellEmulator: true` en `pnpm-workspace.yaml` hace que los prefijos
   `VAR=x comando` de los scripts funcionen también en Windows.
+- `apps/entry-point`: Dev Hub en Node.js nativo (HTTP/SSE) sin dependencias para orquestar los servidores
+  de desarrollo bajo demanda.
 - Vite 6 en `web-app`, Vite 5 en las otras tres.
 - Svelte en `web-app` y `kiosk-standalone`. `dual-telescope` y `device-lab` son JavaScript y HTML
   sin framework.
 - esbuild para empaquetar el relay de `dual-telescope` en un archivo sin dependencias.
-- `qrcode-generator` en `dual-telescope`, para el QR de emparejamiento. Sin dependencias y
-  empaquetada local, porque el prototipo tiene que funcionar sin internet.
+- `qrcode-generator` en `dual-telescope` y en `entry-point`, para generación de códigos QR de emparejamiento.
+  Sin dependencias externas y empaquetada local, permitiendo operar sin conexión a internet.
