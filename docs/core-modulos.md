@@ -602,7 +602,7 @@ iniciales.
 | `blurMul` | multiplicador | `0.72` | Desenfoque residual, sobre la fracción que deja D/r₀. |
 | `diffMul` | multiplicador | `1` | Límite de difracción del instrumento. `0` lo desactiva. |
 | `lucky` | 0–1 | `0.5` | Profundidad de los instantes de nitidez. |
-| `saturation` | multiplicador | `0.6` | Saturación del resultado, escalada por la apertura. Ver [Saturación](#saturación). |
+| `saturation` | multiplicador | `0.25` | Saturación del resultado, escalada por la apertura. Ver [Saturación](#saturación). |
 | `model` | 0–3 | `3` | `3` es el modelo completo. `0` es el shader de ondas original, `1` warp fBm, `2` gradiente de una capa. |
 | `fovGateArcmin` | arcominutos | `0` | Campo por encima del cual el efecto se desvanece. `0` lo desactiva. |
 | `legacyAmount` | — | `80` | Amplitud del modelo `0`. |
@@ -764,14 +764,21 @@ para acercar la imagen a lo que se vería por el ocular.
 El factor por apertura es la raíz cúbica de D respecto de la del telescopio del proyecto, acotado
 entre 0.55 y 1.5. Más apertura entrega más luz y con ella algo más de color.
 
-| Apertura | Saturación final con `saturation` en 0.6 |
+| Apertura | Saturación final con `saturation` en 0.25 |
 |---|---|
-| 50 mm | 0.42 |
-| 150 mm | 0.60 |
-| 400 mm | 0.83 |
+| 50 mm | 0.17 |
+| 150 mm | 0.25 |
+| 400 mm | 0.35 |
+
+El valor sale de compararlo contra el ocular en el aparato.
 
 La saturación se aplica en el shader sobre la luminancia Rec.709, no como filtro CSS, porque el
 factor depende de la apertura y vive con el resto del modelo.
+
+`core.exposure_scale` del motor cumple una función emparentada y no forma parte de este módulo:
+decide cuánto detalle revelan los objetos extensos, que el motor muestra más de lo que el ojo
+alcanza a ver en una nebulosa. `dual-telescope` lo expone en su panel y `device-lab` entre los
+ajustes de render del motor.
 
 ## Rendimiento
 

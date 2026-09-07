@@ -93,7 +93,7 @@ export const SEEING_DEFAULTS = {
   // brillo bajo la visión es escotópica y ve en gris. Va atada a la apertura
   // porque más apertura entrega más luz y con ella algo más de color. En la
   // apertura de referencia el factor vale 1 y este número es la saturación final.
-  saturation: 0.6,
+  saturation: 0.25,
 
   // Compuerta por campo. No es física — el seeing existe a todo campo, sólo que
   // por debajo de un píxel de desplazamiento no hay nada que ver. Sirve para

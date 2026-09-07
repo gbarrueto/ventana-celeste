@@ -19,6 +19,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    exposure: 1,
     invVertical: false,
     sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
@@ -29,6 +30,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    exposure: 1,
     invVertical: false,
     sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
@@ -196,6 +198,12 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     }
     hoja = hojaVista;
   }
+
+  // Exposición del motor. No es del seeing: decide cuánto detalle revelan los
+  // objetos extensos, que el motor muestra más de lo que el ojo alcanza a ver en
+  // una nebulosa.
+  const ex = deslizador('exposure', { min: 0.05, max: 3, paso: 0.05, formato: (v) => `${v.toFixed(2)}×` });
+  fila('exposición', ex.input, ex.valor);
 
   // El montaje del teléfono en el tubo puede cambiar, así que la inversión
   // vertical queda como opción en vez de horneada en el eje óptico.

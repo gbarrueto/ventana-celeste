@@ -108,6 +108,9 @@ export async function startSky({ role, statusEl, canvas }) {
       stel.core.cardinals.visible = true;
       stel.core.constellations.lines_visible = true;
       stel.core.fov = fovInicial;
+      // El motor ignora en silencio un atributo que no conoce, así que se prueba.
+      try { stel.core.exposure_scale = ajustes.exposure; }
+      catch { console.warn('[cielo] el motor no acepta exposure_scale'); }
     },
   });
 
@@ -261,6 +264,10 @@ export async function startSky({ role, statusEl, canvas }) {
     onChange: (clave) => {
       if (clave === 'fov') { aplicarFov(ajustes.fov); return; }
       // mountingTransform la lee viva desde el cierre.
+      if (clave === 'exposure') {
+        try { if (engine?.core) engine.core.exposure_scale = ajustes.exposure; } catch { /* no existe */ }
+        return;
+      }
       if (clave === 'invVertical') return;
       if (clave === 'sinSensores') {
         libre = ajustes.sinSensores;

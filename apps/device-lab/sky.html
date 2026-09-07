@@ -467,6 +467,9 @@ const SPEC = [
   { k: 'limitMag', lbl: 'magnitud límite',    min: 4,  max: 19,  step: .5,  d: 1, u: '', eng: 'display_limit_mag' },
   { k: 'starLin',  lbl: 'tamaño de estrella', min: .1, max: 2.5, step: .05, d: 2, u: '×', eng: 'star_linear_scale' },
   { k: 'starRel',  lbl: 'escala relativa',    min: .1, max: 2.5, step: .05, d: 2, u: '×', eng: 'star_relative_scale' },
+  // Cuánto detalle revelan los objetos extensos. El motor los expone más de lo
+  // que el ojo alcanza a ver en una nebulosa.
+  { k: 'exposure', lbl: 'exposición',         min: .05, max: 3, step: .05, d: 2, u: '×', eng: 'exposure_scale' },
 
   { g: 'Atmósfera' },
   { k: 'intensity',  lbl: 'intensidad (maestra)', min: 0, max: 1.5, step: .01, d: 2, u: '×' },
@@ -500,7 +503,7 @@ const P = { ...SEEING_DEFAULTS };
 
 // Ajustes de render del motor. Van aparte de P porque no son del overlay: se
 // escriben en engine.core y no viajan en la configuración del seeing.
-const E = { limitMag: 13, starLin: 0.5, starRel: 0.6 };
+const E = { limitMag: 13, starLin: 0.5, starRel: 0.6, exposure: 1 };
 
 // El motor ignora en silencio un atributo que no conoce, así que se comprueba.
 function aplicarMotor(attr, v) {
