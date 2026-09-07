@@ -545,7 +545,6 @@ Devuelve `null` si el contexto WebGL no está disponible.
 | `fov` | FOV inicial en radianes. |
 | `getFov` | La provee la app y devuelve el FOV actual en radianes. Se lee por frame. |
 | `fovAxis` | `'height'` o `'width'`: a qué lado del canvas corresponde ese FOV. Por defecto `'height'`. |
-| `copyVia` | `'direct'` o `'canvas2d'`: cómo llega el contenido del motor a la textura. Por defecto `'direct'`. |
 | `onActiveChange` | Recibe `true` cuando el overlay empieza a dibujar y `false` cuando la compuerta lo apaga. |
 
 El motor atiende la rueda del ratón y los gestos de zoom por su cuenta. Sin `getFov`, el overlay
@@ -868,8 +867,8 @@ El arrastre es el único término que empuja la coordenada espacial lejos del or
 espacial es la que se ve como geometría rota; la temporal sólo se percibe como una animación a
 saltos. Por eso `frozen` viene en 0.
 
-`copyVia: 'canvas2d'` pasa por una copia intermedia y fuerza una instantánea coherente, a cambio de
-un blit por cuadro. No corrige lo anterior.
+La copia intermedia a un canvas 2D no corrige nada de esto: la hipótesis de que los dos contextos
+WebGL entregaban un buffer a medio dibujar quedó descartada.
 
 **Eje del FOV.** `fovAxis` declara si el FOV que reporta el motor abarca el alto o el ancho del
 canvas. Equivocarse escala todas las amplitudes por el factor de aspecto y el efecto sale débil o

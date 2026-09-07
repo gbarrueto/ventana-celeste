@@ -38,13 +38,20 @@ function acomodarVista(canvas, ajustes, { recortarSiempre, extra = [] }) {
     const anchoArea = window.innerWidth;
     const rotado = Math.abs(ajustes.rot % 180) === 90;
     const centro = window.innerHeight * ajustes.pos;
+    // Con la vista rotada el área recortada queda casi cuadrada pero no del
+    // todo, y el motor reparte el campo según la relación del lienzo: la
+    // diferencia sale como una imagen estirada en el eje largo. Se nota en los
+    // discos planetarios y en las estrellas, que dejan de ser redondas. Se
+    // fuerza 1:1 y quedan bandas negras, que en una vista de ocular no molestan
+    // porque el campo real también es circular.
+    const lado = Math.min(anchoArea, altoArea);
     for (const c of todos()) {
       c.style.position = 'fixed';
       c.style.inset = 'auto';
       c.style.left = '50%';
       c.style.top = `${centro}px`;
-      c.style.width = `${rotado ? altoArea : anchoArea}px`;
-      c.style.height = `${rotado ? anchoArea : altoArea}px`;
+      c.style.width = `${rotado ? lado : anchoArea}px`;
+      c.style.height = `${rotado ? lado : altoArea}px`;
       c.style.transform = `translate(-50%, -50%) rotate(${ajustes.rot}deg)`;
       c.style.transformOrigin = 'center';
     }
@@ -199,6 +206,14 @@ export async function startSky({ role, statusEl, canvas }) {
       stillnessHoldSeconds: 2,
       calibDuration: 2,
       persistBiasKey: 'dual-telescope:gyro-bias',
+      // El montaje del teléfono en el tubo cambió y puede volver a cambiar, así
+      // que la inversión queda como opción en vez de horneada en el eje óptico.
+      // Se aplica sólo a la salida, así que la lee viva y no hace falta rehacer
+      // el controlador al cambiarla.
+      mountingTransform: (yaw, pitch) => ({
+        yaw,
+        pitch: ajustes.invVertical ? -pitch : pitch,
+      }),
       onCalibrationVisibility: (visible) => mostrarCalibracion(visible),
       onDebug: ({ preCalibStatus, preCalibCountdown }) => {
         if (preCalibStatus === 'moving') textoCalibracion('mantén el telescopio quieto');
@@ -245,6 +260,8 @@ export async function startSky({ role, statusEl, canvas }) {
     esFuente: isSource,
     onChange: (clave) => {
       if (clave === 'fov') { aplicarFov(ajustes.fov); return; }
+      // mountingTransform la lee viva desde el cierre.
+      if (clave === 'invVertical') return;
       if (clave === 'sinSensores') {
         libre = ajustes.sinSensores;
         freeLook?.setEnabled(libre);

@@ -27,6 +27,15 @@
        No recibe eventos: la mira y los gestos siguen siendo del de abajo. */
     #seeing-canvas { pointer-events: none; visibility: hidden; }
 
+    /* Medidor de costo. Guarda la referencia con el seeing apagado, así el
+       número que importa —cuánto cuesta la simulación— se lee directo. */
+    #fps { position: absolute; right: 12px; top: 12px; z-index: 6; pointer-events: none;
+      background: rgba(6,8,15,.82); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 7px; padding: 6px 9px; line-height: 1.6;
+      font-variant-numeric: tabular-nums; }
+    #fps b { color: #ff7a0d; }
+    #fps .muted { color: rgba(232,236,245,.5); }
+
     .crosshair { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
       z-index: 5; pointer-events: none;
       border: 1px solid rgba(255,122,13,.85); border-radius: 50%; }
@@ -113,6 +122,7 @@
     <canvas id="stel-canvas"></canvas>
     <canvas id="seeing-canvas"></canvas>
     <div class="crosshair"></div>
+    <div id="fps">—</div>
   </div>
 
   <aside class="dock">
@@ -178,9 +188,7 @@
         </select>
       </div>
       <div style="margin-top:6px">
-        <label><input type="checkbox" id="limpio" checked /> solo estrellas (sin grilla ni figuras)</label><br>
-        <label><input type="checkbox" id="fovAncho" checked /> el FOV del motor es horizontal</label><br>
-        <label><input type="checkbox" id="copia2d" /> copia intermedia (contra la imagen partida)</label>
+        <label><input type="checkbox" id="limpio" checked /> solo estrellas (sin grilla ni figuras)</label>
       </div>
       <div style="margin-top:6px">
         preset
@@ -649,12 +657,8 @@ $('seeOn').onclick = () => {
     // Si el motor reporta el FOV sobre el lado largo y aquí se divide por el
     // alto, todas las amplitudes salen chicas por el factor de aspecto. Es lo
     // que hacía falta exagerar los valores respecto del banco.
-    fovAxis: $('fovAncho').checked ? 'width' : 'height',
-    // Los dos contextos WebGL no comparten sincronización. En algunos
-    // controladores móviles la lectura directa devuelve un buffer a medio
-    // dibujar y la imagen sale partida; la copia intermedia fuerza una
-    // instantánea coherente a cambio de un blit por cuadro.
-    copyVia: $('copia2d').checked ? 'canvas2d' : 'direct',
+    // El motor reporta el campo sobre el lado largo del lienzo.
+    fovAxis: 'width',
     // El canvas arranca oculto para que no se vea un frame en negro antes de
     // que haya algo dibujado encima del cielo.
     onActiveChange: (on) => {
@@ -701,11 +705,6 @@ function aplicarLimpio() {
 }
 $('limpio').onchange = aplicarLimpio;
 // Cambiar el eje obliga a recrear el overlay: se fija al construirlo.
-// Las dos se fijan al construir el overlay, así que hay que rehacerlo.
-const recrear = () => { if (seeing) { $('seeOn').click(); $('seeOn').click(); } };
-$('fovAncho').onchange = recrear;
-$('copia2d').onchange = recrear;
-
 $('model').onchange = (e) => {
   P.model = parseInt(e.target.value, 10);
   seeing?.setParams({ model: P.model });
@@ -875,6 +874,43 @@ try {
 } catch { /* sin almacenamiento o JSON corrupto */ }
 
 habilitarControles(false);
+
+// ── Medidor de costo ───────────────────────────────────────────────────
+// Un fps suelto no dice nada: lo que interesa es cuánto cuesta el seeing. Se
+// guarda la referencia con el efecto apagado y se muestra la diferencia.
+
+(function medirFps() {
+  let cuadros = 0;
+  let desde = performance.now();
+  let base = null;          // fps de referencia, con el seeing apagado
+  const el = $('fps');
+
+  const marco = () => {
+    cuadros++;
+    const ahora = performance.now();
+    const dt = ahora - desde;
+    if (dt >= 700) {
+      const fps = (cuadros * 1000) / dt;
+      cuadros = 0;
+      desde = ahora;
+
+      // La referencia sólo se toma con el efecto apagado y el motor ya andando.
+      if (!seeing && engine) base = base === null ? fps : base * 0.7 + fps * 0.3;
+
+      const partes = [`<b>${fps.toFixed(0)}</b> fps`];
+      if (base !== null) {
+        partes.push(`<span class="muted">sin seeing ${base.toFixed(0)}</span>`);
+        if (seeing) {
+          const costo = Math.max(0, (1 - fps / base) * 100);
+          partes.push(`costo <b>${costo.toFixed(0)} %</b>`);
+        }
+      }
+      el.innerHTML = partes.join('<br>');
+    }
+    requestAnimationFrame(marco);
+  };
+  requestAnimationFrame(marco);
+})();
 
 // ── Motor ──────────────────────────────────────────────────────────────
 

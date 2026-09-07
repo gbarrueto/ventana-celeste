@@ -19,6 +19,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    invVertical: false,
     sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
   },
@@ -28,6 +29,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    invVertical: false,
     sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
   },
@@ -194,6 +196,17 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     }
     hoja = hojaVista;
   }
+
+  // El montaje del teléfono en el tubo puede cambiar, así que la inversión
+  // vertical queda como opción en vez de horneada en el eje óptico.
+  const invVert = document.createElement('input');
+  invVert.type = 'checkbox';
+  invVert.checked = !!ajustes.invVertical;
+  invVert.onchange = () => {
+    ajustes.invVertical = invVert.checked;
+    emitir('invVertical');
+  };
+  fila('vertical invertida', invVert);
 
   // Apuntado libre, para probar en el teléfono sin apuntar el aparato a la
   // dirección real del objeto.
