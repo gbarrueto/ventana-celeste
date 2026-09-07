@@ -4,6 +4,26 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-07 — Costo del seeing medido en el aparato
+
+Medido en `device-lab` contra Saturno, con el medidor de costo que compara los cuadros con el efecto
+apagado y encendido.
+
+| Escenario | Sin seeing | Con seeing | Pérdida |
+|---|---|---|---|
+| En movimiento, pantalla de 120 Hz | 120 fps | 65 fps | 45–50 % |
+| En reposo, límite del motor | 60 fps | 52 fps | 13 % |
+
+El motor limita el render a 60 fps mientras la vista no se mueve y sube a la frecuencia de la
+pantalla mientras hay movimiento. La Luna resulta algo más costosa que Saturno.
+
+`maxFps` topa el overlay en 60, así que en una pantalla de 120 Hz omite la mitad de los cuadros. El
+motor sigue dibujando a la frecuencia de la pantalla, y eso no se controla desde fuera: su bucle
+vive dentro del WebAssembly.
+
+La subida de la textura es 10 MB por cuadro a 1080p, unos 0.6 GB/s a 60 fps. Es el precio de leer el
+resultado del motor desde otro contexto WebGL.
+
 ## 2026-09-07 — Simulación de seeing atmosférico en core
 
 `packages/core/src/sky/seeing.js` reemplaza al overlay de `apps/web-app/src/lib/seeing-overlay.js`,

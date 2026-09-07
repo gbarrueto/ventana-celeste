@@ -793,6 +793,16 @@ que se le indique, sin subir la textura ni dibujar.
 El costo es el mismo en desarrollo y en producción: el shader es una cadena y el empaquetado no lo
 altera.
 
+Medido en un teléfono contra Saturno: con la vista en movimiento y pantalla de 120 Hz, de 120 a
+65 fps; en reposo, donde el motor se limita a 60, de 60 a 52. La Luna resulta algo más costosa.
+
+`maxFps` topa el overlay, no al motor: su bucle vive dentro del WebAssembly y no se controla desde
+fuera. En una pantalla de 120 Hz el motor sigue dibujando a 120 aunque el overlay componga a 60.
+
+La subida de la textura son 10 MB por cuadro a 1080p, unos 0.6 GB/s a 60 fps. Es el precio de leer
+el resultado del motor desde otro contexto WebGL, y desaparece si el efecto pasa a ser un paso del
+propio motor.
+
 ## Compuerta por campo
 
 `fovGateArcmin` no describe la atmósfera. El seeing existe a todo campo y por debajo de un píxel
