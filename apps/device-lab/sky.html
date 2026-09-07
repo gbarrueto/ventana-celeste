@@ -29,7 +29,7 @@
 
     /* Medidor de costo. Guarda la referencia con el seeing apagado, así el
        número que importa —cuánto cuesta la simulación— se lee directo. */
-    #fps { position: absolute; right: 12px; top: 12px; z-index: 6; pointer-events: none;
+    #fps { position: absolute; right: 12px; bottom: 12px; z-index: 6; pointer-events: none;
       background: rgba(6,8,15,.82); border: 1px solid rgba(255,255,255,.12);
       border-radius: 7px; padding: 6px 9px; line-height: 1.6;
       font-variant-numeric: tabular-nums; }
@@ -51,6 +51,9 @@
     .tabs { display: flex; gap: 4px; padding: 6px 8px 0; position: sticky; top: 0;
       background: rgba(6,8,15,.96); border-bottom: 1px solid rgba(255,255,255,.1); }
     .tabs button { flex: 1; margin: 0 0 6px; padding: 7px 10px; }
+    .tabs button.plegar { flex: 0 0 44px; }
+    .dock.plegado { max-height: none; }
+    .dock.plegado .tabpanel, .dock.plegado #status { display: none; }
     .tabpanel { padding: 9px 11px; }
     .tabpanel[hidden] { display: none; }
 
@@ -129,6 +132,7 @@
     <div class="tabs">
       <button type="button" data-tab="orient" class="on">Orientación</button>
       <button type="button" data-tab="seeing">Seeing</button>
+      <button type="button" class="plegar" id="plegar" aria-label="Plegar el panel">▴</button>
     </div>
 
     <!-- ── Pestaña de orientación ──────────────────────────────────────── -->
@@ -238,9 +242,16 @@ let seeing = null;
 
 // ── Pestañas ───────────────────────────────────────────────────────────
 
-for (const b of document.querySelectorAll('.tabs button')) {
+// El panel se pliega para dejar ver el cielo: en pantalla chica ocupa la mitad.
+$('plegar').onclick = () => {
+  const dock = document.querySelector('.dock');
+  const plegado = dock.classList.toggle('plegado');
+  $('plegar').textContent = plegado ? '▾' : '▴';
+};
+
+for (const b of document.querySelectorAll('.tabs button:not(.plegar)')) {
   b.onclick = () => {
-    for (const o of document.querySelectorAll('.tabs button')) o.classList.toggle('on', o === b);
+    for (const o of document.querySelectorAll('.tabs button:not(.plegar)')) o.classList.toggle('on', o === b);
     $('tab-orient').hidden = b.dataset.tab !== 'orient';
     $('tab-seeing').hidden = b.dataset.tab !== 'seeing';
   };
