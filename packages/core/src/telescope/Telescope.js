@@ -233,7 +233,7 @@ export function createDefaultTelescope(overrides = {}) {
   return new Telescope({
     name: 'Ventana Celeste',
     type: TelescopeType.REFRACTOR,
-    aperture: 100,
+    aperture: 150,
     focalLength: 1200,
     ...overrides,
   });
