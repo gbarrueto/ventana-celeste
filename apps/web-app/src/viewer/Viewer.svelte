@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings, getEngineFov } from '../lib/stellarium.js';
+  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings, getEngineFov, setSeeingControl } from '../lib/stellarium.js';
   import { initViewerProtobject, setSeeingOptionHandler, setConnectionStatusHandler } from '../lib/protobject.js';
   import { initializeSeeingOverlay } from '../lib/seeing-overlay.js';
   import { loadCdnScript } from '../lib/lazy-load.js';
@@ -86,6 +86,9 @@
       getFov: getEngineFov,
     });
     if (seeing) {
+      setSeeingControl(seeing);
+      // El arranque es en modo simple, que no lleva seeing.
+      seeing.setEnabled(false);
       setSeeingOptionHandler(({ target, value }) => {
         if (!seeing.set(target, value)) {
           console.warn('[seeing] parámetro desconocido:', target);

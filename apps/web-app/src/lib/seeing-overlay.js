@@ -79,6 +79,10 @@ export function initializeSeeingOverlay({ getFov = null } = {}) {
       overlay.setParams({ [target]: v });
       return true;
     },
+    // El modo simple no lleva seeing. Apagarlo por acá, y no ocultando el canvas
+    // desde fuera, evita que dos dueños peleen por la visibilidad: el overlay la
+    // devolvía al activarse y el efecto reaparecía en modo simple.
+    setEnabled: (on) => overlay.setEnabled(on),
     setFov: (rad) => overlay.setFov(rad),
     getParams: () => overlay.getParams(),
     stop: () => { overlay.stop(); effectCanvas.remove(); },

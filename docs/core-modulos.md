@@ -416,7 +416,8 @@ grados.
 ## Slider de modo simple
 
 El modo simple de `web-app` expone el zoom como un deslizador lineal, pero el FOV útil abarca varios
-órdenes de magnitud. El mapeo es exponencial para que el recorrido del deslizador se sienta parejo.
+órdenes de magnitud. El mapeo es geométrico: cada paso multiplica el campo por la misma razón, que es
+lo que el ojo lee como un paso de zoom parejo.
 
 | Función | Uso |
 |---|---|
@@ -583,6 +584,8 @@ mientras que una superficie extendida abarca cientos de celdas descorrelacionada
 | `applyPreset(nombre)` | Aplica una clave de `SEEING_PRESETS`. Devuelve `false` si no existe. |
 | `setCompareModel(m)` | Modelo mostrado en la mitad izquierda, para comparación A/B. `null` la apaga. |
 | `physics()` | Magnitudes derivadas para paneles de diagnóstico. |
+| `setEnabled(on)` | Apaga el overlay sin destruirlo: no sube la textura ni dibuja. |
+| `isEnabled()` | Estado actual. |
 | `stop()` | Detiene el bucle y libera el observador de tamaño. |
 
 ## Exposición de parámetros
@@ -695,6 +698,14 @@ cada píxel. La discriminación queda sólo en la escala angular y en estas supr
 | `web-app` | `apps/web-app/src/lib/seeing-overlay.js` | La página de control, otro dispositivo | Sólo el FWHM, por `seeingOption` |
 
 El guía de `dual-telescope` no monta overlay: trabaja a campo amplio, donde el efecto es sub-píxel.
+
+La visibilidad del canvas la decide la app desde `onActiveChange`. Ocultarlo por fuera mientras el
+overlay sigue corriendo deja dos dueños del mismo estilo, y el overlay lo devuelve a visible en su
+siguiente transición. Para apagarlo va `setEnabled(false)`, que además lo saca del presupuesto de
+GPU. `web-app` lo usa así en modo simple, que no lleva seeing.
+
+El factor de píxeles del dispositivo se topa en 2. Por encima el detalle no se distingue y el costo
+sí: la textura se sube entera cada cuadro, y un dpr de 3 pide nueve veces el área lógica.
 
 Los ajustes del seeing viven anidados en `ajustes.seeing`. `cargarAjustes()` fusiona ese nivel
 aparte, porque un objeto anidado no se combina con el spread de un nivel y un parámetro nuevo no

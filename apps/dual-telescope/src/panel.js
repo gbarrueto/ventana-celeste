@@ -19,6 +19,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
   },
   guide: {
@@ -27,6 +28,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    sinSensores: false,
     seeing: { ...SEEING_DEFAULTS },
   },
 };
@@ -192,6 +194,17 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     }
     hoja = hojaVista;
   }
+
+  // Apuntado libre, para probar en el teléfono sin apuntar el aparato a la
+  // dirección real del objeto.
+  const sinSensores = document.createElement('input');
+  sinSensores.type = 'checkbox';
+  sinSensores.checked = !!ajustes.sinSensores;
+  sinSensores.onchange = () => {
+    ajustes.sinSensores = sinSensores.checked;
+    emitir('sinSensores');
+  };
+  fila('sin sensores', sinSensores);
 
   if (esOcular) {
     const rotBox = document.createElement('div');

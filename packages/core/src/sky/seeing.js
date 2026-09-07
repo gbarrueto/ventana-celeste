@@ -545,6 +545,7 @@ export function createSeeingOverlay({
   let fovRad = fov;
   let compareModel = null;   // null = sin comparación A/B
   let corriendo = true;
+  let habilitado = true;
   let activo = null;
   let W = 0, H = 0;
 
@@ -552,7 +553,9 @@ export function createSeeingOverlay({
   // Copiar sin el mismo factor deja el efecto con menos píxeles que el original
   // y se ve pixelado aunque el CSS lo muestre del mismo tamaño.
   function sincronizarTamaño() {
-    const dpr = window.devicePixelRatio || 1;
+    // Por encima de 2 el detalle no se distingue y el costo sí: la textura se
+    // sube entera cada cuadro, y un dpr de 3 pide nueve veces el área lógica.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const esc = Math.max(0.25, Math.min(1, P.resolutionScale));
     const w = Math.max(1, Math.round(skyCanvas.clientWidth * dpr * esc));
     const h = Math.max(1, Math.round(skyCanvas.clientHeight * dpr * esc));
@@ -589,7 +592,7 @@ export function createSeeingOverlay({
 
     // Con la compuerta cerrada no se sube la textura ni se dibuja. Subirla es lo
     // caro del frame, así que apagar acá es lo que ahorra de verdad.
-    if (ph.gate <= 0) {
+    if (!habilitado || ph.gate <= 0) {
       if (activo !== false) { activo = false; onActiveChange?.(false); }
       return;
     }
@@ -671,6 +674,12 @@ export function createSeeingOverlay({
   return {
     // FOV del ocular en radianes. Es el disparador de toda la escala: convierte
     // los arcosegundos del modelo en píxeles. La app lo llama en cada zoom.
+    // Apaga el overlay sin destruirlo. Con esto no se sube la textura ni se
+    // dibuja, así que sale del presupuesto de GPU además de dejar de verse.
+    // La app decide la visibilidad de su canvas desde onActiveChange.
+    setEnabled(on) { habilitado = !!on; },
+    isEnabled() { return habilitado; },
+
     setFov(rad) { if (rad > 0) fovRad = rad; },
     getFov() { return fovRad; },
 

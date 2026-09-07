@@ -162,11 +162,53 @@ export async function startSky({ role, statusEl, canvas }) {
   const { sensorSource, addresses } = await fetchLinkConfig();
   const isSource = sensorSource === role;
 
+  // Apuntado libre: con los sensores en pausa la vista se arrastra con el dedo.
+  // Probar un objeto concreto en el teléfono exigía apuntar el aparato a su
+  // dirección real, que dentro de un edificio no siempre es posible.
+  let libre = ajustes.sinSensores ?? false;
+
   const apply = (yaw, pitch) => {
+    if (libre) return;
     if (!engine?.core?.observer) return;
     engine.core.observer.yaw = yaw;
     engine.core.observer.pitch = pitch;
   };
+
+  (function apuntadoLibre() {
+    let ultimo = null;
+    const desde = (e) => (e.touches ? e.touches[0] : e);
+    const empezar = (e) => {
+      if (!libre) return;
+      const p = desde(e);
+      ultimo = { x: p.clientX, y: p.clientY };
+    };
+    const mover = (e) => {
+      if (!libre || !ultimo || !engine?.core?.observer) return;
+      const p = desde(e);
+      const dx = p.clientX - ultimo.x;
+      const dy = p.clientY - ultimo.y;
+      ultimo = { x: p.clientX, y: p.clientY };
+
+      // El canvas va rotado, así que el desplazamiento en pantalla se lleva al
+      // marco del canvas antes de convertirlo en ángulo.
+      const r = (ajustes.rot * Math.PI) / 180;
+      const cx = dx * Math.cos(r) + dy * Math.sin(r);
+      const cy = -dx * Math.sin(r) + dy * Math.cos(r);
+
+      const fov = engine.core.fov ?? 1;
+      const porPx = fov / Math.max(1, canvas.clientHeight);
+      const obs = engine.core.observer;
+      obs.yaw -= cx * porPx;
+      obs.pitch = Math.max(-1.5533, Math.min(1.5533, obs.pitch + cy * porPx));
+      e.preventDefault();
+    };
+    const soltar = () => { ultimo = null; };
+
+    canvas.addEventListener('pointerdown', empezar);
+    window.addEventListener('pointermove', mover, { passive: false });
+    window.addEventListener('pointerup', soltar);
+    window.addEventListener('pointercancel', soltar);
+  })();
 
   if (isSource) {
     controller = createOrientationController({
@@ -226,6 +268,7 @@ export async function startSky({ role, statusEl, canvas }) {
     esFuente: isSource,
     onChange: (clave) => {
       if (clave === 'fov') { aplicarFov(ajustes.fov); return; }
+      if (clave === 'sinSensores') { libre = ajustes.sinSensores; return; }
       if (clave.startsWith('seeing.')) {
         seeing?.setParams({ [clave.slice(7)]: ajustes.seeing[clave.slice(7)] });
         return;

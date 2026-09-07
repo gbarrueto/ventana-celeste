@@ -199,9 +199,18 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
+// El overlay de seeing se registra al montarse. Apagarlo por su propia API en
+// vez de ocultar el canvas desde fuera evita que dos dueños peleen por la
+// visibilidad, y de paso lo saca del presupuesto de GPU en modo simple.
+let seeingControl = null;
+export function setSeeingControl(control) {
+  seeingControl = control;
+}
+
 function enableSeeingEffect(enable) {
+  seeingControl?.setEnabled(enable);
   const el = document.getElementById('effect-canvas');
-  if (el) el.style.visibility = enable ? 'visible' : 'hidden';
+  if (el && !enable) el.style.visibility = 'hidden';
 }
 
 // ── Location & Pollution ───────────────────────────────────
