@@ -65,7 +65,12 @@ export const SEEING_DEFAULTS = {
   cellArcmin: 0.57,     // tamaño angular de celda
   boilHz: 40,           // frecuencia de decorrelación
   octaves: 3,           // 1..4 — escalas superpuestas. Ver OCTAVAS.
-  frozen: 0.4,          // 0 = puro hervor en el lugar, 1 = puro arrastre por viento
+  // 0 = puro hervor en el lugar, 1 = puro arrastre por viento. Queda en 0 por
+  // precisión, no por gusto: el arrastre es el único término que empuja la
+  // coordenada espacial del ruido lejos del origen, y ahí el fract() de las
+  // GPU móviles se queda sin bits. Medido en el aparato, la diferencia visual
+  // entre 0 y 0.4 es imperceptible. Ver la trampa sobre precisión.
+  frozen: 0,
   windDir: 227,         // grados
 
   // Capas altas: desenfoque y brillo, nunca deformación. Valores altos granulan
@@ -271,13 +276,14 @@ uniform float u_env;
 uniform float u_luckySharp;
 uniform float u_warpPx;
 uniform float u_cellPx;
-uniform float u_boil;
-uniform vec2  u_drift;
+uniform vec2  u_driftOff;   // celdas ya acumuladas y acotadas
+uniform float u_boilTz;     // eje temporal ya acumulado y acotado
 uniform float u_compress;
 uniform float u_compressBase;
 uniform float u_scint;
 uniform float u_scintPx;
-uniform vec2  u_jetDrift;
+uniform vec2  u_jetOff;     // celdas de centelleo, acumuladas y acotadas
+uniform float u_scintTz;
 uniform float u_blurPx;
 uniform float u_blurFloor;
 uniform float u_saturation;
@@ -290,14 +296,29 @@ float hash13(vec3 p) {
   p += dot(p, p.zyx + 31.32);
   return fract((p.x + p.y) * p.z);
 }
+// Periodo del retículo. El índice se envuelve antes de entrar al hash, de modo
+// que el campo es periódico y la coordenada se puede acotar en CPU sin que el
+// patrón salte. Sin esto la coordenada crece con el tiempo sin límite: la deriva
+// la hace avanzar decenas de celdas por segundo, la cuarta octava la multiplica
+// por ocho, y a los pocos segundos el fract() se queda sin bits y el ruido
+// colapsa. En mediump, que es a lo que caen varias GPU móviles, la imagen se
+// rompe en bloques a los diez segundos.
+//
+// 256 celdas de repetición espacial son unas veinticinco pantallas, y 4096 de
+// repetición temporal son varios minutos.
+const vec3 PERIODO = vec3(256.0, 256.0, 4096.0);
+
 float n3(vec3 x) {
   vec3 i = floor(x), f = fract(x);
   f = f * f * (3.0 - 2.0 * f);
-  float a = mix(mix(mix(hash13(i + vec3(0,0,0)), hash13(i + vec3(1,0,0)), f.x),
-                    mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
-                mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x),
-                    mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z);
-  return a * 2.0 - 1.0;
+  vec3 a0 = mod(i, PERIODO);
+  vec3 a1 = mod(i + 1.0, PERIODO);
+  float v = mix(
+    mix(mix(hash13(vec3(a0.x, a0.y, a0.z)), hash13(vec3(a1.x, a0.y, a0.z)), f.x),
+        mix(hash13(vec3(a0.x, a1.y, a0.z)), hash13(vec3(a1.x, a1.y, a0.z)), f.x), f.y),
+    mix(mix(hash13(vec3(a0.x, a0.y, a1.z)), hash13(vec3(a1.x, a0.y, a1.z)), f.x),
+        mix(hash13(vec3(a0.x, a1.y, a1.z)), hash13(vec3(a1.x, a1.y, a1.z)), f.x), f.y), f.z);
+  return v * 2.0 - 1.0;
 }
 float fbm2h(vec3 p) { return n3(p) * 0.66 + n3(p * 2.11 + 9.1) * 0.34; }
 
@@ -306,10 +327,14 @@ float fbm2h(vec3 p) { return n3(p) * 0.66 + n3(p * 2.11 + 9.1) * 0.34; }
 // más fina por debajo de su propio retículo, y entonces agregarla no cambia
 // nada: medido, el rms del gradiente pasa de 0.791 a 0.788 al sumar la cuarta.
 // Con el paso por octava pasa de 0.818 a 0.966 y la estructura fina aparece.
+// La lacunaridad es entera a propósito: con ella, envolver la coordenada base
+// en el período envuelve también cada octava, porque su desplazamiento es un
+// múltiplo del período. Con una razón fraccionaria el patrón saltaría al
+// envolver.
 vec3 octGrad(vec2 q, float tz, float f, float off) {
   const float e = 0.30;
   vec2  p = q * f + off;
-  float z = tz * f * 0.8;
+  float z = tz * f;
   float c  = n3(vec3(p, z));
   float px = n3(vec3(p + vec2(e, 0.0), z));
   float mx = n3(vec3(p - vec2(e, 0.0), z));
@@ -325,13 +350,13 @@ vec3 octGrad(vec2 q, float tz, float f, float off) {
 // deformación crece con la frecuencia. Las octavas finas son las que producen el
 // temblor localizado; la primera sola da un vaivén global.
 vec3 phaseField(vec2 q, float tz) {
-  vec3 a = octGrad(q, tz, 1.000, 0.0) * u_octW.x;
+  vec3 a = octGrad(q, tz, 1.0, 0.0) * u_octW.x;
   // Las octavas apagadas pesan cero pero costaban lo mismo: cada una son cinco
   // evaluaciones de ruido, un 23 % del total con tres octavas. La condición mira
   // un uniform, igual para todos los fragmentos, así que no diverge.
-  if (u_octW.y > 0.0) a += octGrad(q, tz, 2.110, 17.3) * u_octW.y;
-  if (u_octW.z > 0.0) a += octGrad(q, tz, 4.452, 34.6) * u_octW.z;
-  if (u_octW.w > 0.0) a += octGrad(q, tz, 9.393, 51.9) * u_octW.w;
+  if (u_octW.y > 0.0) a += octGrad(q, tz, 2.0, 17.3) * u_octW.y;
+  if (u_octW.z > 0.0) a += octGrad(q, tz, 4.0, 34.6) * u_octW.z;
+  if (u_octW.w > 0.0) a += octGrad(q, tz, 8.0, 51.9) * u_octW.w;
   return a;
 }
 
@@ -366,13 +391,13 @@ void main() {
     // Domain warping tal cual se hace en juegos: el ruido va directo como offset.
     // Topología correcta (celdas locales) pero sin divergencia real, así que no
     // puede dar cáusticas.
-    vec2 q = frag / u_cellPx + u_drift * u_t;
-    float tz = u_t * u_boil;
+    vec2 q = frag / u_cellPx + u_driftOff;
+    float tz = u_boilTz;
     offPx = vec2(fbm2h(vec3(q, tz)), fbm2h(vec3(q + 53.7, tz + 11.0)))
           * u_warpPx * u_env * 2.0;
   } else {
-    vec2 q = frag / u_cellPx + u_drift * u_t;
-    vec3 f = phaseField(q, u_t * u_boil);
+    vec2 q = frag / u_cellPx + u_driftOff;
+    vec3 f = phaseField(q, u_boilTz);
     offPx = f.xy * u_warpPx * u_env;
 
     // Compresión geométrica: la divergencia del propio warp, conservación de
@@ -387,8 +412,8 @@ void main() {
       // que una superficie extendida abarca cientos de celdas descorrelacionadas
       // que se promedian entre sí. Es por lo que las estrellas titilan y los
       // planetas no, con la misma atmósfera para ambos.
-      vec2 qb = frag / u_scintPx + u_jetDrift * u_t / u_scintPx;
-      float sc = scintField(qb, u_t * 1.6);
+      vec2 qb = frag / u_scintPx + u_jetOff;
+      float sc = scintField(qb, u_scintTz);
       gain -= u_scint * sc * u_env * 1.2;
       blur = u_blurPx * u_env * (0.62 + 1.4 * abs(sc)) * u_luckySharp;
       // El piso de difracción se suma en cuadratura y queda fuera de la
@@ -433,10 +458,10 @@ void main() {
 // La columna de la izquierda es la escala más fina alcanzada, como fracción del
 // tamaño de celda: con 3.4′ de base, cuatro octavas llegan a 0.36′.
 const OCTAVAS = {
-  1: { w: [1.0000, 0.0000, 0.0000, 0.0000], grad: 0.6351 },  // base
-  2: { w: [0.6410, 0.3590, 0.0000, 0.0000], grad: 0.7631 },  // base / 2.11
-  3: { w: [0.5337, 0.2989, 0.1674, 0.0000], grad: 0.5759 },  // base / 4.45
-  4: { w: [0.4880, 0.2733, 0.1530, 0.0857], grad: 0.4875 },  // base / 9.39
+  1: { w: [1.0000, 0.0000, 0.0000, 0.0000], grad: 0.6981 },  // base
+  2: { w: [0.6410, 0.3590, 0.0000, 0.0000], grad: 0.8038 },  // base / 2
+  3: { w: [0.5337, 0.2989, 0.1674, 0.0000], grad: 0.6728 },  // base / 4
+  4: { w: [0.4880, 0.2733, 0.1530, 0.0857], grad: 0.6171 },  // base / 8
 };
 
 // ── Envolventes en CPU ─────────────────────────────────────────────────────
@@ -585,8 +610,18 @@ export function createSeeingOverlay({
   observador.observe(skyCanvas);
 
   let t0 = null;
+  let tPrev = null;
   let cuadros = 0;
   let ultimoDibujo = -1e9;
+
+  // Acumuladores acotados. Multiplicar una tasa por el tiempo transcurrido daba
+  // una coordenada que crece sin límite; se integran por incrementos y se
+  // envuelven en el período del ruido, que es periódico justamente para esto.
+  const PERIODO_XY = 256;
+  const PERIODO_Z = 4096;
+  const envolver = (v, p) => ((v % p) + p) % p;
+  let driftX = 0, driftY = 0, boilTz = 0;
+  let jetX = 0, jetY = 0, scintTz = 0;
 
   function animar(ms) {
     if (!corriendo) return;
@@ -650,6 +685,9 @@ export function createSeeingOverlay({
     const ttx = fn1(t * 1.9) * tiltPx;
     const tty = fn1(t * 1.9 + 77.3) * tiltPx;
 
+    const dt = tPrev === null ? 0 : Math.min(0.1, t - tPrev);
+    tPrev = t;
+
     const oct = OCTAVAS[Math.max(1, Math.min(4, Math.round(P.octaves)))];
     const cellPx = Math.max(6, P.cellArcmin * 60 * ph.pxPerArcsec);
     const warpPx = P.seeing * 0.55 * ph.pxPerArcsec * 2.2 * oct.grad;
@@ -668,6 +706,13 @@ export function createSeeingOverlay({
     const jetPx = P.jetDrift * 60 * ph.pxPerArcsec;
     const blurPx = P.seeing * P.blurMul * ph.blurFrac * ph.pxPerArcsec * 0.85;
 
+    driftX = envolver(driftX + Math.cos(dirR) * driftCells * dt, PERIODO_XY);
+    driftY = envolver(driftY + Math.sin(dirR) * driftCells * dt, PERIODO_XY);
+    boilTz = envolver(boilTz + boil * dt, PERIODO_Z);
+    jetX = envolver(jetX + (Math.cos(jetR) * jetPx * dt) / scintPx, PERIODO_XY);
+    jetY = envolver(jetY + (Math.sin(jetR) * jetPx * dt) / scintPx, PERIODO_XY);
+    scintTz = envolver(scintTz + 1.6 * dt, PERIODO_Z);
+
     gl.useProgram(program);
     set1i('u_src', 0);
     set2f('u_res', W, H);
@@ -680,13 +725,14 @@ export function createSeeingOverlay({
     set1f('u_luckySharp', luckySharp);
     set1f('u_warpPx', warpPx);
     set1f('u_cellPx', cellPx);
-    set1f('u_boil', boil);
-    set2f('u_drift', Math.cos(dirR) * driftCells, Math.sin(dirR) * driftCells);
+    set2f('u_driftOff', driftX, driftY);
+    set1f('u_boilTz', boilTz);
     set1f('u_compress', P.compress);
     set1f('u_compressBase', warpPx / cellPx);
     set1f('u_scint', P.scint * ph.scintAtten * subPix);
     set1f('u_scintPx', scintPx);
-    set2f('u_jetDrift', Math.cos(jetR) * jetPx, Math.sin(jetR) * jetPx);
+    set2f('u_jetOff', jetX, jetY);
+    set1f('u_scintTz', scintTz);
     set1f('u_blurPx', blurPx);
     set1f('u_blurFloor', ph.diffArcsec * P.diffMul * ph.pxPerArcsec * 0.85);
     set1f('u_saturation', Math.max(0, P.saturation * ph.satAperture));

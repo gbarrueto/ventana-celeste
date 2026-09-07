@@ -591,7 +591,7 @@ iniciales.
 | `cellArcmin` | arcominutos | `0.57` | Tamaño angular de celda de la capa límite. |
 | `boilHz` | Hz | `40` | Frecuencia de decorrelación de la capa límite. |
 | `octaves` | 1–4 | `3` | Escalas superpuestas del campo de fase. La amplitud está normalizada, así que cambia el carácter del temblor y no su tamaño. |
-| `frozen` | 0–1 | `0.4` | Reparto entre arrastre por viento y hervor en el lugar. |
+| `frozen` | 0–1 | `0` | Reparto entre arrastre por viento y hervor en el lugar. Ver la trampa de precisión. |
 | `windDir` | grados | `227` | Dirección del arrastre. |
 | `compress` | multiplicador | `1.5` | Escala la divergencia del warp. La base ya es física, del orden del 1 %. |
 | `scint` | 0–1 | `0.34` | Amplitud del centelleo antes de la supresión física. Ver [Centelleo](#centelleo). |
@@ -852,14 +852,24 @@ estructura fina no sale de reducir ese número sino de `octaves`: los pesos sigu
 fase decae 0.56 por octava y el gradiente la multiplica por la frecuencia, así que la deformación
 crece con la frecuencia y las octavas finas dominan el temblor localizado.
 
-**Imagen partida en móviles.** El overlay lee el canvas del motor desde otro contexto WebGL, y los
-dos no comparten sincronización. Algunos controladores devuelven un buffer a medio dibujar, que se
-ve como la imagen cortada por una línea horizontal, igual que un cuadro sin sincronía vertical. La
-lectura no falla ni emite error.
+**Precisión de la coordenada del ruido.** La imagen se rompe en bloques a los diez o doce segundos
+en algunas GPU móviles, siempre a la misma altura desde que se reinicia el render. La coordenada del
+ruido crecía sin límite: el arrastre la hace avanzar decenas de celdas por segundo y la cuarta
+octava la multiplica por ocho, así que a los pocos segundos supera el rango donde `fract()` conserva
+bits y el campo colapsa. Empeora con la frecuencia de hervor, con el número de octavas y con
+`frozen`; el seeing y la intensidad sólo lo hacen más visible.
+
+El retículo del ruido es periódico, 256 celdas en el espacio y 4096 en el tiempo, y los
+desplazamientos se integran por incrementos y se envuelven en ese período. La lacunaridad es entera
+para que envolver la coordenada base envuelva también cada octava. Con eso la coordenada queda
+acotada y la degradación deja de ser divergente.
+
+El arrastre es el único término que empuja la coordenada espacial lejos del origen, y la coordenada
+espacial es la que se ve como geometría rota; la temporal sólo se percibe como una animación a
+saltos. Por eso `frozen` viene en 0.
 
 `copyVia: 'canvas2d'` pasa por una copia intermedia y fuerza una instantánea coherente, a cambio de
-un blit por cuadro. `maxFps` reduce la frecuencia de la lectura, que en una pantalla de 120 Hz es el
-doble de la necesaria.
+un blit por cuadro. No corrige lo anterior.
 
 **Eje del FOV.** `fovAxis` declara si el FOV que reporta el motor abarca el alto o el ancho del
 canvas. Equivocarse escala todas las amplitudes por el factor de aspecto y el efecto sale débil o
