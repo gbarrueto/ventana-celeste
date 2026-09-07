@@ -61,12 +61,9 @@
     blurTarget = BLUR_TARGETS[len] ?? 0;
     updateDisplayBlur();
 
-    const minFov = 0.005, maxFov = 0.05;
-    const clampedFov = Math.min(Math.max(fov, minFov), maxFov);
-    const maxTurbulence = ((maxFov - clampedFov) / (maxFov - minFov)) * 9 + 1;
-
-    setTimeout(() => sendSeeingValue({ target: 'turbulenceMax', value: maxTurbulence.toFixed(1) }), 100);
-    setTimeout(() => sendSeeingValue({ target: 'turbulence', value: (maxTurbulence * 0.2).toFixed(1) }), 200);
+    // La turbulencia ya no se rampa contra el campo desde acá. El modelo expresa
+    // sus amplitudes en arcosegundos y las convierte a píxeles con el FOV que lee
+    // del motor, así que el efecto crece con el aumento por sí solo.
   }
 
   function updateDisplayBlur() {

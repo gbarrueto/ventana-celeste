@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings } from '../lib/stellarium.js';
+  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings, getEngineFov } from '../lib/stellarium.js';
   import { initViewerProtobject, setSeeingOptionHandler, setConnectionStatusHandler } from '../lib/protobject.js';
   import { initializeSeeingOverlay } from '../lib/seeing-overlay.js';
   import { loadCdnScript } from '../lib/lazy-load.js';
@@ -80,14 +80,15 @@
       }
     });
 
-    // Initialize seeing overlay and connect to protobject
-    const seeingTargets = initializeSeeingOverlay();
-    if (seeingTargets) {
+    // El overlay de seeing lee el campo del motor por frame: el zoom llega por
+    // mensaje pero el motor también atiende gestos por su cuenta.
+    const seeing = initializeSeeingOverlay({
+      getFov: getEngineFov,
+    });
+    if (seeing) {
       setSeeingOptionHandler(({ target, value }) => {
-        const control = seeingTargets[target];
-        if (control) {
-          control.value = value;
-          control.dispatchEvent(new Event('input'));
+        if (!seeing.set(target, value)) {
+          console.warn('[seeing] parámetro desconocido:', target);
         }
       });
     }

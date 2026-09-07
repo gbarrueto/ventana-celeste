@@ -1,5 +1,6 @@
 // Panel de depuración y ajustes para Ocular y Guía.
 import qrcode from 'qrcode-generator';
+import { SEEING_DEFAULTS, SEEING_PARAMS } from '@ventanaceleste/core';
 import './ui.css';
 
 const clave = (role) => `dual-telescope:${role}`;
@@ -18,6 +19,7 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    seeing: { ...SEEING_DEFAULTS },
   },
   guide: {
     rot: 0,
@@ -25,13 +27,19 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    seeing: { ...SEEING_DEFAULTS },
   },
 };
 
 export function cargarAjustes(role) {
   const base = AJUSTES_POR_DEFECTO[role] ?? AJUSTES_POR_DEFECTO.ocular;
   try {
-    return { ...base, ...JSON.parse(localStorage.getItem(clave(role)) ?? '{}') };
+    const guardado = JSON.parse(localStorage.getItem(clave(role)) ?? '{}');
+    return {
+      ...base,
+      ...guardado,
+      seeing: { ...SEEING_DEFAULTS, ...(base.seeing ?? {}), ...(guardado.seeing ?? {}) },
+    };
   } catch {
     return { ...base };
   }
@@ -104,6 +112,56 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     formato: (v) => (v >= 0.02 ? `${((v * 180) / Math.PI).toFixed(1)}°` : `${((v * 180 * 60) / Math.PI).toFixed(0)}'`),
   });
   fila('zoom', zm.input, zm.valor);
+
+  // --- Seeing ----------------------------------------------------------
+  // Sólo el ocular monta el overlay. La sección se construye desde
+  // SEEING_PARAMS para que no exista una segunda lista que se desincronice.
+  // El FWHM va arriba y separado: es el único que la app expone al público, y
+  // el resto describe el modelo o el instrumento.
+  if (esOcular) {
+    const deslizadorSeeing = (spec) => {
+      const input = document.createElement('input');
+      Object.assign(input, {
+        type: 'range', min: spec.min, max: spec.max, step: spec.step,
+        value: ajustes.seeing[spec.k],
+      });
+      const valor = document.createElement('b');
+      const pintar = () => {
+        const dec = spec.step >= 1 ? 0 : spec.step >= 0.1 ? 1 : 2;
+        valor.textContent = ajustes.seeing[spec.k].toFixed(dec) + spec.u;
+      };
+      pintar();
+      input.addEventListener('input', () => {
+        ajustes.seeing[spec.k] = parseFloat(input.value);
+        pintar();
+        emitir(`seeing.${spec.k}`);
+      });
+      return { input, valor };
+    };
+
+    const titulo = (t) => {
+      const d = document.createElement('div');
+      d.className = 'op-sec';
+      d.textContent = t;
+      caja.appendChild(d);
+    };
+
+    titulo('SEEING');
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'user')) {
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+
+    let grupoAbierto = null;
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'debug')) {
+      if (spec.grupo !== grupoAbierto) {
+        grupoAbierto = spec.grupo;
+        titulo(`seeing · ${grupoAbierto.toLowerCase()}`);
+      }
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+  }
 
   if (esOcular) {
     const rotBox = document.createElement('div');

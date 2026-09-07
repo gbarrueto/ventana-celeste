@@ -47,6 +47,14 @@
 /* Blancos de toque generosos: esto se ajusta con el telescopio armado. */
 .op-row input[type=range] { width:100%; height:28px; accent-color:#ff7a0d; }
 
+/* Encabezado de sección dentro del panel. Separa los grupos del seeing, que
+   son muchos y de otra naturaleza que los de vista. */
+.op-sec { margin:14px 0 4px; padding-top:8px; font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:#ff7a0d; border-top:1px solid rgba(255,255,255,.1); }
+/* Las etiquetas del seeing no entran en la columna de 74px pensada para
+   "zoom" o "posición": se dejan achicar y recortar en vez de desbordar. */
+.op-row > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
 .op-rot { display:flex; gap:6px; }
 .op-rot button { flex:1; padding:8px 0; font:inherit; color:#e8ecf5;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-radius:6px; }

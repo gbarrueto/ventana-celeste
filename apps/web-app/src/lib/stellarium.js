@@ -138,6 +138,12 @@ export function getSynchronizeData() {
   }).to('telescope.html');
 }
 
+// El overlay de seeing necesita el campo actual por frame: el zoom llega por
+// mensaje, pero el motor también atiende gestos por su cuenta.
+export function getEngineFov() {
+  return engine?.core?.fov;
+}
+
 export function getFov() {
   if (!engine?.core) return;
   Protobject.Core.send({

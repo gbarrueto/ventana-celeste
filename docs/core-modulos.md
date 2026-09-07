@@ -686,6 +686,23 @@ través de un telescopio.
 El modelo no distingue una fuente puntual de una superficie resuelta: aplica la misma ganancia a
 cada píxel. La discriminación queda sólo en la escala angular y en estas supresiones.
 
+## Uso por app
+
+| App | Canvas de efecto | Panel | Qué expone |
+|---|---|---|---|
+| `dual-telescope` | Sólo el rol `ocular`. `acomodarVista()` coloca los dos canvas con la misma geometría. | `panel.js`, construido desde `SEEING_PARAMS` | Todo, con el FWHM separado arriba |
+| `web-app` | `apps/web-app/src/lib/seeing-overlay.js` | La página de control, otro dispositivo | Sólo el FWHM, por `seeingOption` |
+
+El guía de `dual-telescope` no monta overlay: trabaja a campo amplio, donde el efecto es sub-píxel.
+
+Los ajustes del seeing viven anidados en `ajustes.seeing`. `cargarAjustes()` fusiona ese nivel
+aparte, porque un objeto anidado no se combina con el spread de un nivel y un parámetro nuevo no
+llegaría a quien ya tenga ajustes guardados.
+
+`focus` y `saturation` no son parámetros del modelo: describen el ocular y la pantalla. Se aplican
+como filtro CSS sobre el canvas de efecto. Un filtro no altera el buffer, así que aplicarlo al canvas
+del motor sería invisible para el overlay, que lee de ahí.
+
 ## Compuerta por campo
 
 `fovGateArcmin` no describe la atmósfera. El seeing existe a todo campo y por debajo de un píxel
