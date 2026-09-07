@@ -16,7 +16,10 @@
   let pollutionValue = $state(9);
   let autoPollutionEnabled = $state(false);
   let isAdvanced = $state(false);
-  let turbulenceValue = $state(5);
+  // Único parámetro de seeing que se ofrece al público: el FWHM del disco, en
+  // arcosegundos. 0.3 es una noche excelente y 3 una mala. El resto del modelo
+  // se ajusta en desarrollo.
+  let turbulenceValue = $state(1);
 
   modes.subscribe((m) => { isAdvanced = m.advanced; });
 
@@ -70,7 +73,7 @@
 
   function onTurbulenceInput(e) {
     turbulenceValue = parseFloat(e.target.value);
-    sendSeeingValue({ target: 'turbulence', value: turbulenceValue });
+    sendSeeingValue({ target: 'seeing', value: turbulenceValue });
   }
 
   const IMG_MAP = {
@@ -152,7 +155,7 @@
             <input
               class="styled-range"
               type="range"
-              min="0" max="10" step="0.1"
+              min="0.3" max="3" step="0.05"
               bind:value={turbulenceValue}
               oninput={onTurbulenceInput}
             />

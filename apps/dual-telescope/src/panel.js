@@ -1,5 +1,6 @@
 // Panel de depuración y ajustes para Ocular y Guía.
 import qrcode from 'qrcode-generator';
+import { SEEING_DEFAULTS, SEEING_PARAMS } from '@ventanaceleste/core';
 import './ui.css';
 
 const clave = (role) => `dual-telescope:${role}`;
@@ -18,6 +19,10 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    exposure: 1,
+    invVertical: false,
+    sinSensores: false,
+    seeing: { ...SEEING_DEFAULTS },
   },
   guide: {
     rot: 0,
@@ -25,13 +30,22 @@ export const AJUSTES_POR_DEFECTO = {
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    exposure: 1,
+    invVertical: false,
+    sinSensores: false,
+    seeing: { ...SEEING_DEFAULTS },
   },
 };
 
 export function cargarAjustes(role) {
   const base = AJUSTES_POR_DEFECTO[role] ?? AJUSTES_POR_DEFECTO.ocular;
   try {
-    return { ...base, ...JSON.parse(localStorage.getItem(clave(role)) ?? '{}') };
+    const guardado = JSON.parse(localStorage.getItem(clave(role)) ?? '{}');
+    return {
+      ...base,
+      ...guardado,
+      seeing: { ...SEEING_DEFAULTS, ...(base.seeing ?? {}), ...(guardado.seeing ?? {}) },
+    };
   } catch {
     return { ...base };
   }
@@ -51,6 +65,34 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
   caja.className = 'op-caja';
   capa.appendChild(caja);
 
+  // Los ajustes del seeing son veintidós y no tienen nada que ver con los de
+  // vista, así que van en su propia pestaña en vez de alargar una sola lista.
+  const pestanas = document.createElement('div');
+  pestanas.className = 'op-tabs';
+  const hojaVista = document.createElement('div');
+  const hojaSeeing = document.createElement('div');
+  hojaSeeing.hidden = true;
+  caja.append(pestanas, hojaVista, hojaSeeing);
+
+  const botonPestana = (texto, hoja, activa = false) => {
+    const b = document.createElement('button');
+    b.textContent = texto;
+    b.className = activa ? 'on' : '';
+    b.onclick = () => {
+      for (const o of pestanas.children) o.className = '';
+      b.className = 'on';
+      hojaVista.hidden = hoja !== hojaVista;
+      hojaSeeing.hidden = hoja !== hojaSeeing;
+    };
+    pestanas.appendChild(b);
+    return b;
+  };
+  botonPestana('Vista', hojaVista, true);
+  if (esOcular) botonPestana('Seeing', hojaSeeing);
+
+  // Destino de las filas que se agregan a continuación.
+  let hoja = hojaVista;
+
   const abridor = document.createElement('button');
   abridor.className = 'op-abridor';
   abridor.textContent = '≡';
@@ -65,7 +107,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     const l = document.createElement('span');
     l.textContent = etiqueta;
     d.append(l, control, valorEl ?? document.createElement('span'));
-    caja.appendChild(d);
+    hoja.appendChild(d);
     return d;
   };
 
@@ -104,6 +146,86 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     formato: (v) => (v >= 0.02 ? `${((v * 180) / Math.PI).toFixed(1)}°` : `${((v * 180 * 60) / Math.PI).toFixed(0)}'`),
   });
   fila('zoom', zm.input, zm.valor);
+
+  // --- Seeing ----------------------------------------------------------
+  // Sólo el ocular monta el overlay. La sección se construye desde
+  // SEEING_PARAMS para que no exista una segunda lista que se desincronice.
+  // El FWHM va arriba y separado: es el único que la app expone al público, y
+  // el resto describe el modelo o el instrumento.
+  if (esOcular) {
+    hoja = hojaSeeing;
+    const deslizadorSeeing = (spec) => {
+      const input = document.createElement('input');
+      Object.assign(input, {
+        type: 'range', min: spec.min, max: spec.max, step: spec.step,
+        value: ajustes.seeing[spec.k],
+      });
+      const valor = document.createElement('b');
+      const pintar = () => {
+        const dec = spec.step >= 1 ? 0 : spec.step >= 0.1 ? 1 : 2;
+        valor.textContent = ajustes.seeing[spec.k].toFixed(dec) + spec.u;
+      };
+      pintar();
+      input.addEventListener('input', () => {
+        ajustes.seeing[spec.k] = parseFloat(input.value);
+        pintar();
+        emitir(`seeing.${spec.k}`);
+      });
+      return { input, valor };
+    };
+
+    const titulo = (t) => {
+      const d = document.createElement('div');
+      d.className = 'op-sec';
+      d.textContent = t;
+      hoja.appendChild(d);
+    };
+
+    titulo('SEEING');
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'user')) {
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+
+    let grupoAbierto = null;
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'debug')) {
+      if (spec.grupo !== grupoAbierto) {
+        grupoAbierto = spec.grupo;
+        titulo(`seeing · ${grupoAbierto.toLowerCase()}`);
+      }
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+    hoja = hojaVista;
+  }
+
+  // Exposición del motor. No es del seeing: decide cuánto detalle revelan los
+  // objetos extensos, que el motor muestra más de lo que el ojo alcanza a ver en
+  // una nebulosa.
+  const ex = deslizador('exposure', { min: 0.05, max: 3, paso: 0.05, formato: (v) => `${v.toFixed(2)}×` });
+  fila('exposición', ex.input, ex.valor);
+
+  // El montaje del teléfono en el tubo puede cambiar, así que la inversión
+  // vertical queda como opción en vez de horneada en el eje óptico.
+  const invVert = document.createElement('input');
+  invVert.type = 'checkbox';
+  invVert.checked = !!ajustes.invVertical;
+  invVert.onchange = () => {
+    ajustes.invVertical = invVert.checked;
+    emitir('invVertical');
+  };
+  fila('vertical invertida', invVert);
+
+  // Apuntado libre, para probar en el teléfono sin apuntar el aparato a la
+  // dirección real del objeto.
+  const sinSensores = document.createElement('input');
+  sinSensores.type = 'checkbox';
+  sinSensores.checked = !!ajustes.sinSensores;
+  sinSensores.onchange = () => {
+    ajustes.sinSensores = sinSensores.checked;
+    emitir('sinSensores');
+  };
+  fila('sin sensores', sinSensores);
 
   if (esOcular) {
     const rotBox = document.createElement('div');

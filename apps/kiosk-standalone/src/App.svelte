@@ -3,7 +3,7 @@
   import DebugPanel from "./components/DebugPanel.svelte";
   import {
     Telescope, TelescopeType, formatMJDForDisplay, nudgeEngineHours,
-    createOrientationController, initializeStellariumEngine,
+    createOrientationController, createFreeLook, acotarPitch, initializeStellariumEngine,
     createKeyboardConnector,
   } from "@ventanaceleste/core";
   import engineWasmUrl from "@ventanaceleste/core/assets/stellarium-web-engine.wasm?url";
@@ -17,6 +17,7 @@
   let onDebugZoomIn = () => {};
   let onDebugZoomOut = () => {};
   let onDebugToggleVertical = () => {};
+  let onDebugToggleFreeLook = () => {};
 
   function addHour() {
     nudgeEngineHours(window.currentStelEngine, 1);
@@ -28,6 +29,7 @@
 
   let isDebugPanelVisible = false; // será actualizado según config
   let invertVerticalMotion = true;
+  let freeLookEnabled = false;
   let appConfig = null;
   const telescope = new Telescope({
     name: "Prototipo",
@@ -144,6 +146,7 @@
         }
         return;
       }
+      if (freeLookEnabled) return;
       engine.core.observer.yaw = -h;
       engine.core.observer.pitch = invertVerticalMotion ? -v : v;
       registerZoomMotion(h, v);
@@ -266,6 +269,25 @@
       invertVerticalMotion = !invertVerticalMotion;
     }
 
+    // Apuntar el aparato a la dirección real de un objeto no siempre es posible
+    // bajo techo. Con esto la vista se arrastra con el dedo y los sensores
+    // siguen leyendo, para poder mirar sus números mientras tanto.
+    const freeLook = createFreeLook({
+      canvas: canvasEl,
+      getFov: () => engine?.core?.fov,
+      onPan: ({ dYaw, dPitch }) => {
+        const obs = engine?.core?.observer;
+        if (!obs) return;
+        obs.yaw += dYaw;
+        obs.pitch = acotarPitch(obs.pitch + dPitch);
+      },
+    });
+
+    function toggleFreeLook() {
+      freeLookEnabled = !freeLookEnabled;
+      freeLook?.setEnabled(freeLookEnabled);
+    }
+
     const orientation = createOrientationController({
       persistBiasKey: "astrovis_gyro_bias",
       getLogFov: () => logFov,
@@ -283,6 +305,7 @@
     onDebugZoomIn = triggerZoomIn;
     onDebugZoomOut = triggerZoomOut;
     onDebugToggleVertical = toggleVerticalMotion;
+    onDebugToggleFreeLook = toggleFreeLook;
 
     const keyboardConnector = createKeyboardConnector({
       bindings: {
@@ -315,7 +338,8 @@
       onDebugZoomIn = () => {};
       onDebugZoomOut = () => {};
       onDebugToggleVertical = () => {};
-      
+      onDebugToggleFreeLook = () => {};
+      freeLook?.stop();
     };
   });
 </script>
@@ -354,6 +378,8 @@
       onZoomIn={onDebugZoomIn}
       onZoomOut={onDebugZoomOut}
       onToggleVertical={onDebugToggleVertical}
+      freeLook={freeLookEnabled}
+      onToggleFreeLook={onDebugToggleFreeLook}
       onAddHour={addHour} 
       onSubHour={subHour}
     />

@@ -8,7 +8,7 @@
 | [changelog.md](changelog.md) | Cambios relevantes desde la migración a monorepo. |
 | [stellarium-web-engine.md](stellarium-web-engine.md) | Motor de render: importación, configuración, atributos y métodos. |
 | [protobject.md](protobject.md) | Transporte WebRTC de `web-app`: emparejamiento, API y detección de caída. |
-| [core-modulos.md](core-modulos.md) | Orientación, tiempo, comunicación, óptica, conectores y configuración. |
+| [core-modulos.md](core-modulos.md) | Orientación, tiempo, comunicación, óptica, seeing, conectores y configuración. |
 | [../apps/device-lab/arduino/README.md](../apps/device-lab/arduino/README.md) | Sketch del potenciómetro y cableado del enfocador. |
 | [adr/](adr/) | Decisiones de arquitectura. |
 

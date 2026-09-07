@@ -4,6 +4,9 @@
   export let onZoomIn = () => {};
   export let onZoomOut = () => {};
   export let onToggleVertical = () => {};
+  // Apuntado libre: los sensores siguen leyendo, pero la vista se arrastra.
+  export let freeLook = false;
+  export let onToggleFreeLook = () => {};
   export let onCancelCalibration = () => {};
   export let invertVertical = true;
   export let onAddHour;
@@ -91,6 +94,9 @@
       <button type="button" on:click={onZoomOut}>- zoom out</button>
       <button type="button" on:click={onToggleVertical}>
         Vertical: {invertVertical ? "invertida" : "normal"}
+      </button>
+      <button type="button" on:click={onToggleFreeLook}>
+        Sensores: {freeLook ? "en pausa" : "activos"}
       </button>
     </div>
 

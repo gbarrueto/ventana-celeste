@@ -4,6 +4,117 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-07 — La coordenada del ruido del seeing crecía sin límite
+
+En un teléfono la imagen se rompía en bloques a los diez o doce segundos, siempre a la misma altura
+desde que se reiniciaba el render, y sin aparecer en un monitor. El síntoma se parecía a un cuadro
+sin sincronía vertical.
+
+Se descartaron tres explicaciones antes de dar con la buena, y ninguna dejaba rastro en consola:
+falta de sincronía entre los dos contextos WebGL, para la que se probó una copia intermedia a un
+canvas 2D; la frecuencia de la pantalla, de 120 Hz; y el factor de píxeles del dispositivo. Ninguna
+cambió el comportamiento.
+
+La causa es precisión. El desplazamiento del campo salía de multiplicar una tasa por el tiempo
+transcurrido, así que la coordenada crecía sin límite: con el arrastre en 0.4 avanzaba dieciséis
+celdas por segundo y la cuarta octava la multiplica por ocho, de modo que a los doce segundos iba en
+1800. Ahí el `fract()` de las GPU móviles se queda sin bits y el campo colapsa.
+
+Lo que fijó el diagnóstico fue el conjunto de condiciones que lo agravaban: frecuencia de hervor y
+número de octavas aceleran el crecimiento, el seeing y la intensidad sólo lo hacen más visible, y
+poner el arrastre en cero lo elimina. Ese último dato también explicó por qué el eje temporal, que
+crece igual, no se nota: degrada la animación, no la geometría.
+
+El retículo pasa a ser periódico, 256 celdas en el espacio y 4096 en el tiempo, y los
+desplazamientos se integran por incrementos y se envuelven en ese período. La lacunaridad baja de
+2.11 a 2 para que envolver la coordenada base envuelva también cada octava.
+
+## 2026-09-07 — Costo del seeing medido en el aparato
+
+Medido en `device-lab` contra Saturno, con el medidor de costo que compara los cuadros con el efecto
+apagado y encendido.
+
+| Escenario | Sin seeing | Con seeing | Pérdida |
+|---|---|---|---|
+| En movimiento, pantalla de 120 Hz | 120 fps | 65 fps | 45–50 % |
+| En reposo, límite del motor | 60 fps | 52 fps | 13 % |
+
+El motor limita el render a 60 fps mientras la vista no se mueve y sube a la frecuencia de la
+pantalla mientras hay movimiento. La Luna resulta algo más costosa que Saturno.
+
+`maxFps` topa el overlay en 60, así que en una pantalla de 120 Hz omite la mitad de los cuadros. El
+motor sigue dibujando a la frecuencia de la pantalla, y eso no se controla desde fuera: su bucle
+vive dentro del WebAssembly.
+
+La subida de la textura es 10 MB por cuadro a 1080p, unos 0.6 GB/s a 60 fps. Es el precio de leer el
+resultado del motor desde otro contexto WebGL.
+
+## 2026-09-07 — Simulación de seeing atmosférico en core
+
+`packages/core/src/sky/seeing.js` reemplaza al overlay de `apps/web-app/src/lib/seeing-overlay.js`,
+cuyo shader desplazaba cada punto con `sin(y)` en el eje horizontal y `cos(x)` en el vertical. Esas
+dos funciones separables describen una onda plana viajera: todos los puntos de una misma fila se
+desplazan en fase a lo ancho del cuadro. Con dos armónicos de frecuencias 42 y 15 el patrón es
+periódico y se lee como un frente de olas.
+
+### El modelo
+
+El ángulo isoplanático de una capa vale θ₀ = 0.314·r₀ℓ/h y su frecuencia f = v/(0.314·r₀ℓ), así que
+el tamaño angular de celda depende de la altura y la frecuencia de hervor no. Con alturas reales las
+capas se separan en dos grupos:
+
+| Capa | Altura | Celda | Frecuencia | Aporte |
+|---|---|---|---|---|
+| Límite | 50–200 m | 2–6′ | 10–30 Hz | Deformación |
+| Media | 5 km | 4″ | 160 Hz | Desenfoque |
+| Jet | 10 km | 1″ | 480 Hz | Desenfoque y cáusticas |
+
+Sólo la capa límite produce deformación visible. Por encima de un kilómetro las celdas caen bajo el
+límite de resolución y sobre la fusión de parpadeo. El shader anterior usaba la escala de las capas
+altas con la amplitud de la baja.
+
+El desplazamiento es el gradiente de un campo de fase, que es la relación entre ángulo de llegada y
+frente de onda. La divergencia de ese campo da la compresión del haz sin muestreos adicionales. El
+orden es deformar y después difuminar: invertido, las PSF se destruyen en vez de trasladarse.
+
+Las amplitudes están en arcosegundos y se convierten a píxeles con el FOV, así que el efecto escala
+con el zoom sin rampa explícita.
+
+### Mediciones que fijaron la implementación
+
+El gradiente del campo de fase se calcula por octava, con el paso de las diferencias centrales
+expresado en el espacio de cada una. Con un paso único la octava más fina queda bajo su propio
+retículo: el rms del gradiente pasa de 0.791 a 0.788 al sumar la cuarta octava, contra 0.818 a 0.966
+con el paso por octava.
+
+La envolvente que modula el movimiento global tiene rms 0.3313. Sin normalizarla, el tip/tilt se
+entregaba tres veces más débil de lo que declara `tiltArcsec` y no alcanzaba a mover un píxel.
+
+El desenfoque suma en cuadratura el residuo atmosférico, proporcional a 1 − exp(−0.134·(D/r₀)^(5/3)),
+y el límite de difracción 1.03·λ/D. Los dos términos van en sentidos opuestos y el mínimo cae cerca
+de D ≈ 2 r₀.
+
+El centelleo modula brillo con el valor del campo y no con su laplaciano, que está dominado por las
+frecuencias altas y sobre una superficie extendida se lee como granulado. Su amplitud se suprime por
+altura de capa, (h/10 km)^(5/12), y por promediado de apertura, (r_F/D)^(7/6) con r_F = √(λh). Una
+capa a 478 m vista con 150 mm queda en 0.021 de la referencia.
+
+### Superficie pública
+
+`SEEING_PARAMS` describe cada parámetro con rango, unidad, grupo y `scope`. La aplicación pública
+expone únicamente `seeing`, entre 0.3 y 3 arcosegundos; los otros 21 quedan detrás del panel de
+desarrollo. La apertura sale de `createDefaultTelescope()`, que pasa de 100 a 150 mm.
+
+`apps/device-lab/sky.html` gana pestañas, disposición para pantallas grandes y el banco de ajuste
+completo, con los cuatro modelos, comparación A/B, presets y persistencia. Los defaults del módulo
+salen de ajustar contra el motor en el rango de campo que alcanza `dual-telescope`, de 1.72′ a 10′.
+
+### Límite conocido
+
+El post-proceso aplica la misma ganancia de centelleo a cada píxel y no distingue una fuente puntual
+de una superficie resuelta. La discriminación queda en la escala angular y en las dos supresiones.
+El promediado por tamaño de fuente no es modelable desde el buffer final.
+
 ## 2026-09-01 — device-lab reproduce el apuntado de dual-telescope
 
 `device-lab/sky.html` no podía imitar exactamente el apuntado de `dual-telescope`, así que el mismo

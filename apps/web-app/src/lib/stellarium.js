@@ -138,6 +138,12 @@ export function getSynchronizeData() {
   }).to('telescope.html');
 }
 
+// El overlay de seeing necesita el campo actual por frame: el zoom llega por
+// mensaje, pero el motor también atiende gestos por su cuenta.
+export function getEngineFov() {
+  return engine?.core?.fov;
+}
+
 export function getFov() {
   if (!engine?.core) return;
   Protobject.Core.send({
@@ -193,9 +199,18 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
+// El overlay de seeing se registra al montarse. Apagarlo por su propia API en
+// vez de ocultar el canvas desde fuera evita que dos dueños peleen por la
+// visibilidad, y de paso lo saca del presupuesto de GPU en modo simple.
+let seeingControl = null;
+export function setSeeingControl(control) {
+  seeingControl = control;
+}
+
 function enableSeeingEffect(enable) {
+  seeingControl?.setEnabled(enable);
   const el = document.getElementById('effect-canvas');
-  if (el) el.style.visibility = enable ? 'visible' : 'hidden';
+  if (el && !enable) el.style.visibility = 'hidden';
 }
 
 // ── Location & Pollution ───────────────────────────────────

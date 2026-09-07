@@ -5,33 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Sky Test — Device Lab</title>
   <style>
-    :root { color-scheme: dark; }
+    :root { color-scheme: dark; --nav: 34px; --dock: 340px; }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: #e8ecf5;
                  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
-    /* Posición, tamaño y rotación las fija acomodarVista() en JS: al rotar 90° o
-       270° hay que intercambiar ancho y alto, y eso no se expresa con inset:0. */
-    #stel-canvas { display: block; background: #000; }
-    .panel { position: fixed; left: 8px; right: 8px; top: 44px; z-index: 10;
-             background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
-             border-radius: 10px; padding: 9px 11px; }
-    .row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
-    .row span:last-child { font-variant-numeric: tabular-nums; }
-    .muted { color: rgba(232,236,245,.5); }
-    .bad { color: #ff6b6b; } .ok { color: #3ec46d; } .warn { color: #ffd166; }
-    button, select { background: rgba(255,255,255,.1); color: #e8ecf5;
-      border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
-      padding: 8px 12px; font: inherit; margin: 4px 4px 0 0; }
-    button.on { background: rgba(255,122,13,.22); border-color: #ff7a0d; color: #ff7a0d; }
-    .crosshair { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px;
-      margin: -13px 0 0 -13px; z-index: 5; pointer-events: none;
-      border: 1px solid rgba(255,122,13,.85); border-radius: 50%; }
-    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,122,13,.85); }
-    .crosshair::before { left: 50%; top: -9px; width: 1px; height: 44px; margin-left: -.5px; }
-    .crosshair::after { top: 50%; left: -9px; height: 1px; width: 44px; margin-top: -.5px; }
-    #status { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 10;
-              background: rgba(6,8,15,.86); border: 1px solid rgba(255,255,255,.12);
-              border-radius: 10px; padding: 9px 11px; }
+
     .lab-nav { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex;
       align-items: center; gap: 4px; padding: 6px 10px; background: rgba(6,8,15,.92);
       border-bottom: 1px solid rgba(255,255,255,.12); font-size: 12px; }
@@ -39,6 +17,100 @@
     .lab-nav a { color: rgba(232,236,245,.62); text-decoration: none; padding: 5px 10px;
       border-radius: 7px; }
     .lab-nav a.on { color: #e8ecf5; background: rgba(255,255,255,.12); }
+
+    /* El área de vista es un elemento real y no la ventana entera: en pantallas
+       grandes el dock le come el costado, y acomodarVista() necesita medir el
+       espacio que de verdad le queda al cielo. */
+    .stage { position: fixed; left: 0; right: 0; top: var(--nav); bottom: 0; overflow: hidden; }
+    #stel-canvas, #seeing-canvas { display: block; background: #000; position: absolute; }
+    /* El canvas de efecto va encima y comparte geometría exacta con el del motor.
+       No recibe eventos: la mira y los gestos siguen siendo del de abajo. */
+    #seeing-canvas { pointer-events: none; visibility: hidden; }
+
+    /* Medidor de costo. Guarda la referencia con el seeing apagado, así el
+       número que importa —cuánto cuesta la simulación— se lee directo. */
+    #fps { position: absolute; right: 12px; bottom: 12px; z-index: 6; pointer-events: none;
+      background: rgba(6,8,15,.82); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 7px; padding: 6px 9px; line-height: 1.6;
+      font-variant-numeric: tabular-nums; }
+    #fps b { color: #ff7a0d; }
+    #fps .muted { color: rgba(232,236,245,.5); }
+
+    .crosshair { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+      z-index: 5; pointer-events: none;
+      border: 1px solid rgba(255,122,13,.85); border-radius: 50%; }
+    .crosshair::before, .crosshair::after { content: ''; position: absolute; background: rgba(255,122,13,.85); }
+    .crosshair::before { left: 50%; top: -9px; width: 1px; height: 44px; margin-left: -.5px; }
+    .crosshair::after { top: 50%; left: -9px; height: 1px; width: 44px; margin-top: -.5px; }
+
+    /* ── Dock ──────────────────────────────────────────────────────────── */
+    .dock { position: fixed; left: 8px; right: 8px; top: calc(var(--nav) + 8px); z-index: 10;
+      max-height: calc(50vh - var(--nav)); overflow-y: auto;
+      background: rgba(6,8,15,.9); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px; }
+    .tabs { display: flex; gap: 4px; padding: 6px 8px 0; position: sticky; top: 0;
+      background: rgba(6,8,15,.96); border-bottom: 1px solid rgba(255,255,255,.1); }
+    .tabs button { flex: 1; margin: 0 0 6px; padding: 7px 10px; }
+    .tabs button.plegar { flex: 0 0 44px; }
+    .dock.plegado { max-height: none; }
+    .dock.plegado .tabpanel, .dock.plegado #status { display: none; }
+    .tabpanel { padding: 9px 11px; }
+    .tabpanel[hidden] { display: none; }
+
+    /* Pantallas grandes: el dock pasa a columna lateral completa y el cielo se
+       queda con todo el resto. En celular seguiría tapando media pantalla. */
+    @media (min-width: 900px) {
+      .stage { right: var(--dock); }
+      .dock { left: auto; right: 0; top: var(--nav); bottom: 0; width: var(--dock);
+        max-height: none; border-radius: 0; border: 0;
+        border-left: 1px solid rgba(255,255,255,.12); background: rgba(6,8,15,.96); }
+      .tabs { padding: 8px 10px 0; }
+    }
+
+    .row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
+    .row span:last-child { font-variant-numeric: tabular-nums; }
+    .muted { color: rgba(232,236,245,.5); }
+    .bad { color: #ff6b6b; } .ok { color: #3ec46d; } .warn { color: #ffd166; }
+    .sep { margin: 9px 0 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.1);
+      color: #ff7a0d; letter-spacing: .08em; font-size: 10.5px; }
+
+    button, select { background: rgba(255,255,255,.1); color: #e8ecf5;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 8px;
+      padding: 8px 12px; font: inherit; margin: 4px 4px 0 0; }
+    button { cursor: pointer; }
+    button.on, select.on { background: rgba(255,122,13,.22); border-color: #ff7a0d; color: #ff7a0d; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    select { max-width: 100%; }
+
+    /* ── Sliders ──────────────────────────────────────────────────────── */
+    .sl { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; margin-top: 7px; }
+    .sl label { color: rgba(232,236,245,.72); }
+    .sl output { font-variant-numeric: tabular-nums; color: #e8ecf5; }
+    .sl input { grid-column: 1 / -1; width: 100%; margin: 2px 0 0; height: 16px;
+      -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+    .sl input::-webkit-slider-runnable-track { height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,.2); }
+    .sl input::-moz-range-track { height: 3px; border-radius: 2px; background: rgba(255,255,255,.2); }
+    .sl input::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px;
+      border-radius: 50%; background: #ff7a0d; border: 0; margin-top: -5px; }
+    .sl input::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%;
+      background: #ff7a0d; border: 0; }
+    .sl input:disabled { opacity: .35; }
+    .sl.off { opacity: .4; }
+
+    .derived { margin-top: 7px; padding: 7px 9px; border-radius: 7px;
+      background: rgba(255,255,255,.05); color: rgba(232,236,245,.55);
+      line-height: 1.65; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+    .derived b { color: rgba(232,236,245,.82); font-weight: 400; }
+
+    #dump { width: 100%; height: 118px; margin-top: 7px; display: none; resize: vertical;
+      background: rgba(0,0,0,.5); color: rgba(232,236,245,.8);
+      border: 1px solid rgba(255,255,255,.15); border-radius: 7px;
+      font: 10.5px/1.5 ui-monospace, Menlo, Consolas, monospace; padding: 7px 8px; }
+    #dump.on { display: block; }
+
+    #status { padding: 8px 11px; border-top: 1px solid rgba(255,255,255,.1);
+      color: rgba(232,236,245,.72); }
   </style>
 </head>
 <body>
@@ -48,44 +120,112 @@
     <a href="/sky.html" data-p="/sky.html">Cielo</a>
     <a href="/io.html" data-p="/io.html">Hardware</a>
   </nav>
-  <canvas id="stel-canvas"></canvas>
-  <div class="crosshair"></div>
 
-  <div class="panel">
-    <div>
-      sensor
-      <select id="sensorType">
-        <option value="relative">relative (sin brújula)</option>
-        <option value="absolute" selected>absolute (con magnetómetro)</option>
-      </select>
-      eje óptico
-      <select id="optic">
-        <option value="+x">+x</option><option value="-x">−x</option>
-        <option value="+y" selected>+y</option><option value="-y">−y</option>
-        <option value="+z">+z</option><option value="-z">−z</option>
-      </select>
-    </div>
-    <div style="margin-top:5px">
-      rotación
-      <span id="rot"></span>
-      <!-- Estos dos por defecto reproducen dual-telescope tal cual está en
-           apps/dual-telescope/src/sky.js: eje '+y' y altura invertida, sin
-           invertir el acimut. Son dos correcciones independientes — invertir el
-           eje mueve las dos juntas, acopladas, y por eso ninguna combinación de
-           eje sola reproduce esa configuración. -->
-      <label><input type="checkbox" id="invAlt" checked /> −alt</label>
-      <label><input type="checkbox" id="invAz" /> −az</label>
-      <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
-    </div>
-    <div class="row" style="margin-top:5px"><span class="muted">sensor activo</span><span id="activo">—</span></div>
-    <div class="row"><span class="muted">az / alt</span><span id="azalt">—</span></div>
-    <div class="row"><span class="muted">az al arrancar</span><span id="azInicial">—</span></div>
+  <div class="stage" id="stage">
+    <canvas id="stel-canvas"></canvas>
+    <canvas id="seeing-canvas"></canvas>
+    <div class="crosshair"></div>
+    <div id="fps">—</div>
   </div>
 
-  <div id="status">iniciando…</div>
+  <aside class="dock">
+    <div class="tabs">
+      <button type="button" data-tab="orient" class="on">Orientación</button>
+      <button type="button" data-tab="seeing">Seeing</button>
+      <button type="button" class="plegar" id="plegar" aria-label="Plegar el panel">▴</button>
+    </div>
+
+    <!-- ── Pestaña de orientación ──────────────────────────────────────── -->
+    <div class="tabpanel" id="tab-orient">
+      <div>
+        sensor
+        <select id="sensorType">
+          <option value="relative">relative (sin brújula)</option>
+          <option value="absolute" selected>absolute (con magnetómetro)</option>
+        </select>
+        eje óptico
+        <select id="optic">
+          <option value="+x">+x</option><option value="-x">−x</option>
+          <option value="+y" selected>+y</option><option value="-y">−y</option>
+          <option value="+z">+z</option><option value="-z">−z</option>
+        </select>
+      </div>
+      <div style="margin-top:5px">
+        rotación
+        <span id="rot"></span>
+        <!-- Estos dos por defecto reproducen dual-telescope tal cual está en
+             apps/dual-telescope/src/sky.js: eje '+y' y altura invertida, sin
+             invertir el acimut. Son dos correcciones independientes — invertir el
+             eje mueve las dos juntas, acopladas, y por eso ninguna combinación de
+             eje sola reproduce esa configuración. -->
+        <label><input type="checkbox" id="invAlt" checked /> −alt</label>
+        <label><input type="checkbox" id="invAz" /> −az</label>
+        <label><input type="checkbox" id="grid" checked /> grilla alt-az</label>
+      </div>
+      <div style="margin-top:5px">
+        <!-- El recorte a media pantalla reproduce el teléfono acostado dentro del
+             tubo. En un monitor sólo desperdicia área, así que arranca apagado
+             ahí y encendido en celular. -->
+        <label><input type="checkbox" id="montaje" /> simular montaje (media pantalla)</label><br>
+        <!-- Apuntar el aparato a la dirección real de un objeto no siempre es
+             posible bajo techo. Con esto la vista se arrastra con el dedo. -->
+        <label><input type="checkbox" id="sinSensores" /> sin sensores (apuntar arrastrando)</label>
+      </div>
+      <div class="row" style="margin-top:5px"><span class="muted">sensor activo</span><span id="activo">—</span></div>
+      <div class="row"><span class="muted">az / alt</span><span id="azalt">—</span></div>
+      <div class="row"><span class="muted">az al arrancar</span><span id="azInicial">—</span></div>
+    </div>
+
+    <!-- ── Pestaña de seeing ───────────────────────────────────────────── -->
+    <div class="tabpanel" id="tab-seeing" hidden>
+      <div>
+        <button type="button" id="seeOn">Activar seeing</button>
+        <button type="button" id="cmp" disabled>Comparar A/B</button>
+      </div>
+      <div style="margin-top:6px">
+        modelo
+        <select id="model" disabled>
+          <option value="0">0 — ondas (original)</option>
+          <option value="1">1 — warp fBm</option>
+          <option value="2">2 — gradiente</option>
+          <option value="3" selected>3 — tres capas</option>
+        </select>
+      </div>
+      <div style="margin-top:6px">
+        <label><input type="checkbox" id="limpio" checked /> solo estrellas (sin grilla ni figuras)</label>
+      </div>
+      <div style="margin-top:6px">
+        preset
+        <select id="preset" disabled>
+          <option value="antoniadi1">Antoniadi I — perfecto</option>
+          <option value="antoniadi3" selected>Antoniadi III — típico</option>
+          <option value="antoniadi5">Antoniadi V — malo</option>
+          <option value="jetStream">Jet stream fuerte</option>
+          <option value="calorSuelo">Calor del suelo</option>
+          <option value="">— personalizado —</option>
+        </select>
+      </div>
+      <div id="sliders"></div>
+      <div class="derived" id="der">—</div>
+      <div>
+        <button type="button" id="export" disabled>Exportar JSON</button>
+        <button type="button" id="importar" disabled>Cargar JSON</button>
+        <button type="button" id="reset" disabled>Restablecer</button>
+      </div>
+      <textarea id="dump" spellcheck="false"
+        aria-label="Configuración en JSON" placeholder="Pegar un JSON y usar Cargar"></textarea>
+      <div id="cargaMsg" class="derived" hidden></div>
+    </div>
+
+    <div id="status">iniciando…</div>
+  </aside>
 
 <script type="module">
-import { initializeStellariumEngine } from '@ventanaceleste/core';
+import {
+  initializeStellariumEngine,
+  createSeeingOverlay, SEEING_DEFAULTS, SEEING_PRESETS, computeSeeingPhysics,
+  createFreeLook, acotarPitch,
+} from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 
@@ -98,32 +238,59 @@ if (!window.isSecureContext) {
 }
 
 let engine = null;
+let seeing = null;
+
+// ── Pestañas ───────────────────────────────────────────────────────────
+
+// El panel se pliega para dejar ver el cielo: en pantalla chica ocupa la mitad.
+$('plegar').onclick = () => {
+  const dock = document.querySelector('.dock');
+  const plegado = dock.classList.toggle('plegado');
+  $('plegar').textContent = plegado ? '▾' : '▴';
+};
+
+for (const b of document.querySelectorAll('.tabs button:not(.plegar)')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.tabs button:not(.plegar)')) o.classList.toggle('on', o === b);
+    $('tab-orient').hidden = b.dataset.tab !== 'orient';
+    $('tab-seeing').hidden = b.dataset.tab !== 'seeing';
+  };
+}
 
 // ── Disposición de la vista ────────────────────────────────────────────
-// Reproduce el montaje de dual-telescope: la vista ocupa la mitad inferior de la
-// pantalla y se rota, porque el teléfono va acostado dentro del tubo. Tener el
-// mismo recorte acá permite comparar contra el prototipo sin desmontarlo.
+// Reproduce el montaje de dual-telescope: la vista ocupa la mitad inferior y se
+// rota, porque el teléfono va acostado dentro del tubo. Tener el mismo recorte
+// aquí permite comparar contra el prototipo sin desmontarlo. En pantalla grande
+// no aporta nada, así que el recorte arranca apagado.
 
-const FRACCION = 0.5;
-let rotacion = 270;
+const anchaDeEntrada = window.matchMedia('(min-width: 900px)').matches;
+let rotacion = anchaDeEntrada ? 0 : 270;
+let montaje = !anchaDeEntrada;
+$('montaje').checked = montaje;
 
 function acomodarVista() {
-  const canvas = $('stel-canvas');
-  const mira = document.querySelector('.crosshair');
-  const altoArea = window.innerHeight * FRACCION;
-  const anchoArea = window.innerWidth;
+  const area = $('stage').getBoundingClientRect();
+  const fraccion = montaje ? 0.5 : 1;
+  const altoArea = area.height * fraccion;
+  const anchoArea = area.width;
   // Al rotar 90° o 270° la huella en pantalla intercambia ancho y alto, así que
   // el elemento se dibuja apaisado y la rotación lo presenta como se ve.
   const rotado = Math.abs(rotacion % 180) === 90;
-  const centro = window.innerHeight * (1 - FRACCION / 2);
-  canvas.style.position = 'fixed';
-  canvas.style.left = '50%';
-  canvas.style.top = `${centro}px`;
-  canvas.style.width = `${rotado ? altoArea : anchoArea}px`;
-  canvas.style.height = `${rotado ? anchoArea : altoArea}px`;
-  canvas.style.transform = `translate(-50%, -50%) rotate(${rotacion}deg)`;
-  canvas.style.transformOrigin = 'center';
-  if (mira) mira.style.top = `${centro}px`;
+  const centro = area.height * (1 - fraccion / 2);
+  const geom = {
+    left: '50%',
+    top: `${centro}px`,
+    width: `${rotado ? altoArea : anchoArea}px`,
+    height: `${rotado ? anchoArea : altoArea}px`,
+    transform: `translate(-50%, -50%) rotate(${rotacion}deg)`,
+    transformOrigin: 'center',
+  };
+  // Los dos canvas comparten geometría exacta: el de efecto lee del de abajo y
+  // dibuja el mismo encuadre, así que cualquier diferencia se vería como un
+  // desplazamiento del cielo entero.
+  for (const c of [$('stel-canvas'), $('seeing-canvas')]) Object.assign(c.style, geom);
+  const mira = document.querySelector('.crosshair');
+  if (mira) { mira.style.top = `${centro}px`; mira.style.left = '50%'; }
 }
 
 for (const g of [0, 90, 180, 270]) {
@@ -138,6 +305,24 @@ for (const g of [0, 90, 180, 270]) {
   };
   $('rot').appendChild(b);
 }
+
+$('montaje').onchange = (e) => { montaje = e.target.checked; acomodarVista(); };
+
+const freeLook = createFreeLook({
+  canvas: $('stel-canvas'),
+  getFov: () => engine?.core?.fov,
+  getRotationDeg: () => rotacion,
+  onPan: ({ dYaw, dPitch }) => {
+    const obs = engine?.core?.observer;
+    if (!obs) return;
+    obs.yaw += dYaw;
+    obs.pitch = acotarPitch(obs.pitch + dPitch);
+  },
+});
+$('sinSensores').onchange = (e) => {
+  freeLook?.setEnabled(e.target.checked);
+  setStatus(e.target.checked ? 'apuntado libre: arrastrar sobre el cielo' : 'sensores activos', 'ok');
+};
 
 acomodarVista();
 window.addEventListener('resize', acomodarVista);
@@ -175,7 +360,7 @@ function pointingAltAz(q) {
 
 function applyGrid() {
   if (!engine?.core?.lines?.azimuthal) return;
-  engine.core.lines.azimuthal.visible = $('grid').checked;
+  engine.core.lines.azimuthal.visible = $('grid').checked && !$('limpio').checked;
 }
 $('grid').onchange = applyGrid;
 
@@ -223,7 +408,9 @@ function startSensor() {
     azEl.textContent = `${(az * DEG).toFixed(1)}° / ${altDeg.toFixed(1)}°`;
     azEl.className = Math.abs(altDeg) > 85 ? 'bad' : Math.abs(altDeg) > 75 ? 'warn' : '';
 
-    if (engine?.core?.observer) {
+    // Con el apuntado libre activo el sensor sigue leyendo y reportando, pero no
+    // escribe en la vista: sirve para ver los números mientras se apunta a mano.
+    if (engine?.core?.observer && !$('sinSensores').checked) {
       engine.core.observer.yaw = az;
       engine.core.observer.pitch = alt;
     }
@@ -249,6 +436,496 @@ setInterval(() => {
 $('sensorType').onchange = startSensor;
 startSensor();
 
+// ── Banco de seeing ────────────────────────────────────────────────────
+// El FOV no es un parámetro del modelo sino su escala: convierte los
+// arcosegundos del modelo en píxeles, así que va aquí arriba y además maneja el
+// zoom del motor, para que lo que se mide y lo que se ve coincidan.
+
+// El campo útil abarca tres órdenes de magnitud — de 2′ para mirar un cráter a
+// 70° para ubicarse — así que el deslizador es exponencial. El valor inicial es
+// el mismo 1.2 rad de siempre: la pestaña de orientación necesita campo amplio,
+// y quien venga a mirar seeing va a cerrar el zoom de todas formas.
+const FOV_MIN_ARCMIN = 2;
+const FOV_MAX_ARCMIN = 4200;
+const FOV_INICIAL_ARCMIN = 1.2 * (180 / Math.PI) * 60;
+const fovDesdeSlider = (v) =>
+  FOV_MIN_ARCMIN * Math.pow(FOV_MAX_ARCMIN / FOV_MIN_ARCMIN, v / 1000);
+const sliderDesdeFov = (a) =>
+  1000 * Math.log(a / FOV_MIN_ARCMIN) / Math.log(FOV_MAX_ARCMIN / FOV_MIN_ARCMIN);
+const fmtFov = (a) => (a >= 60 ? `${(a / 60).toFixed(1)}°` : `${a.toFixed(1)}′`);
+
+let fovArcmin = FOV_INICIAL_ARCMIN;
+
+const SPEC = [
+  { g: 'Vista' },
+  { k: '_fov', lbl: 'campo (FOV)', min: 0, max: 1000, step: 1, d: 1, u: '', log: true },
+  { k: 'fovGateArcmin', lbl: 'aparece bajo', min: 0, max: 120, step: 1, d: 0, u: '′' },
+  // Estos tres no son del overlay sino del motor: deciden cuántas estrellas hay
+  // y de qué tamaño se dibujan. Sin un campo poblado no hay forma de juzgar el
+  // centelleo, que es un efecto sobre fuentes puntuales.
+  { g: 'Cielo', note: 'render del motor' },
+  { k: 'limitMag', lbl: 'magnitud límite',    min: 4,  max: 19,  step: .5,  d: 1, u: '', eng: 'display_limit_mag' },
+  { k: 'starLin',  lbl: 'tamaño de estrella', min: .1, max: 2.5, step: .05, d: 2, u: '×', eng: 'star_linear_scale' },
+  { k: 'starRel',  lbl: 'escala relativa',    min: .1, max: 2.5, step: .05, d: 2, u: '×', eng: 'star_relative_scale' },
+  // Cuánto detalle revelan los objetos extensos. El motor los expone más de lo
+  // que el ojo alcanza a ver en una nebulosa.
+  { k: 'exposure', lbl: 'exposición',         min: .05, max: 3, step: .05, d: 2, u: '×', eng: 'exposure_scale' },
+
+  { g: 'Atmósfera' },
+  { k: 'intensity',  lbl: 'intensidad (maestra)', min: 0, max: 1.5, step: .01, d: 2, u: '×' },
+  { k: 'seeing',     lbl: 'seeing FWHM',        min: .1,  max: 5,   step: .05, d: 2, u: '″' },
+  { k: 'intermit',   lbl: 'intermitencia',      min: 0,   max: 1,   step: .01, d: 2, u: '' },
+  { g: 'Capa límite', note: 'la única que deforma' },
+  { k: 'cellArcmin', lbl: 'tamaño de celda',    min: .01,  max: 14,  step: .01,  d: 1, u: '′' },
+  { k: 'boilHz',     lbl: 'frecuencia hervor',  min: 1,   max: 45,  step: .5,  d: 1, u: ' Hz' },
+  { k: 'octaves',    lbl: 'octavas',            min: 1,   max: 4,   step: 1,   d: 0, u: '' },
+  { k: 'frozen',     lbl: 'flujo congelado',    min: 0,   max: 1,   step: .01, d: 2, u: '' },
+  { k: 'windDir',    lbl: 'dirección',          min: 0,   max: 360, step: 1,   d: 0, u: '°' },
+  { g: 'Capas altas', note: 'compresión y centelleo' },
+  { k: 'compress',   lbl: 'compresión geom.',   min: 0,   max: 6,   step: .05, d: 2, u: '×' },
+  { k: 'scint',      lbl: 'centelleo',          min: 0,   max: 1,   step: .01, d: 2, u: '' },
+  { k: 'scintArcsec',lbl: 'escala centelleo',   min: 1,   max: 15,  step: .25, d: 2, u: '″' },
+  { k: 'jetDrift',   lbl: 'deriva del jet',     min: 0,   max: 30,  step: .5,  d: 1, u: ' ′/s' },
+  { k: 'jetDir',     lbl: 'dirección del jet',  min: 0,   max: 360, step: 1,   d: 0, u: '°' },
+  { g: 'Óptica' },
+  { k: 'aperture',   lbl: 'apertura',           min: 50,  max: 400, step: 5,   d: 0, u: ' mm' },
+  { k: 'tipTilt',    lbl: 'tip/tilt global',    min: 0,   max: 2,   step: .01, d: 2, u: '×' },
+  { k: 'blurMul',    lbl: 'desenfoque residual',min: 0,   max: 3,   step: .01, d: 2, u: '×' },
+  { k: 'diffMul',    lbl: 'difracción',         min: 0,   max: 2,   step: .05, d: 2, u: '×' },
+  { k: 'lucky',      lbl: 'lucky imaging',      min: 0,   max: 1,   step: .01, d: 2, u: '' },
+  { g: 'Render' },
+  { k: 'resolutionScale', lbl: 'resolución',    min: .4,  max: 1,   step: .05, d: 2, u: '×' },
+  { k: 'maxFps',     lbl: 'tope de cuadros',    min: 0,   max: 120, step: 5,   d: 0, u: ' fps' },
+  { k: 'legacyAmount',lbl: 'amplitud modelo 0', min: 0,   max: 200, step: 1,   d: 0, u: '' },
+];
+
+const P = { ...SEEING_DEFAULTS };
+
+// Ajustes de render del motor. Van aparte de P porque no son del overlay: se
+// escriben en engine.core y no viajan en la configuración del seeing.
+const E = { limitMag: 13, starLin: 0.5, starRel: 0.6, exposure: 1 };
+
+// El motor ignora en silencio un atributo que no conoce, así que se comprueba.
+function aplicarMotor(attr, v) {
+  if (!engine?.core) return;
+  try { engine.core[attr] = v; }
+  catch { console.warn('[cielo] el motor no acepta', attr); }
+}
+function aplicarTodoMotor() {
+  for (const s of SPEC) if (s.eng) aplicarMotor(s.eng, E[s.k]);
+}
+
+const inputs = {}, outs = {};
+
+(function construirSliders() {
+  const host = $('sliders');
+  for (const s of SPEC) {
+    if (s.g) {
+      const h = document.createElement('div');
+      h.className = 'sep';
+      h.textContent = s.note ? `${s.g.toUpperCase()} · ${s.note}` : s.g.toUpperCase();
+      host.appendChild(h);
+      continue;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'sl';
+    const lab = document.createElement('label');
+    lab.textContent = s.lbl; lab.htmlFor = `sl-${s.k}`;
+    const out = document.createElement('output');
+    const valor = () => (s.log ? fovArcmin : s.eng ? E[s.k] : P[s.k]);
+    out.textContent = s.log ? fmtFov(fovArcmin) : valor().toFixed(s.d) + s.u;
+    const inp = document.createElement('input');
+    inp.type = 'range'; inp.id = `sl-${s.k}`;
+    // El FOV maneja el zoom del motor y no el overlay, así que sirve con el
+    // seeing apagado y arranca habilitado.
+    // El FOV y los ajustes del motor sirven con el seeing apagado.
+    inp.disabled = !s.log && !s.eng;
+    inp.min = s.min; inp.max = s.max; inp.step = s.step;
+    inp.value = s.log ? sliderDesdeFov(fovArcmin) : valor();
+    inp.oninput = () => {
+      const v = parseFloat(inp.value);
+      if (s.log) {
+        const a = fovDesdeSlider(v);
+        out.textContent = fmtFov(a);
+        aplicarFov(a);
+      } else if (s.eng) {
+        out.textContent = v.toFixed(s.d) + s.u;
+        E[s.k] = v;
+        aplicarMotor(s.eng, v);
+      } else {
+        out.textContent = v.toFixed(s.d) + s.u;
+        P[s.k] = v;
+        seeing?.setParams({ [s.k]: v });
+        $('preset').value = '';
+      }
+      refrescarDerivados();
+      guardarLocal();
+    };
+    wrap.append(lab, out, inp);
+    host.appendChild(wrap);
+    inputs[s.k] = inp; outs[s.k] = out;
+  }
+})();
+
+function aplicarFov(arcmin) {
+  fovArcmin = arcmin;
+  const rad = (arcmin / 60) * (Math.PI / 180);
+  if (engine?.core) engine.core.fov = rad;
+  seeing?.setFov(rad);
+}
+
+// El motor atiende la rueda del ratón y el pinch por su cuenta, sin avisar. El
+// overlay lo lee por frame con getFov, y este bucle sólo mantiene al día el
+// deslizador y los derivados del panel.
+// dual-telescope topea el zoom en FOV_MIN = 0.0005 rad (apps/dual-telescope/
+// src/panel.js). Ajustar por debajo de eso da configuraciones que en el
+// aparato no se ven, porque ese campo no se alcanza.
+const FOV_MIN_APP_ARCMIN = 0.0005 * (180 / Math.PI) * 60;
+const RAD_A_ARCMIN = (180 / Math.PI) * 60;
+setInterval(() => {
+  const rad = engine?.core?.fov;
+  if (!rad) return;
+  const arcmin = rad * RAD_A_ARCMIN;
+  if (Math.abs(arcmin - fovArcmin) / fovArcmin < 0.002) return;
+  fovArcmin = arcmin;
+  inputs._fov.value = sliderDesdeFov(arcmin);
+  outs._fov.textContent = fmtFov(arcmin);
+  refrescarDerivados();
+}, 150);
+
+function refrescarDerivados() {
+  const alto = $('seeing-canvas').height || $('stel-canvas').height || 1;
+  const rad = (fovArcmin / 60) * (Math.PI / 180);
+  const ph = computeSeeingPhysics(P, rad, alto);
+  const celdasLuna = (31 * 60) / P.scintArcsec;
+  const vWarn = (ph.vSuelo > 12 || ph.vSuelo < 0.15) ? ' class="warn"' : '';
+  const hWarn = (ph.hCentelleo < 400 || ph.hCentelleo > 25000) ? ' class="warn"' : '';
+  // El warp en píxeles es lo primero que hay que mirar cuando "no se ve nada":
+  // a campo amplio 2″ de seeing son centésimas de píxel y el modelo está bien.
+  const warpPx = P.seeing * 0.55 * ph.pxPerArcsec * 2.2;
+  const finaArcmin = P.cellArcmin / Math.pow(2.11, Math.round(P.octaves) - 1);
+  const veredicto = warpPx < 0.5 ? '<b class="warn">invisible — cerrar el zoom</b>'
+                  : warpPx < 2   ? '<b class="warn">apenas visible</b>'
+                                 : '<b class="ok">visible</b>';
+  const difAs = ph.diffArcsec * P.diffMul;
+  const atmAs = P.seeing * P.blurMul * ph.blurFrac * P.intensity;
+  const totAs = Math.hypot(difAs, atmAs);
+  const compuerta = P.fovGateArcmin > 0
+    ? (ph.gate <= 0 ? '<b class="warn">cerrada</b>'
+      : ph.gate >= 1 ? '<b class="ok">abierta</b>'
+      : `<b class="warn">abriendo ${(ph.gate * 100).toFixed(0)} %</b>`)
+    : '<b>sin compuerta</b>';
+  $('der').innerHTML =
+    (fovArcmin < FOV_MIN_APP_ARCMIN
+      ? `<b class="bad">fuera del rango de la app</b> (tope ${FOV_MIN_APP_ARCMIN.toFixed(2)}′)<br>`
+      : '') +
+    `compuerta ${compuerta}<br>` +
+    `deformación <b>${warpPx.toFixed(2)} px</b> a ${fmtFov(fovArcmin)} · ${veredicto}<br>` +
+    `celda ${P.cellArcmin.toFixed(1)}′ → más fina <b>${finaArcmin.toFixed(2)}′</b> ` +
+    `(<b>${(31 / finaArcmin).toFixed(0)}</b> en el disco lunar)<br>` +
+    `r₀ <b>${(ph.r0 * 100).toFixed(1)} cm</b> · D/r₀ <b>${ph.DR.toFixed(1)}</b> · ` +
+    `movimiento <b>${ph.tiltArcsec.toFixed(2)}″</b><br>` +
+    `nitidez: difracción <b>${difAs.toFixed(2)}″</b> + atmósfera <b>${atmAs.toFixed(2)}″</b> ` +
+    `= <b>${totAs.toFixed(2)}″</b> (${(totAs * ph.pxPerArcsec).toFixed(1)} px)<br>` +
+    `escala <b>${ph.pxPerArcsec.toFixed(2)} px/″</b> · celda suelo ` +
+    `<b>${(P.cellArcmin * 60 * ph.pxPerArcsec).toFixed(0)} px</b><br>` +
+    `capa límite: r₀ℓ <b>${(ph.r0Suelo * 100).toFixed(0)} cm</b>, viento ` +
+    `<b${vWarn}>${ph.vSuelo.toFixed(1)} m/s</b> a h=100 m<br>` +
+    `centelleo: θc → capa a <b${hWarn}>${ph.hCentelleo >= 1000
+      ? (ph.hCentelleo / 1000).toFixed(1) + ' km' : ph.hCentelleo.toFixed(0) + ' m'}</b> · ` +
+    `atenúa a <b>${(ph.scintAtten * 100).toFixed(0)} %</b><br>` +
+    `estrella <b>1 celda</b> (pleno) · Luna <b>${celdasLuna.toFixed(0)}</b> (se promedian)`;
+}
+
+// El FOV queda siempre habilitado: maneja el zoom del motor, no el overlay, y
+// encuadrar sirve igual con el seeing apagado.
+function habilitarControles(on) {
+  const delMotor = new Set(SPEC.filter((s) => s.eng).map((s) => s.k));
+  for (const k of Object.keys(inputs)) {
+    if (k === '_fov' || delMotor.has(k)) continue;
+    inputs[k].disabled = !on;
+    inputs[k].closest('.sl').classList.toggle('off', !on);
+  }
+  for (const id of ['model', 'preset', 'export', 'importar', 'reset', 'cmp'])
+    $(id).disabled = !on;
+}
+
+$('seeOn').onclick = () => {
+  if (seeing) {
+    seeing.stop();
+    seeing = null;
+    $('seeing-canvas').style.visibility = 'hidden';
+    $('seeOn').classList.remove('on');
+    $('seeOn').textContent = 'Activar seeing';
+    $('cmp').classList.remove('on');
+    habilitarControles(false);
+    return;
+  }
+  if (!engine) { setStatus('el motor todavía no está listo', 'warn'); return; }
+  seeing = createSeeingOverlay({
+    skyCanvas: $('stel-canvas'),
+    effectCanvas: $('seeing-canvas'),
+    params: P,
+    fov: (fovArcmin / 60) * (Math.PI / 180),
+    getFov: () => engine?.core?.fov,
+    // Si el motor reporta el FOV sobre el lado largo y aquí se divide por el
+    // alto, todas las amplitudes salen chicas por el factor de aspecto. Es lo
+    // que hacía falta exagerar los valores respecto del banco.
+    // El motor reporta el campo sobre el lado largo del lienzo.
+    fovAxis: 'width',
+    // El canvas arranca oculto para que no se vea un frame en negro antes de
+    // que haya algo dibujado encima del cielo.
+    onActiveChange: (on) => {
+      $('seeing-canvas').style.visibility = on ? 'visible' : 'hidden';
+    },
+  });
+  if (!seeing) { setStatus('WebGL no disponible para el overlay', 'bad'); return; }
+  $('seeOn').classList.add('on');
+  $('seeOn').textContent = 'Desactivar seeing';
+  habilitarControles(true);
+  refrescarDerivados();
+  setStatus('seeing activo — modelo 3, tres capas', 'ok');
+};
+
+$('cmp').onclick = () => {
+  if (!seeing) return;
+  const on = !$('cmp').classList.contains('on');
+  $('cmp').classList.toggle('on', on);
+  // Comparar contra el shader original es el uso obvio, así que la izquierda va
+  // al modelo 0 y la derecha se queda con el que se está mirando.
+  seeing.setCompareModel(on ? 0 : null);
+};
+
+// El campo limpio es el que deja juzgar el centelleo: la grilla y las figuras
+// compiten con las estrellas justo en la escala en que hay que mirarlas.
+function aplicarLimpio() {
+  if (!engine?.core) return;
+  const on = $('limpio').checked;
+  const c = engine.core;
+  const poner = (obj, prop, v) => { try { if (obj) obj[prop] = v; } catch { /* no existe */ } };
+  poner(c.lines?.azimuthal, 'visible', on ? false : $('grid').checked);
+  poner(c.constellations, 'lines_visible', !on);
+  poner(c.constellations, 'images_visible', false);
+  poner(c.cardinals, 'visible', !on);
+  // Los nombres tapan justo las estrellas que hay que mirar. El motor expone dos
+  // atributos segun el modulo y no todos los aceptan, por eso se prueban ambos.
+  for (const mod of [c.stars, c.dsos, c.planets]) {
+    poner(mod, 'labels_visible', !on);
+    poner(mod, 'hints_visible', !on);
+  }
+  poner(c.milkyway, 'visible', !on);
+  poner(c.dss, 'visible', !on);
+  poner(c.dsos, 'visible', !on);
+}
+$('limpio').onchange = aplicarLimpio;
+// Cambiar el eje obliga a recrear el overlay: se fija al construirlo.
+$('model').onchange = (e) => {
+  P.model = parseInt(e.target.value, 10);
+  seeing?.setParams({ model: P.model });
+  guardarLocal();
+};
+
+$('preset').onchange = (e) => {
+  const preset = SEEING_PRESETS[e.target.value];
+  if (!preset) return;
+  Object.assign(P, preset);
+  seeing?.setParams(preset);
+  for (const [k, v] of Object.entries(preset)) {
+    if (!inputs[k]) continue;
+    inputs[k].value = v;
+    const s = SPEC.find((x) => x.k === k);
+    outs[k].textContent = v.toFixed(s.d) + s.u;
+  }
+  refrescarDerivados();
+  guardarLocal();
+};
+
+$('export').onclick = () => {
+  const alto = $('seeing-canvas').height || 1;
+  const rad = (fovArcmin / 60) * (Math.PI / 180);
+  const ph = computeSeeingPhysics(P, rad, alto);
+  const ta = $('dump');
+  ta.value = JSON.stringify({
+    origen: 'device-lab',
+    params: P,
+    cielo: { ...E },
+    fovArcmin,
+    derivados: {
+      r0_cm: +(ph.r0 * 100).toFixed(1),
+      D_sobre_r0: +ph.DR.toFixed(2),
+      movimiento_rms_arcsec: +ph.tiltArcsec.toFixed(3),
+      capa_limite_viento_ms: +ph.vSuelo.toFixed(2),
+      centelleo_altura_m: Math.round(ph.hCentelleo),
+    },
+  }, null, 2);
+  ta.classList.add('on');
+  ta.select();
+};
+
+$('reset').onclick = () => {
+  Object.assign(P, SEEING_DEFAULTS);
+  seeing?.setParams(SEEING_DEFAULTS);
+  aplicarFov(FOV_INICIAL_ARCMIN);
+  for (const s of SPEC) {
+    if (!s.k || !inputs[s.k]) continue;
+    if (s.log) {
+      inputs[s.k].value = sliderDesdeFov(FOV_INICIAL_ARCMIN);
+      outs[s.k].textContent = fmtFov(FOV_INICIAL_ARCMIN);
+    } else {
+      inputs[s.k].value = P[s.k];
+      outs[s.k].textContent = P[s.k].toFixed(s.d) + s.u;
+    }
+  }
+  $('model').value = String(P.model);
+  $('preset').value = 'antoniadi3';
+  $('dump').classList.remove('on');
+  $('cargaMsg').hidden = true;
+  try { localStorage.removeItem(CLAVE); } catch { /* sin almacenamiento */ }
+  refrescarDerivados();
+};
+
+// ── Persistencia ───────────────────────────────────────────────────────
+// El ajuste fino cuesta muchos minutos y se perdía con cada recarga. Se guarda
+// en localStorage por navegador, y el formato guardado es el mismo que exportan
+// e importan los botones, así que un ajuste se puede llevar a otra máquina.
+
+const CLAVE = 'device-lab:seeing';
+
+function estadoActual() { return { params: { ...P }, cielo: { ...E }, fovArcmin }; }
+
+let guardadoPend = null;
+function guardarLocal() {
+  clearTimeout(guardadoPend);
+  guardadoPend = setTimeout(() => {
+    try { localStorage.setItem(CLAVE, JSON.stringify(estadoActual())); }
+    catch { /* modo privado o almacenamiento lleno */ }
+  }, 300);
+}
+
+function sincronizarSliders() {
+  for (const s of SPEC) {
+    if (!s.k || !inputs[s.k]) continue;
+    if (s.log) {
+      inputs[s.k].value = sliderDesdeFov(fovArcmin);
+      outs[s.k].textContent = fmtFov(fovArcmin);
+    } else {
+      const v = s.eng ? E[s.k] : P[s.k];
+      inputs[s.k].value = v;
+      outs[s.k].textContent = v.toFixed(s.d) + s.u;
+    }
+  }
+}
+
+// Acepta tanto `{ params: {...}, fovArcmin }` como un objeto plano de
+// parámetros, así que sirve igual para lo guardado y para un JSON pegado a mano.
+// Los valores se recortan al rango del deslizador y las claves desconocidas se
+// informan en vez de descartarse en silencio.
+function aplicarConfig(obj) {
+  const src = obj && typeof obj === 'object' ? (obj.params ?? obj) : null;
+  if (!src || typeof src !== 'object') return { ok: false, msg: 'no es un objeto' };
+
+  const aceptados = [], ignorados = [];
+  for (const [k, v] of Object.entries(src)) {
+    if (!(k in SEEING_DEFAULTS) || typeof v !== 'number' || !Number.isFinite(v)) {
+      ignorados.push(k);
+      continue;
+    }
+    const spec = SPEC.find((x) => x.k === k);
+    P[k] = spec ? Math.min(spec.max, Math.max(spec.min, v)) : v;
+    aceptados.push(k);
+  }
+  if (!aceptados.length) return { ok: false, msg: 'ningún parámetro reconocido' };
+
+  if (obj.cielo && typeof obj.cielo === 'object') {
+    for (const [k, v] of Object.entries(obj.cielo)) {
+      if (!(k in E) || typeof v !== 'number' || !Number.isFinite(v)) continue;
+      const sp = SPEC.find((x) => x.k === k);
+      E[k] = sp ? Math.min(sp.max, Math.max(sp.min, v)) : v;
+    }
+    aplicarTodoMotor();
+  }
+
+  const f = obj.fovArcmin;
+  if (typeof f === 'number' && Number.isFinite(f) && f > 0) {
+    aplicarFov(Math.min(FOV_MAX_ARCMIN, Math.max(FOV_MIN_ARCMIN, f)));
+  }
+  seeing?.setParams(P);
+  sincronizarSliders();
+  $('model').value = String(P.model);
+  $('preset').value = '';
+  refrescarDerivados();
+  guardarLocal();
+  return { ok: true, aceptados, ignorados };
+}
+
+$('importar').onclick = () => {
+  const ta = $('dump'), msg = $('cargaMsg');
+  if (!ta.classList.contains('on') || !ta.value.trim()) {
+    ta.classList.add('on');
+    ta.focus();
+    msg.hidden = false;
+    msg.innerHTML = 'Pegar aquí un JSON exportado y volver a pulsar Cargar.';
+    return;
+  }
+  let obj;
+  try { obj = JSON.parse(ta.value); }
+  catch (e) {
+    msg.hidden = false;
+    msg.innerHTML = `<b class="bad">JSON inválido</b> — ${e.message}`;
+    return;
+  }
+  const r = aplicarConfig(obj);
+  msg.hidden = false;
+  msg.innerHTML = r.ok
+    ? `<b class="ok">cargado</b> · ${r.aceptados.length} parámetros`
+      + (r.ignorados.length ? ` · <b class="warn">ignorados</b>: ${r.ignorados.join(', ')}` : '')
+    : `<b class="bad">${r.msg}</b>`;
+};
+
+try {
+  const guardado = localStorage.getItem(CLAVE);
+  if (guardado) aplicarConfig(JSON.parse(guardado));
+} catch { /* sin almacenamiento o JSON corrupto */ }
+
+habilitarControles(false);
+
+// ── Medidor de costo ───────────────────────────────────────────────────
+// Un fps suelto no dice nada: lo que interesa es cuánto cuesta el seeing. Se
+// guarda la referencia con el efecto apagado y se muestra la diferencia.
+
+(function medirFps() {
+  let cuadros = 0;
+  let desde = performance.now();
+  let base = null;          // fps de referencia, con el seeing apagado
+  const el = $('fps');
+
+  const marco = () => {
+    cuadros++;
+    const ahora = performance.now();
+    const dt = ahora - desde;
+    if (dt >= 700) {
+      const fps = (cuadros * 1000) / dt;
+      cuadros = 0;
+      desde = ahora;
+
+      // La referencia sólo se toma con el efecto apagado y el motor ya andando.
+      if (!seeing && engine) base = base === null ? fps : base * 0.7 + fps * 0.3;
+
+      const partes = [`<b>${fps.toFixed(0)}</b> fps`];
+      if (base !== null) {
+        partes.push(`<span class="muted">sin seeing ${base.toFixed(0)}</span>`);
+        if (seeing) {
+          const costo = Math.max(0, (1 - fps / base) * 100);
+          partes.push(`costo <b>${costo.toFixed(0)} %</b>`);
+        }
+      }
+      el.innerHTML = partes.join('<br>');
+    }
+    requestAnimationFrame(marco);
+  };
+  requestAnimationFrame(marco);
+})();
+
 // ── Motor ──────────────────────────────────────────────────────────────
 
 setStatus('cargando motor…');
@@ -258,7 +935,10 @@ initializeStellariumEngine({
   scriptUrl: engineScriptUrl,
   smalldataBaseUrl: 'https://smalldata.ventanaceleste.com/',
   bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
-  extended: false, // catálogos mínimos: aquí sólo importa que el cielo se mueva bien
+  // Catálogos completos: el paquete mínimo deja unas pocas estrellas por campo
+  // y el centelleo no se puede juzgar sin un campo poblado.
+  extended: true,
+  includeGaia: false,
   location: { lat: -24.6272, lon: -70.4042, elev: 2635 },
   time: { offsetHours: -3 },
   strict: false,
@@ -268,8 +948,12 @@ initializeStellariumEngine({
     stel.core.landscapes.visible = false;
     stel.core.cardinals.visible = true;
     stel.core.constellations.lines_visible = true;
-    stel.core.fov = 1.2;
     applyGrid();
+    aplicarLimpio();
+    aplicarTodoMotor();
+    aplicarFov(fovArcmin);
+    refrescarDerivados();
+    setStatus('motor listo — el seeing se activa en su pestaña', 'ok');
   },
 }).catch((e) => setStatus('Motor: ' + e.message, 'bad'));
 </script>

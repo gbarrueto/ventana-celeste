@@ -26,20 +26,19 @@ export function computeFovFromEyepiece(focalLength, eyepieceFocalLength, project
 
 // ── Simple-mode slider <-> FOV (exponential mapping) ───────
 
-const SLIDER_FACTOR = 5;
-
+// Mapeo geométrico: cada paso del deslizador multiplica el campo por la misma
+// razón, que es lo que el ojo lee como un paso de zoom parejo. La curva anterior
+// era exponencial sobre el rango lineal del campo, de modo que el tamaño de paso
+// quedaba fijo en radianes: cerca del tope de aumento ese paso era mucho mayor
+// que el campo mismo y el primer escalón saltaba un factor 149.
 export function sliderToFov(sliderValue, { minFov, maxFov, maxSlider = 150 }) {
-  const normalized = sliderValue / maxSlider;
-  const maxExp = Math.exp(SLIDER_FACTOR) - 1;
-  const exponential = (Math.exp(normalized * SLIDER_FACTOR) - 1) / maxExp;
-  return minFov + exponential * (maxFov - minFov);
+  const t = Math.min(1, Math.max(0, sliderValue / maxSlider));
+  return minFov * Math.pow(maxFov / minFov, t);
 }
 
 export function fovToSlider(fov, { minFov, maxFov, maxSlider = 150 }) {
-  const normalizedFov = (fov - minFov) / (maxFov - minFov);
-  const maxExp = Math.exp(SLIDER_FACTOR) - 1;
-  const logValue = Math.log(normalizedFov * maxExp + 1) / SLIDER_FACTOR;
-  return logValue * maxSlider;
+  const f = Math.min(maxFov, Math.max(minFov, fov));
+  return (Math.log(f / minFov) / Math.log(maxFov / minFov)) * maxSlider;
 }
 
 // ── Limiting magnitude (NELM) + Bortle scale ───────────────
@@ -233,7 +232,7 @@ export function createDefaultTelescope(overrides = {}) {
   return new Telescope({
     name: 'Ventana Celeste',
     type: TelescopeType.REFRACTOR,
-    aperture: 100,
+    aperture: 150,
     focalLength: 1200,
     ...overrides,
   });
