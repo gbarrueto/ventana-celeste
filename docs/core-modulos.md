@@ -562,7 +562,7 @@ iniciales.
 | `blurMul` | multiplicador | `0.72` | Desenfoque residual, sobre la fracción que deja D/r₀. |
 | `diffMul` | multiplicador | `1` | Límite de difracción del instrumento. `0` lo desactiva. |
 | `lucky` | 0–1 | `0.5` | Profundidad de los instantes de nitidez. |
-| `saturation` | multiplicador | `1.15` | Saturación del resultado, escalada por la apertura. Ver [Apertura y desenfoque](#apertura-y-desenfoque). |
+| `saturation` | multiplicador | `0.6` | Saturación del resultado, escalada por la apertura. Ver [Saturación](#saturación). |
 | `model` | 0–3 | `3` | `3` es el modelo completo. `0` es el shader de ondas original, `1` warp fBm, `2` gradiente de una capa. |
 | `fovGateArcmin` | arcominutos | `0` | Campo por encima del cual el efecto se desvanece. `0` lo desactiva. |
 | `legacyAmount` | — | `80` | Amplitud del modelo `0`. |
@@ -654,11 +654,6 @@ Los valores de atmósfera corresponden a seeing 1″ con `intensity` en 1. Los d
 sentidos opuestos y el mínimo cae cerca de D ≈ 2 r₀. Más apertura ya no afina la imagen: reúne más
 luz y permite exposiciones más cortas.
 
-La saturación va atada a la apertura por la raíz cúbica de D respecto de la del telescopio del
-proyecto, acotada entre 0.55 y 1.5. El color se percibe con luz suficiente, y una apertura pequeña
-entrega una imagen que el ojo lee más cerca de la visión escotópica. En la apertura de referencia el
-factor vale 1.
-
 El término de difracción queda fuera de la envolvente, porque describe el instrumento y no la
 noche. Ni `intensity` ni `intermit` lo tocan, y `lucky` no puede bajar de él: alcanzar el límite de
 difracción en los momentos buenos es la definición de esa técnica.
@@ -708,6 +703,44 @@ llegaría a quien ya tenga ajustes guardados.
 `focus` y `saturation` no son parámetros del modelo: describen el ocular y la pantalla. Se aplican
 como filtro CSS sobre el canvas de efecto. Un filtro no altera el buffer, así que aplicarlo al canvas
 del motor sería invisible para el overlay, que lee de ahí.
+
+## Saturación
+
+El motor pinta color en nebulosas y estrellas que el ojo no percibe a esos niveles de luz: por
+debajo del umbral fotópico la visión es escotópica y ve en gris. `saturation` queda por debajo de 1
+para acercar la imagen a lo que se vería por el ocular.
+
+El factor por apertura es la raíz cúbica de D respecto de la del telescopio del proyecto, acotado
+entre 0.55 y 1.5. Más apertura entrega más luz y con ella algo más de color.
+
+| Apertura | Saturación final con `saturation` en 0.6 |
+|---|---|
+| 50 mm | 0.42 |
+| 150 mm | 0.60 |
+| 400 mm | 0.83 |
+
+La saturación se aplica en el shader sobre la luminancia Rec.709, no como filtro CSS, porque el
+factor depende de la apertura y vive con el resto del modelo.
+
+## Rendimiento
+
+El modelo completo evalúa el ruido entre 7 y 22 veces por píxel según el número de octavas, y cada
+evaluación son ocho funciones de dispersión. A eso se suman entre una y nueve muestras de textura
+según el desenfoque, y la subida de la textura del motor una vez por cuadro.
+
+| Octavas | Evaluaciones de ruido por píxel |
+|---|---|
+| 1 | 7 |
+| 2 | 12 |
+| 3 | 17 |
+| 4 | 22 |
+
+Las octavas de peso cero no se calculan. `resolutionScale` divide el trabajo por el cuadrado de su
+valor y es la palanca de mayor efecto; `fovGateArcmin` apaga el paso completo por encima del campo
+que se le indique, sin subir la textura ni dibujar.
+
+El costo es el mismo en desarrollo y en producción: el shader es una cadena y el empaquetado no lo
+altera.
 
 ## Compuerta por campo
 

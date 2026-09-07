@@ -83,11 +83,12 @@ export const SEEING_DEFAULTS = {
   diffMul: 0.4,           // límite de difracción del instrumento. 0 lo desactiva.
   lucky: 0.5,           // profundidad de los instantes de nitidez
 
-  // Saturación del resultado. Va atada a la apertura: el color se percibe con
-  // luz suficiente, y una apertura chica entrega una imagen que el ojo lee más
-  // cerca de la visión escotópica, sin color. En la apertura de referencia el
-  // factor vale 1 y este número es la saturación final.
-  saturation: 1.15,
+  // Saturación del resultado, por debajo de 1 a propósito. El motor pinta color
+  // en nebulosas y estrellas que el ojo no percibe a esos niveles de luz: a
+  // brillo bajo la visión es escotópica y ve en gris. Va atada a la apertura
+  // porque más apertura entrega más luz y con ella algo más de color. En la
+  // apertura de referencia el factor vale 1 y este número es la saturación final.
+  saturation: 0.6,
 
   // Compuerta por campo. No es física — el seeing existe a todo campo, sólo que
   // por debajo de un píxel de desplazamiento no hay nada que ver. Sirve para
@@ -220,7 +221,8 @@ export function computeSeeingPhysics(params, fov, viewHeightPx) {
 
   // Factor de saturación por apertura, referido a la del telescopio del
   // proyecto. Raíz cúbica para que el recorrido completo de aperturas cambie el
-  // color por un factor dos y no por uno de ocho.
+  // color por un factor dos y no por uno de ocho. Con la saturación base por
+  // debajo de 1, el producto no llega a saturar de más ni con la apertura mayor.
   const satAperture = Math.min(1.5, Math.max(0.55, Math.cbrt(D / D_REFERENCIA)));
 
   // Compuerta por campo, con desvanecimiento en un factor 1.8 de FOV para que no
@@ -321,10 +323,13 @@ vec3 octGrad(vec2 q, float tz, float f, float off) {
 // deformación crece con la frecuencia. Las octavas finas son las que producen el
 // temblor localizado; la primera sola da un vaivén global.
 vec3 phaseField(vec2 q, float tz) {
-  vec3 a  = octGrad(q, tz, 1.000,  0.0) * u_octW.x;
-  a      += octGrad(q, tz, 2.110, 17.3) * u_octW.y;
-  a      += octGrad(q, tz, 4.452, 34.6) * u_octW.z;
-  a      += octGrad(q, tz, 9.393, 51.9) * u_octW.w;
+  vec3 a = octGrad(q, tz, 1.000, 0.0) * u_octW.x;
+  // Las octavas apagadas pesan cero pero costaban lo mismo: cada una son cinco
+  // evaluaciones de ruido, un 23 % del total con tres octavas. La condición mira
+  // un uniform, igual para todos los fragmentos, así que no diverge.
+  if (u_octW.y > 0.0) a += octGrad(q, tz, 2.110, 17.3) * u_octW.y;
+  if (u_octW.z > 0.0) a += octGrad(q, tz, 4.452, 34.6) * u_octW.z;
+  if (u_octW.w > 0.0) a += octGrad(q, tz, 9.393, 51.9) * u_octW.w;
   return a;
 }
 
@@ -562,6 +567,7 @@ export function createSeeingOverlay({
   observador.observe(skyCanvas);
 
   let t0 = null;
+  let cuadros = 0;
 
   function animar(ms) {
     if (!corriendo) return;
@@ -569,7 +575,10 @@ export function createSeeingOverlay({
     if (t0 === null) t0 = ms;
     const t = (ms - t0) / 1000;
 
-    sincronizarTamaño();
+    // Leer clientWidth fuerza un reflow. El ResizeObserver ya atiende los
+    // cambios de caja y setParams los de resolución, así que acá alcanza con un
+    // repaso espaciado para el caso de que cambie el devicePixelRatio.
+    if ((cuadros++ & 31) === 0) sincronizarTamaño();
     if (skyCanvas.width === 0 || skyCanvas.height === 0) return;
 
     if (getFov) {
