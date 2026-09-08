@@ -421,11 +421,13 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 0.45rem 0.75rem;
-  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  flex-wrap: wrap;
 }
 
 .view-row:hover {
@@ -433,15 +435,61 @@ header {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+.view-info-col {
+  flex: 1;
+  min-width: 140px;
+}
+
 .view-name {
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #e2e8f0;
+}
+
+.view-desc {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.view-notice {
+  font-size: 0.7rem;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 3px 6px;
+  margin-top: 5px;
+  line-height: 1.3;
 }
 
 .view-actions {
   display: flex;
   gap: 0.35rem;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.btn-lan {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+}
+
+.btn-lan:hover {
+  background: linear-gradient(135deg, #0369a1, #1d4ed8);
+}
+
+.btn-local {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+
+.btn-local:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Card Bottom Controls */
@@ -453,7 +501,7 @@ header {
   padding-top: 1rem;
 }
 
-.app-card-controls .main-btn {
+.app-card-controls .btn {
   flex: 1;
   justify-content: center;
 }
@@ -584,6 +632,18 @@ header {
 
 .modal-close:hover {
   color: #ffffff;
+}
+
+.modal-notice-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  margin-bottom: 1.1rem;
+  text-align: left;
 }
 
 .qr-box {
