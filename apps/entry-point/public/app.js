@@ -111,7 +111,9 @@ function renderGrid() {
     const isRunning = app.status === 'running';
     const isStarting = app.status === 'starting';
     const scheme = app.https ? 'https' : 'http';
-    const networkBaseUrl = `${scheme}://${selectedIp || state.lanIp}:${app.port}`;
+    const activeIp = selectedIp || state.lanIp || '127.0.0.1';
+    const networkBaseUrl = `${scheme}://${activeIp}:${app.port}`;
+    const localBaseUrl = `${scheme}://localhost:${app.port}`;
 
     const card = document.createElement('div');
     card.className = `app-card status-${app.status}`;
@@ -123,22 +125,38 @@ function renderGrid() {
     else if (app.status === 'error') statusText = 'Error';
 
     const viewsHtml = app.views.map((v) => {
-      const viewLocalUrl = `${app.localUrl}${v.path === '/' ? '' : v.path}`;
+      const viewLocalUrl = `${localBaseUrl}${v.path === '/' ? '' : v.path}`;
       const viewNetworkUrl = `${networkBaseUrl}${v.path === '/' ? '' : v.path}`;
+
+      const primaryLabel = v.primaryBtnText || '🌐 Abrir';
+      const primaryTitle = v.primaryBtnTitle || `Abrir en red (${activeIp})`;
+      const qrLabel = v.qrLabel || '📱 QR';
+
+      const noticeHtml = v.notice
+        ? `<div class="view-notice">⚠️ ${v.notice}</div>`
+        : '';
+
+      const qrBtnHtml = !v.hideQr ? `
+        <button class="btn btn-secondary btn-sm qr-btn" data-app="${id}" data-view-name="${v.name}" data-path="${v.path}" data-qr-notice="${v.qrNotice || ''}" ${!isRunning ? 'disabled style="opacity:0.4;"' : ''} title="Generar código QR para el móvil">
+          ${qrLabel}
+        </button>
+      ` : '';
 
       return `
         <div class="view-row">
-          <div>
+          <div class="view-info-col">
             <div class="view-name">${v.name}</div>
-            <div style="font-size: 0.72rem; color: var(--text-dim);">${v.desc}</div>
+            <div class="view-desc">${v.desc}</div>
+            ${noticeHtml}
           </div>
           <div class="view-actions">
-            <a href="${viewLocalUrl}" target="_blank" class="btn btn-secondary btn-sm" ${!isRunning ? 'style="pointer-events:none; opacity:0.4;"' : ''} title="Abrir en este navegador">
-              Abrir ↗
+            <a href="${viewNetworkUrl}" target="_blank" class="btn btn-primary btn-sm btn-lan" ${!isRunning ? 'style="pointer-events:none; opacity:0.4;"' : ''} title="${primaryTitle}">
+              ${primaryLabel}
             </a>
-            <button class="btn btn-secondary btn-sm qr-btn" data-app="${id}" data-view-name="${v.name}" data-path="${v.path}" ${!isRunning ? 'disabled style="opacity:0.4;"' : ''} title="Generar código QR para el móvil">
-              📱 QR
-            </button>
+            <a href="${viewLocalUrl}" target="_blank" class="btn btn-secondary btn-sm btn-local" ${!isRunning ? 'style="pointer-events:none; opacity:0.4;"' : ''} title="Abrir en localhost (solo PC)">
+              💻 Local
+            </a>
+            ${qrBtnHtml}
           </div>
         </div>
       `;
@@ -160,8 +178,8 @@ function renderGrid() {
         <p class="app-desc">${app.description}</p>
 
         <div class="app-meta">
-          <div>Puerto: <strong class="port-badge">:${app.port}</strong> (HTTPS)</div>
-          <div>${isRunning ? `<a href="${app.localUrl}" target="_blank" style="color:var(--accent-cyan); text-decoration:none;">${app.localUrl}</a>` : '<span style="color:var(--text-dim)">Inactivo</span>'}</div>
+          <div>Puerto: <strong class="port-badge">:${app.port}</strong> (${app.https ? 'HTTPS' : 'HTTP'})</div>
+          <div>${isRunning ? `<a href="${networkBaseUrl}" target="_blank" style="color:var(--accent-cyan); text-decoration:none;" title="URL de red activa">${networkBaseUrl}</a>` : '<span style="color:var(--text-dim)">Inactivo</span>'}</div>
         </div>
 
         <div class="app-views">
@@ -174,7 +192,6 @@ function renderGrid() {
         ${isRunning ? `
           <button class="btn btn-danger btn-sm stop-btn" data-app="${id}">⏹ Detener</button>
           <button class="btn btn-secondary btn-sm restart-btn" data-app="${id}">🔄 Reiniciar</button>
-          <a href="${app.localUrl}" target="_blank" class="btn btn-success btn-sm main-btn">🚀 Abrir App</a>
         ` : isStarting ? `
           <button class="btn btn-secondary btn-sm main-btn" disabled>⏳ Levantando servidor...</button>
         ` : `
@@ -192,7 +209,8 @@ function renderGrid() {
       const appId = btn.dataset.app;
       const viewName = btn.dataset.viewName;
       const path = btn.dataset.path;
-      openQrModal(appId, viewName, path);
+      const qrNotice = btn.dataset.qrNotice || '';
+      openQrModal(appId, viewName, path, qrNotice);
     });
   });
 
@@ -245,18 +263,18 @@ function renderActiveLogs() {
 }
 
 // QR Code Modal
-function openQrModal(appId, viewName, path) {
+function openQrModal(appId, viewName, path, qrNotice = '') {
   const app = state.apps[appId];
   if (!app) return;
 
-  currentModalContext = { appId, appName: app.name, viewName, path, port: app.port, https: app.https };
+  currentModalContext = { appId, appName: app.name, viewName, path, port: app.port, https: app.https, qrNotice };
   updateModalContent();
   qrModalEl.classList.add('open');
 }
 
 function updateModalContent() {
   if (!currentModalContext) return;
-  const { appName, viewName, path, port, https } = currentModalContext;
+  const { appName, viewName, path, port, https, qrNotice } = currentModalContext;
 
   const scheme = https ? 'https' : 'http';
   const activeIp = selectedIp || state.lanIp || '127.0.0.1';
@@ -266,6 +284,17 @@ function updateModalContent() {
   modalSubtitleEl.textContent = `Escanea con la cámara de tu teléfono móvil`;
   modalUrlTextEl.textContent = url;
   modalOpenLinkEl.href = url;
+
+  const modalNoticeBannerEl = document.getElementById('modal-notice-banner');
+  if (modalNoticeBannerEl) {
+    if (qrNotice) {
+      modalNoticeBannerEl.innerHTML = `<strong>⚠️ Aviso:</strong> ${qrNotice}`;
+      modalNoticeBannerEl.style.display = 'block';
+    } else {
+      modalNoticeBannerEl.style.display = 'none';
+      modalNoticeBannerEl.innerHTML = '';
+    }
+  }
 
   // Generate QR SVG with qrcode library
   try {
