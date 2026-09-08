@@ -4,6 +4,27 @@ Cambios relevantes desde la migración a monorepo. Lo anterior está en el histo
 
 Orden inverso: lo más reciente arriba.
 
+## 2026-09-07 — Los cuatro signos de yaw eran dos convenciones
+
+La referencia del motor listaba la escritura de `observer.yaw` como una elección por app, con cuatro
+filas y ninguna regla. De ahí salía la idea de que había cuatro lugares donde equivocarse y un cielo
+invertido esperando.
+
+Son dos signos, uno por modo de apuntado, y dan el mismo acimut. Verificado numéricamente contra
+`packages/core/src/orientation/controller.js`: sin alabeo, `−atan2(2(wz+xy), 1−2(y²+z²))` coincide
+con `atan2(vx, vy)` de eje óptico `+y` con error nulo en todo el rango de rumbo y elevación. Con
+alabeo divergen hasta 90°, que es la degeneración conocida del modo euler y no del signo.
+
+Una de las cuatro filas además estaba mal desde `af7458d`, que eliminó el archivo de cielo viejo de
+`device-lab`. La app escribe el acimut sin negar desde entonces.
+
+Se descartó unificar el signo en `core`. Negar la rama euler de `quaternionToPointing` obliga a
+negar también `omega[2]` en `angularRates`, porque `state.orient.yaw` se alimenta del quaternion y
+de la integración del giroscopio, y `blendTowardRelativeOnZoomIn` mezcla las dos. Hacerlo a medias
+rompe `web-app` y `kiosk` sólo en zona dinámica, con campo cerrado y en movimiento. El único caso
+que el cambio prevendría es una app nueva que combine la configuración del controlador de
+`dual-telescope` con la línea de escritura de `web-app`.
+
 ## 2026-09-07 — La coordenada del ruido del seeing crecía sin límite
 
 En un teléfono la imagen se rompía en bloques a los diez o doce segundos, siempre a la misma altura

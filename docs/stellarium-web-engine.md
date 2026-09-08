@@ -207,12 +207,21 @@ validan con `Number.isFinite()` antes de escribir.
 
 ### Signo de yaw
 
-| App | Escritura |
-|---|---|
-| `web-app` | `observer.yaw = -h` |
-| `kiosk-standalone` | `observer.yaw = -h` |
-| `device-lab` | `observer.yaw = -yaw` |
-| `dual-telescope` | `observer.yaw = yaw` |
+`core.observer.yaw` es el acimut medido desde el norte hacia el este. El signo con que se escribe
+depende del modo de apuntado del controlador de orientación, descrito en
+[core-modulos.md](core-modulos.md).
 
-`dual-telescope` usa el modo de apuntado vectorial del controlador de orientación, que devuelve el
-acimut en la convención del motor.
+| Modo de apuntado | Acimut que emite `onView` | Escritura | Apps |
+|---|---|---|---|
+| `'euler'` | `atan2(2(wz+xy), 1−2(y²+z²))` | `observer.yaw = -yaw` | `web-app`, `kiosk-standalone` |
+| `'vector'` | `atan2(vx, vy)` | `observer.yaw = yaw` | `dual-telescope`, `device-lab` |
+
+Sin alabeo, `−atan2(2(wz+xy), 1−2(y²+z²))` es idéntico a `atan2(vx, vy)` con eje óptico `+y` para
+toda combinación de rumbo y elevación, así que las dos escrituras dan el mismo acimut. El modo euler
+mide el giro sobre el vertical, antihorario visto desde arriba, y la negación lo lleva a la
+convención del motor.
+
+`dual-telescope` usa eje óptico `-y`, que agrega la constante de montaje de 180° por cómo va el
+teléfono en el tubo. `device-lab` reimplementa el apuntado vectorial en `sky.html`, fuera del
+controlador, con el eje óptico y las inversiones de acimut y altura seleccionables desde la
+interfaz.

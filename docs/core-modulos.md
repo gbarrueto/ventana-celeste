@@ -156,6 +156,10 @@ Salen de derivar las mismas expresiones que dan la posición, `yaw = atan2(vx, v
 el valor por defecto, a 85° el factor es 11.4 y ahí se queda. No es un tope de apuntado: la vista
 puede pasar del cenit, lo que se limita es cuánto se amplifica el giro.
 
+En `'vector'` el acimut sale en la convención del motor y se escribe tal cual; en `'euler'` sale
+como giro sobre el vertical y se escribe negado. Ver
+[Signo de yaw](stellarium-web-engine.md#signo-de-yaw).
+
 `'euler'` es el default, así que `web-app` y `kiosk` no cambian de comportamiento.
 
 ## Referencia del acimut
