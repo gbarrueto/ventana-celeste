@@ -51,7 +51,7 @@ const APPS_CONFIG = {
     https: true,
     pnpmFilter: '@ventanaceleste/kiosk-standalone',
     views: [
-      { name: 'Pantalla Kiosk', path: '/', desc: 'Interfaz interactiva táctil autónoma' },
+      { name: 'Ocular', path: '/', desc: 'Pantalla que hace de ocular dentro del autónomo' },
     ],
   },
   'dual-telescope': {
@@ -65,7 +65,7 @@ const APPS_CONFIG = {
     pnpmFilter: '@ventanaceleste/dual-telescope',
     views: [
       { name: 'Ocular', path: '/', desc: 'Pantalla del tubo / visor principal' },
-      { name: 'Guía', path: '/guide.html', desc: 'Pantalla de guiado y calibración' },
+      { name: 'Guía', path: '/guide.html', desc: 'Pantalla de guiado y métricas' },
     ],
   },
   'device-lab': {
