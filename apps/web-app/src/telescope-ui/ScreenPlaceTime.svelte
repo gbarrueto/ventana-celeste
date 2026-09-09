@@ -275,7 +275,7 @@
       style="justify-self:start"
       onclick={() => flyHome(6000000)}
     >
-      Elegir otro lugar
+      Volver a la ubicación actual
     </Button>
   </div>
 
