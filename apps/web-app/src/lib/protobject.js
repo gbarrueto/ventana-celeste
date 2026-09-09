@@ -53,6 +53,10 @@ export const eventManager = {
   },
 };
 
+export function sendTelescopeMessage(msg, values, target = 'index.html') {
+  bus.send(msg, values, target);
+}
+
 // ── Viewer-side message handler ────────────────────────────
 
 let seeingOptionHandler = null;
