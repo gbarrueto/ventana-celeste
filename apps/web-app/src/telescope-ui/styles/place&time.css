@@ -1,0 +1,262 @@
+.place-time {
+  display: grid;
+  gap: 18px;
+  padding: 16px 16px 24px;
+}
+.group {
+  display: grid;
+  gap: 10px;
+}
+.globe-wrap {
+  position: relative;
+  height: 220px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--notte-deep);
+}
+.globe {
+  position: absolute;
+  inset: 0;
+}
+.globe-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: red;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+.place-info {
+  padding: 14px;
+  display: grid;
+  gap: 4px;
+}
+.place-name {
+  font: var(--type-control);
+}
+.place-coords {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  color: var(--digitale);
+  font-variant-numeric: tabular-nums;
+}
+.place-note {
+  font: var(--type-body-sm);
+  color: var(--text-muted);
+}
+
+.when-readout {
+  font-family: var(--font-mono);
+  font-size: var(--text-16);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fila 2: un stepper por campo, una fila cada uno para tener blancos grandes
+        en un control remoto de mano. */
+.field-steppers {
+  display: grid;
+  gap: 6px;
+}
+.stepper {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.stepper-label {
+  font: var(--type-label);
+  color: var(--text-muted);
+}
+.stepper-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-10);
+  background: var(--surface-pressed);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
+}
+.step-btn:active {
+  background: var(--surface-selected);
+  transform: scale(var(--press-scale));
+}
+.stepper-value {
+  min-width: 3ch;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-15);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.stepper-value.is-wide {
+  min-width: 4ch;
+}
+
+/* Fila 3 */
+.speed-row {
+  display: grid;
+  gap: 6px;
+}
+.speed-row--2 {
+  grid-template-columns: 1fr 1fr;
+}
+.speed-row--3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Fila 4: popover modal del calendario */
+.cal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(6, 8, 15, 0.7);
+  backdrop-filter: var(--blur-sheet);
+}
+.cal-dismiss {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.cal-modal {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  max-height: 90dvh;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: var(--app-panel);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sheet);
+}
+.cal-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: var(--type-subheading);
+}
+.picker-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.picker-loading {
+  opacity: 0.4;
+  text-align: center;
+  margin: 0;
+}
+
+/* Flatpickr theme overrides (from the source DateTimePicker). */
+:global(.flatpickr-calendar) {
+  background: #0d1117 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+:global(.flatpickr-days) {
+  height: 260px;
+}
+:global(.dayContainer) {
+  height: 100%;
+}
+:global(.flatpickr-time) {
+  height: 60px !important;
+  max-height: 60px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+:global(.flatpickr-time .numInputWrapper) {
+  height: 100% !important;
+}
+:global(.flatpickr-time .arrowUp),
+:global(.flatpickr-time .arrowDown) {
+  opacity: 1;
+  width: 20%;
+  border: none;
+}
+
+.when-integrated {
+  display: grid;
+  gap: 12px;
+}
+
+.when-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.when-readout {
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.field-steppers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.stepper-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.stepper-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.step-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.stepper-value {
+  min-width: 40px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.stepper-value.is-wide {
+  min-width: 50px;
+}

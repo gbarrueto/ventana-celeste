@@ -1,0 +1,277 @@
+/* Ventana Celeste design tokens — flattened from src/new telescope UI/tokens/*.
+   One file so src/telescope-ui/ is self-contained. */
+
+/* ── Fonts ─────────────────────────────────────────────────────────────
+   The original controller used the OS stack. These Google Fonts match the
+   brand lockup and the 12+ legibility requirement. */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito+Sans:ital,opsz,wght@0,6..12,300..800;1,6..12,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --font-display: 'Outfit', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-body: 'Nunito Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-system:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* ── Brand palette ── */
+  --notte: #0f1b3d;
+  --notte-deep: #050817;
+  --notte-azul: #1e3a8a;
+  --cielo: #0284c7;
+  --digitale: #4fc3f7;
+  --digitale-hi: #9fe0ff;
+  --stella: #ffd54f;
+  --stella-hi: #fff8e1;
+  --mist: #b9c8e5;
+  --slate: #64748b;
+  --line: #e2e8f0;
+
+  /* ── App chrome ── */
+  --app-bg: #06080f;
+  --app-panel: #0d1117;
+  --app-fg: #e8ecf5;
+
+  /* ── Alpha ladders ── */
+  --white-04: rgba(255, 255, 255, 0.04);
+  --white-06: rgba(255, 255, 255, 0.06);
+  --white-08: rgba(255, 255, 255, 0.08);
+  --white-10: rgba(255, 255, 255, 0.1);
+  --white-12: rgba(255, 255, 255, 0.12);
+  --white-15: rgba(255, 255, 255, 0.15);
+  --white-20: rgba(255, 255, 255, 0.2);
+
+  /* ── Interactive blue (selected control state) ── */
+  --azul: #3b82f6;
+  --azul-fill: rgba(59, 130, 246, 0.25);
+  --azul-line: rgba(59, 130, 246, 0.5);
+  --azul-line-soft: rgba(59, 130, 246, 0.4);
+  --azul-text: #93bbfc;
+
+  /* ── Warm accent: the one primary action per screen ── */
+  --fuego: #ff7a0d;
+  --fuego-deep: #ff5500;
+  --fuego-grad: linear-gradient(135deg, #ff7a0d, #ff5500);
+
+  /* ── Semantic ── */
+  --danger: #ff8a65;
+  --reticle: rgba(255, 50, 50, 0.5);
+
+  --surface-app: var(--app-bg);
+  --surface-panel: var(--app-panel);
+  --surface-card: var(--white-04);
+  --surface-card-raised: var(--white-06);
+  --surface-pressed: var(--white-08);
+  --surface-selected: var(--azul-fill);
+
+  --border-hairline: var(--white-06);
+  --border-card: var(--white-10);
+  --border-control: var(--white-12);
+  --border-strong: var(--white-15);
+  --border-selected: var(--azul-line);
+
+  --text-primary: var(--app-fg);
+  --text-secondary: rgba(232, 236, 245, 0.75);
+  --text-muted: rgba(232, 236, 245, 0.6);
+  --text-faint: rgba(232, 236, 245, 0.4);
+  --text-selected: var(--azul-text);
+  --text-danger: var(--danger);
+  --text-star: var(--stella);
+  --text-on-light: var(--notte);
+  --text-on-light-muted: #33415c;
+
+  --track-slider: var(--white-12);
+  --thumb-slider: var(--app-fg);
+
+  --bortle-1: #050817;
+  --bortle-3: #0f1b3d;
+  --bortle-5: #1e3a8a;
+  --bortle-7: #4a6fa5;
+  --bortle-9: #b9c8e5;
+
+  /* ── Typography ── */
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-16: 16px;
+  --text-18: 18px;
+  --text-24: 24px;
+  --text-30: 30px;
+  --text-42: 42px;
+  --text-body-min: 15px;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+
+  --leading-tight: 1.08;
+  --leading-snug: 1.3;
+  --leading-body: 1.5;
+  --leading-relaxed: 1.55;
+
+  --track-display: -0.02em;
+  --track-normal: 0.01em;
+  --track-wide: 0.02em;
+  --track-button: 0.04em;
+  --track-caps: 0.15em;
+  --track-label: 0.2em;
+  --track-wordmark-sub: 0.24em;
+  --track-eyebrow: 0.3em;
+  --track-wordmark: 0.32em;
+
+  --type-display: var(--weight-black) var(--text-42)/var(--leading-tight)
+    var(--font-display);
+  --type-title: var(--weight-bold) var(--text-30)/1.15 var(--font-display);
+  --type-heading: var(--weight-bold) var(--text-24)/1.2 var(--font-display);
+  --type-subheading: var(--weight-semibold) var(--text-18)/1.3
+    var(--font-display);
+  --type-body: var(--weight-regular) var(--text-15)/var(--leading-body)
+    var(--font-body);
+  --type-body-sm: var(--weight-regular) var(--text-13)/var(--leading-body)
+    var(--font-body);
+  --type-control: var(--weight-semibold) var(--text-15)/1.2 var(--font-display);
+  --type-label: var(--weight-medium) var(--text-13)/1.2 var(--font-display);
+  --type-eyebrow: var(--weight-semibold) var(--text-11)/1.2 var(--font-display);
+  --type-readout: 500 var(--text-15)/1.2 var(--font-mono);
+
+  /* ── Spacing ── */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+
+  --gutter-screen: 16px;
+  --gutter-sheet: 16px;
+  --gap-tile-grid: 8px;
+  --gap-control-row: 10px;
+  --gap-stack: 16px;
+  --gap-section: 20px;
+
+  --bar-height: 48px;
+  --hit-min: 44px;
+  --hit-comfortable: 56px;
+
+  /* ── Radius ── */
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-14: 14px;
+  --radius-16: 16px;
+  --radius-18: 18px;
+  --radius-22: 22px;
+  --radius-pill: 100px;
+  --radius-round: 50%;
+  --radius-control: var(--radius-10);
+  --radius-card: var(--radius-12);
+  --radius-sheet: var(--radius-16);
+  --radius-track: var(--radius-pill);
+
+  /* ── Elevation ── */
+  --shadow-none: none;
+  --shadow-thumb: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-thumb-lit:
+    0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-app-icon: 0 4px 10px rgba(15, 27, 61, 0.25);
+  --shadow-card-light: 0 1px 0 rgba(15, 27, 61, 0.06);
+  --glow-star: 0 0 24px rgba(255, 213, 79, 0.35);
+  --glow-selected: 0 0 0 1px var(--azul-line);
+  --scrim-loading: rgba(6, 8, 15, 0.95);
+  --blur-sheet: blur(12px);
+
+  /* ── Motion ── */
+  --dur-fast: 0.15s;
+  --dur-medium: 0.2s;
+  --dur-slow: 0.35s;
+  --dur-spin: 0.8s;
+  --ease-standard: ease;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --press-scale: 0.97;
+  --press-scale-firm: 0.95;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  height: 100dvh;
+}
+
+a {
+  color: var(--digitale);
+  text-decoration-color: rgba(79, 195, 247, 0.4);
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--digitale-hi);
+  text-decoration-color: currentColor;
+}
+a:active {
+  color: var(--cielo);
+}
+
+.vc-sky-gradient {
+  background: radial-gradient(
+    120% 120% at 10% 0%,
+    #1e3a8a 0%,
+    #0f1b3d 45%,
+    #050817 100%
+  );
+}
+
+.vc-wordmark {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: var(--leading-tight);
+  font-family: var(--font-display);
+}
+.vc-wordmark b {
+  font-weight: var(--weight-black);
+  letter-spacing: var(--track-wordmark);
+}
+.vc-wordmark i {
+  font-weight: var(--weight-light);
+  font-style: italic;
+  color: var(--digitale);
+  letter-spacing: var(--track-wordmark-sub);
+  font-size: 0.95em;
+}
+
+@keyframes vc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes vc-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
