@@ -1,0 +1,29 @@
+.shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-bg);
+}
+.appbar-title {
+  font: var(--type-subheading);
+  margin-left: 10px;
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.mirar-slot {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.mirar-slot.is-hidden {
+  visibility: hidden;
+}
+.sheet {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--app-bg);
+}
