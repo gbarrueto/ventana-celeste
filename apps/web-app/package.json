@@ -6,17 +6,27 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:check": "eslint src/telescope-ui && prettier --check src/telescope-ui",
+    "lint:fix": "eslint src/telescope-ui --fix && prettier --write src/telescope-ui"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-svelte": "^3.23.0",
+    "prettier": "^3.9.6",
     "svelte": "^5.28.2",
+    "svelte-eslint-parser": "^1.8.1",
     "vite": "^6.3.2"
   },
   "dependencies": {
     "@ventanaceleste/core": "workspace:*",
+    "dotenv": "^17.4.2",
     "flatpickr": "^4.6.13",
-    "pako": "^2.1.0"
+    "pako": "^2.1.0",
+    "tz-lookup": "^6.1.25"
   }
 }

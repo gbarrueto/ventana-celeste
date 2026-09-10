@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 // ── Constants ──────────────────────────────────────────────
 export const MIN_FOV = 0.000005;
@@ -73,9 +73,6 @@ export function setCurrentTZ(v) { currentTZ = v; }
 export let engineUTC = null;
 export function setEngineUTC(v) { engineUTC = v; }
 
-export let pollution = 9;
-export function setPollution(v) { pollution = v; }
-
 export let observerLat = -24.6272;
 export function setObserverLat(v) { observerLat = v; }
 
@@ -87,3 +84,25 @@ export function setObserverLon(v) { observerLon = v; }
 export const modes = writable({ simple: true, advanced: false });
 export const isLoading = writable(true);
 export const isMenuOpen = writable(false);
+
+// ── Ajustes del cielo ──────────────────────────────────────
+export const PARANAL_SKY_MAG = 21.8;
+
+export const skySettings = writable({
+  layers: Object.fromEntries(Object.entries(STEL_BUTTONS).map(([name, info]) => [name, info.on])),
+  skyMag: PARANAL_SKY_MAG,
+  skyMagFromPlace: true,
+  seeing: 1.0, // FWHM del disco en arcosegundos
+});
+
+export function getSkySettings() {
+  return get(skySettings);
+}
+
+export function updateSkySettings(partial) {
+  skySettings.update((s) => ({ ...s, ...partial }));
+}
+
+export function setSkyLayer(name, visible) {
+  skySettings.update((s) => ({ ...s, layers: { ...s.layers, [name]: visible } }));
+}

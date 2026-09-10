@@ -99,17 +99,15 @@ export function updateStellariumFov({ fov }) {
   engine.core.display_limit_mag = currentLimitMag();
 }
 
-export function stellariumOption({ path, attr }) {
+export function stellariumOption({ path, attr, value }) {
+  if (!engine?.core) return;
   const obj = path.split('.').reduce((o, k) => o && o[k], engine.core);
   if (!obj) return;
-  obj[attr] = !obj[attr];
+  const next = typeof value === 'boolean' ? value : !obj[attr];
+  obj[attr] = next;
 
   if (path === 'atmosphere' && attr === 'visible') {
-    if (!obj[attr]) {
-      applyPollution({ mag: 22 });
-    } else {
-      applyPollution({ mag: citySqmReading });
-    }
+    applyPollution({ mag: next ? citySqmReading : 22 });
   }
 }
 
@@ -138,8 +136,6 @@ export function getSynchronizeData() {
   }).to('telescope.html');
 }
 
-// El overlay de seeing necesita el campo actual por frame: el zoom llega por
-// mensaje, pero el motor también atiende gestos por su cuenta.
 export function getEngineFov() {
   return engine?.core?.fov;
 }
@@ -199,9 +195,6 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
-// El overlay de seeing se registra al montarse. Apagarlo por su propia API en
-// vez de ocultar el canvas desde fuera evita que dos dueños peleen por la
-// visibilidad, y de paso lo saca del presupuesto de GPU en modo simple.
 let seeingControl = null;
 export function setSeeingControl(control) {
   seeingControl = control;

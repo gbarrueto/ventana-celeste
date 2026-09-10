@@ -10,7 +10,7 @@ import {
   applyLocation, applyPollution, setEngineSpeed, updateDate,
   setDatetimeInterval, clearDatetimeInterval, noLenBlurry, yesLenNormal,
 } from './stellarium.js';
-import { setEngineUTC, setCurrentTZ, setPollution, setObserverLat, setObserverLon } from './stores.js';
+import { setEngineUTC, setCurrentTZ, updateSkySettings, setObserverLat, setObserverLon } from './stores.js';
 import { getMagFromLonLat } from './light-pollution.js';
 
 const bus = createMessageBus(createProtobjectTransport());
@@ -33,6 +33,10 @@ export const eventManager = {
     bus.sendThrottled(payload.msg, payload.values, target, interval);
   },
 };
+
+export function sendTelescopeMessage(msg, values, target = 'index.html') {
+  bus.send(msg, values, target);
+}
 
 // ── Viewer-side message handler ────────────────────────────
 
@@ -143,7 +147,7 @@ export function initTelescopeProtobject() {
     const pollution = await getMagFromLonLat({ lat, lon });
     const tz = getUtcOffset(lat, lon);
     setCurrentTZ(tz);
-    setPollution(pollution);
+    if (pollution != null) updateSkySettings({ skyMag: pollution, skyMagFromPlace: true });
 
     const data = { cityName: 'Custom', lon, lat, elev: 0, mag: pollution };
     applyLocation(data);

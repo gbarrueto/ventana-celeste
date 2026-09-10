@@ -1,7 +1,7 @@
 /**
  * Control de orientación y overlay de calibración para web-app.
  */
-import { createOrientationController } from '@ventanaceleste/core';
+import { createOrientationController, readPersistedBias } from '@ventanaceleste/core';
 import { updateStellariumView } from './stellarium.js';
 import { eventManager } from './protobject.js';
 import { logFov } from './stores.js';
@@ -133,6 +133,14 @@ function createCalibOverlay() {
           btn.textContent = 'Calibrar';
           btn.style.display = 'block';
           break;
+        // Requiere interacción del usuario para activar sensores en iOS
+        case 'resume':
+          icon.textContent = '🔭';
+          msg.textContent = 'Todo listo';
+          sub.textContent = 'Este teléfono ya está calibrado. Pulsa para empezar a apuntar.';
+          btn.textContent = 'Empezar';
+          btn.style.display = 'block';
+          break;
         case 'countdown':
           icon.textContent = '⏱';
           msg.textContent = 'Mantén el teléfono completamente inmóvil';
@@ -258,6 +266,9 @@ export function isDebugOverlayVisible() {
 // here; the sensor fusion/calibration state machine itself lives in
 // @ventanaceleste/core so it's shared with the other apps.
 
+const BIAS_KEY = 'web-app:gyro-bias';
+const BIAS_MAX_AGE_MS = 12 * 60 * 60 * 1000; // Caduca a las 12 h
+
 let controller = null;
 let updateDebug = null;
 let calibOverlay = null;
@@ -305,8 +316,9 @@ function handleDebug(partial) {
 
 function beginCalibrationFlow() {
   if (isFirstCalibration) {
+    const yaCalibrado = readPersistedBias(BIAS_KEY, { maxAgeMs: BIAS_MAX_AGE_MS }) !== null;
     calibOverlay = createCalibOverlay();
-    calibOverlay.setPhase('instruction');
+    calibOverlay.setPhase(yaCalibrado ? 'resume' : 'instruction');
     calibOverlay.onCalibrate(() => {
       calibOverlay.setPhase('countdown', 'Comenzando...');
       console.info('[Orientation] requesting sensor access...');
@@ -334,6 +346,8 @@ export const Orientation = {
     debugState = {};
 
     controller = createOrientationController({
+      persistBiasKey: BIAS_KEY,
+      persistBiasMaxAgeMs: BIAS_MAX_AGE_MS,
       readinessGate: 'countdown',
       countdownSeconds: 3,
       calibDuration: 3,
