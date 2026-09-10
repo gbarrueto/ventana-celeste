@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings } from '../lib/stellarium.js';
+  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings, getEngineFov, setSeeingControl } from '../lib/stellarium.js';
   import { initViewerProtobject, setSeeingOptionHandler, setConnectionStatusHandler } from '../lib/protobject.js';
   import { initializeSeeingOverlay } from '../lib/seeing-overlay.js';
   import { loadCdnScript } from '../lib/lazy-load.js';
@@ -10,18 +10,11 @@
   let showQr = $state(true);
   let qrContainerEl = $state();
   let peerConnected = $state(false);
-  // Distinguishes "no phone has paired yet" from "the phone dropped", which need
-  // different wording on the QR overlay.
   let connectionLost = $state(false);
 
   function buildTelescopeUrl() {
     const params = new URLSearchParams(window.location.search);
     const uid = params.get('ptjuid');
-    // Deliberately derived from this page's own address: Protobject only pairs
-    // peers that share an origin, so the QR must point at the same host the
-    // viewer was loaded from. Load the viewer on a LAN-reachable address and the
-    // phone lands on the same origin automatically. See
-    // docs/adr/0001-protobject-peers-must-share-an-origin.md.
     const base = `${window.location.protocol}//${window.location.host}/telescope.html`;
     return uid ? `${base}?ptjuid=${uid}` : base;
   }
@@ -48,16 +41,12 @@
     // Start in simple mode (show hints, hide overlays)
     enableSimpleModeSettings();
 
-    // Render QR as soon as DOM is ready
     const telescopeUrl = buildTelescopeUrl();
-    // Both peers must share a ptjuid to pair; log ours next to the URL the QR
-    // encodes so it can be compared against what the phone actually loaded.
     console.log('[QR] viewer origin:', window.location.origin,
       '| ptjuid:', new URLSearchParams(window.location.search).get('ptjuid'));
     console.log('[QR] telescope URL encoded:', telescopeUrl);
     await renderQr(telescopeUrl);
 
-    // Hide the QR while a phone is connected, bring it back when it drops.
     setConnectionStatusHandler(({ alive, everAlive }) => {
       peerConnected = alive;
       showQr = !alive;
@@ -91,14 +80,18 @@
       }
     });
 
-    // Initialize seeing overlay and connect to protobject
-    const seeingTargets = initializeSeeingOverlay();
-    if (seeingTargets) {
+    // El overlay de seeing lee el campo del motor por frame: el zoom llega por
+    // mensaje pero el motor también atiende gestos por su cuenta.
+    const seeing = initializeSeeingOverlay({
+      getFov: getEngineFov,
+    });
+    if (seeing) {
+      setSeeingControl(seeing);
+      // El arranque es en modo simple, que no lleva seeing.
+      seeing.setEnabled(false);
       setSeeingOptionHandler(({ target, value }) => {
-        const control = seeingTargets[target];
-        if (control) {
-          control.value = value;
-          control.dispatchEvent(new Event('input'));
+        if (!seeing.set(target, value)) {
+          console.warn('[seeing] parámetro desconocido:', target);
         }
       });
     }

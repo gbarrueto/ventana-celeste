@@ -2,5 +2,13 @@
   "name": "ventana-celeste",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@11.18.0"
+  "packageManager": "pnpm@11.18.0",
+  "scripts": {
+    "dev": "node apps/entry-point/server.js",
+    "dev:entry": "node apps/entry-point/server.js",
+    "dev:web-app": "pnpm --filter @ventanaceleste/web-app dev",
+    "dev:kiosk": "pnpm --filter @ventanaceleste/kiosk-standalone dev",
+    "dev:dual": "pnpm --filter @ventanaceleste/dual-telescope dev",
+    "dev:device-lab": "pnpm --filter @ventanaceleste/device-lab dev"
+  }
 }

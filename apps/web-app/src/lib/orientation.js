@@ -1,14 +1,5 @@
 /**
- * Device orientation sensors (gyroscope + relative orientation).
- * Replaces: telescope/utils/stellarium.js
- *
- * Logic:
- * - Calibrates gyroscope bias over 3 seconds
- * - Uses RelativeOrientationSensor for wide FOV (> 0.8 rad)
- * - Switches to Gyroscope integration for narrow FOV (< 0.8 rad)
- * - "Dynamic zone" for very narrow FOV (< 0.02 rad) with precision gain + smoothing
- * - Debug overlay shows pitch, yaw, mode, FOV, status (hidden by default)
- * - Sends updateView messages to the viewer via Protobject
+ * Control de orientación y overlay de calibración para web-app.
  */
 import { createOrientationController } from '@ventanaceleste/core';
 import { updateStellariumView } from './stellarium.js';
@@ -278,10 +269,7 @@ let lastPitch = 0;
 let debugState = {};
 let lastLoggedSource = null;
 
-// core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords.
-// Stellarium's view API speaks { h, v } (and negates h internally), so the
-// translation belongs here, at the app boundary. Destructuring { h, v } straight
-// off the callback silently yields undefined and the view never moves.
+// Envía los valores de vista ({ h, v }) a Protobject y Stellarium local.
 function sendView({ yaw, pitch }) {
   const values = { h: yaw, v: pitch };
   eventManager.sendThrottled({ msg: 'updateView', values }, 'index.html', 20);
@@ -293,10 +281,7 @@ function handleDebug(partial) {
   if (typeof partial.calibrating === 'boolean') isCalibrating = partial.calibrating;
   if (partial.activeSource === 'calibration-finished') isRunning = true;
 
-  // onSensorReading emits activeSource on EVERY reading (~100 Hz), so logging it
-  // unconditionally floods the console — and Protobject forwards the telescope's
-  // console to the viewer over the same WebRTC channel as updateView, starving
-  // the orientation stream. Only log actual transitions.
+  // Registra solo transiciones de estado para evitar saturar el canal WebRTC.
   if (partial.activeSource && partial.activeSource !== lastLoggedSource) {
     lastLoggedSource = partial.activeSource;
     console.info('[Orientation]', partial.activeSource, partial.failedSensor ?? '');
@@ -324,16 +309,10 @@ function beginCalibrationFlow() {
     calibOverlay.setPhase('instruction');
     calibOverlay.onCalibrate(() => {
       calibOverlay.setPhase('countdown', 'Comenzando...');
-      // First run: sensors haven't been created yet, so we need controller.start()
-      // (which creates + starts them, then triggers the readiness gate/calibration),
-      // not startCalibration() (which assumes sensors already exist and no-ops otherwise).
       console.info('[Orientation] requesting sensor access...');
       controller.start();
     });
   } else {
-    // Recalibrations triggered from the debug overlay skip the full-screen
-    // instruction/countdown UI entirely — only the small debug readout
-    // (driven by handleDebug) shows progress, matching the original flow.
     calibOverlay = null;
     controller.startCalibration();
   }

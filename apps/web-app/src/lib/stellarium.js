@@ -18,9 +18,6 @@ import {
   initializeStellariumEngine,
   removeStellariumEngine,
 } from '@ventanaceleste/core';
-// El motor vive una sola vez, en core/assets. `?url` hace que Vite lo emita
-// como asset y devuelva la URL final; ya no hay copia en public/ ni <script>
-// en el HTML (ensureStellariumScript inyecta el tag cuando hace falta).
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 
@@ -41,7 +38,6 @@ function currentLimitMag() {
   });
 }
 
-// Paranal is UTC-3 (Chile continental time, no DST).
 const PARANAL_UTC_OFFSET_HOURS = -3;
 
 // ── Engine initialization ──────────────────────────────────
@@ -55,7 +51,7 @@ export function initializeStelEngine(isTelescope = false) {
     bigdataBaseUrl: 'https://bigdata.ventanaceleste.com/',
     extended: !isTelescope,
     time: { offsetHours: PARANAL_UTC_OFFSET_HOURS },
-    strict: false, // a failed catalog fetch shouldn't block startup
+    strict: false,
     async onReady(stel) {
       setEngine(stel);
       const { core } = stel;
@@ -84,9 +80,6 @@ let warnedInvalidView = false;
 
 export function updateStellariumView({ h, v }) {
   if (!engine?.core?.observer) return;
-  // A malformed payload used to write NaN into observer.yaw/pitch, which looks
-  // exactly like "no messages are arriving" — the view simply never moves. Warn
-  // once (this runs per frame) instead of corrupting engine state silently.
   if (!Number.isFinite(h) || !Number.isFinite(v)) {
     if (!warnedInvalidView) {
       warnedInvalidView = true;
@@ -145,6 +138,12 @@ export function getSynchronizeData() {
   }).to('telescope.html');
 }
 
+// El overlay de seeing necesita el campo actual por frame: el zoom llega por
+// mensaje, pero el motor también atiende gestos por su cuenta.
+export function getEngineFov() {
+  return engine?.core?.fov;
+}
+
 export function getFov() {
   if (!engine?.core) return;
   Protobject.Core.send({
@@ -200,9 +199,18 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
+// El overlay de seeing se registra al montarse. Apagarlo por su propia API en
+// vez de ocultar el canvas desde fuera evita que dos dueños peleen por la
+// visibilidad, y de paso lo saca del presupuesto de GPU en modo simple.
+let seeingControl = null;
+export function setSeeingControl(control) {
+  seeingControl = control;
+}
+
 function enableSeeingEffect(enable) {
+  seeingControl?.setEnabled(enable);
   const el = document.getElementById('effect-canvas');
-  if (el) el.style.visibility = enable ? 'visible' : 'hidden';
+  if (el && !enable) el.style.visibility = 'hidden';
 }
 
 // ── Location & Pollution ───────────────────────────────────

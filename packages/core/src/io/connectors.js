@@ -1,18 +1,6 @@
-// I/O connector contract: something that feeds external hardware/network
-// input into an app (telescope orientation, zoom, focus, recalibration).
-//
-// Every deployment has some form of physical control hardware, but *what*
-// hardware differs per app: kiosk's Arduino sends keystrokes over USB-HID, and
-// dual-telescope reads a potentiometer over WebUSB. Core only defines the shape
-// a connector should have; concrete implementations live where the actual
-// hardware integration happens, next to the board they talk to.
-//
-// Shape: { isSupported(): boolean, connect(): Promise<void>|void,
-//          disconnect(): Promise<void>|void }
+// Contrato de conectores I/O: { isSupported, connect, disconnect }.
 
-// Maps keydown events to actions. This is what kiosk's Arduino integration
-// actually is today (the Arduino acts as a USB-HID keyboard) — extracted so
-// it's not re-implemented inline per app.
+// Mapea eventos keydown a acciones.
 export function createKeyboardConnector({ bindings = {}, onError = () => {} } = {}) {
   let handler = null;
 
@@ -41,5 +29,43 @@ export function createKeyboardConnector({ bindings = {}, onError = () => {} } = 
   return { isSupported, connect, disconnect };
 }
 
-// dual-telescope reads its board over WebUSB, in apps/dual-telescope/src/focuser.js.
-// That implementation lives next to the hardware it talks to, not here.
+// Reconstruye líneas delimitadas por Enter a partir de eventos keydown.
+export function createKeyboardLineSource({
+  onLine = () => {},
+  onKey = () => {},
+  preventDefault = false,
+  maxLineLength = 64,
+} = {}) {
+  let buffer = '';
+  let handler = null;
+
+  function isSupported() {
+    return typeof window !== 'undefined';
+  }
+
+  function connect() {
+    if (handler || !isSupported()) return;
+    handler = (e) => {
+      if (e.key === 'Enter') {
+        if (preventDefault) e.preventDefault();
+        const linea = buffer;
+        buffer = '';
+        if (linea) onLine(linea);
+        return;
+      }
+      if (e.key.length !== 1) return;
+      if (preventDefault) e.preventDefault();
+      onKey(e.key);
+      buffer = (buffer + e.key).slice(-maxLineLength);
+    };
+    window.addEventListener('keydown', handler);
+  }
+
+  function disconnect() {
+    if (handler) window.removeEventListener('keydown', handler);
+    handler = null;
+    buffer = '';
+  }
+
+  return { isSupported, connect, disconnect };
+}

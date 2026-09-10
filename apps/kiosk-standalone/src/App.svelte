@@ -3,11 +3,9 @@
   import DebugPanel from "./components/DebugPanel.svelte";
   import {
     Telescope, TelescopeType, formatMJDForDisplay, nudgeEngineHours,
-    createOrientationController, initializeStellariumEngine,
+    createOrientationController, createFreeLook, acotarPitch, initializeStellariumEngine,
     createKeyboardConnector,
   } from "@ventanaceleste/core";
-  // Copia única del motor en core/assets; antes se resolvía por la ruta por
-  // defecto de core, que apuntaba a la copia en public/ de esta app.
   import engineWasmUrl from "@ventanaceleste/core/assets/stellarium-web-engine.wasm?url";
   import engineScriptUrl from "@ventanaceleste/core/assets/stellarium-web-engine.js?url";
   import { loadConfig } from "./config";
@@ -16,11 +14,10 @@
   let overlayEl;
   let onDebugRecalibrate = () => {};
   let onDebugCancelCalibration = () => {};
-  let onDebugSelectLens = () => {};
-  let onDebugSimulateCardChange = () => {};
   let onDebugZoomIn = () => {};
   let onDebugZoomOut = () => {};
   let onDebugToggleVertical = () => {};
+  let onDebugToggleFreeLook = () => {};
 
   function addHour() {
     nudgeEngineHours(window.currentStelEngine, 1);
@@ -32,6 +29,7 @@
 
   let isDebugPanelVisible = false; // será actualizado según config
   let invertVerticalMotion = true;
+  let freeLookEnabled = false;
   let appConfig = null;
   const telescope = new Telescope({
     name: "Prototipo",
@@ -80,7 +78,6 @@
       fovRad: 0,
       fovDeg: 0,
       targetLogFov: 0,
-      currentLensLevel: 0,
       telescope: telescopeSnapshot(),
       engineTime: getEngineTime(),
       env: "-",
@@ -128,37 +125,20 @@
     const MAX_FOV = 3.228859;
     const MIN_FOV = 0.000005;
     const FOV_STEP = 0.1;
-    const LENS_FOCAL_LENGTHS = {
-      1: "eye",
-      2: 40,
-      3: 6,
-      4: 0.5,
-      5: "eye",
-      6: 40,
-      7: 6,
-      8: 0.5,
-    };
-    const NO_LENS_BLUR = 5;
-    const HUMAN_EYE_FOV = Math.PI / 3;
-
-    let currentLensLevel = 0;
-    let currentFov = MAX_FOV;
-    let logFov = Math.log(MAX_FOV);
+    const FOV_INICIAL = CALIBRATE_ON_START ? MAX_FOV : Math.PI / 3;
+    let currentFov = FOV_INICIAL;
+    let logFov = Math.log(FOV_INICIAL);
 
     setDebug({
       fovRad: currentFov,
       fovDeg: toDegrees(currentFov),
       targetLogFov: logFov,
-      currentLensLevel,
     });
 
     let warnedInvalidView = false;
 
     function updateStellariumView({ h, v }) {
       if (!engine || !engine.core || !engine.core.observer) return;
-      // A malformed payload used to write NaN into observer.yaw/pitch, which looks
-      // exactly like "no readings are arriving" — the view simply never moves.
-      // Warn once (this runs per frame) instead of corrupting engine state.
       if (!Number.isFinite(h) || !Number.isFinite(v)) {
         if (!warnedInvalidView) {
           warnedInvalidView = true;
@@ -166,6 +146,7 @@
         }
         return;
       }
+      if (freeLookEnabled) return;
       engine.core.observer.yaw = -h;
       engine.core.observer.pitch = invertVerticalMotion ? -v : v;
       registerZoomMotion(h, v);
@@ -207,58 +188,8 @@
           core.star_relative_scale = 1.0;
           core.stars.label_amount = 3.0;
           core.exposure_scale = 1;
+          core.fov = currentFov;
         },
-      });
-    }
-
-    function applyLensLevel(level) {
-      currentLensLevel = level;
-
-      if (level === 0) {
-        // currentFov = MAX_FOV;
-        // logFov = Math.log(currentFov);
-        // updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      const lens = LENS_FOCAL_LENGTHS[level];
-
-      if (lens === "eye") {
-        currentFov = HUMAN_EYE_FOV;
-        logFov = Math.log(currentFov);
-        updateStellariumFov({ fov: currentFov });
-        telescope.setEyepieceFocalLength(0);
-        setDebug({
-          currentLensLevel,
-          targetLogFov: logFov,
-          fovRad: currentFov,
-          fovDeg: toDegrees(currentFov),
-          telescope: telescopeSnapshot(),
-        });
-        return;
-      }
-
-      if (!lens) return;
-
-      telescope.setEyepieceFocalLength(lens);
-      const fov = telescope.fovFromEyepiece(lens);
-      currentFov = fov;
-      logFov = Math.log(fov);
-      updateStellariumFov({ fov });
-      setDebug({
-        currentLensLevel,
-        targetLogFov: logFov,
-        fovRad: currentFov,
-        fovDeg: toDegrees(currentFov),
-        telescope: telescopeSnapshot(),
       });
     }
 
@@ -326,16 +257,6 @@
       orientation.cancelCalibration();
     }
 
-    function triggerLens(level) {
-      applyLensLevel(level);
-      targetLogFov = logFov;
-      setDebug({ targetLogFov });
-    }
-
-    function triggerCardChange(level) {
-      triggerLens(level);
-    }
-
     function triggerZoomIn() {
       applyZoomDelta(-FOV_STEP);
     }
@@ -348,15 +269,30 @@
       invertVerticalMotion = !invertVerticalMotion;
     }
 
+    // Apuntar el aparato a la dirección real de un objeto no siempre es posible
+    // bajo techo. Con esto la vista se arrastra con el dedo y los sensores
+    // siguen leyendo, para poder mirar sus números mientras tanto.
+    const freeLook = createFreeLook({
+      canvas: canvasEl,
+      getFov: () => engine?.core?.fov,
+      onPan: ({ dYaw, dPitch }) => {
+        const obs = engine?.core?.observer;
+        if (!obs) return;
+        obs.yaw += dYaw;
+        obs.pitch = acotarPitch(obs.pitch + dPitch);
+      },
+    });
+
+    function toggleFreeLook() {
+      freeLookEnabled = !freeLookEnabled;
+      freeLook?.setEnabled(freeLookEnabled);
+    }
+
     const orientation = createOrientationController({
       persistBiasKey: "astrovis_gyro_bias",
       getLogFov: () => logFov,
       onDebug: (partial) => setDebug(partial),
       onCoords: ({ yaw, pitch }) => setDebugCoords(yaw, pitch),
-      // core's onView emits { yaw, pitch } — its own vocabulary, same as onCoords
-      // right above. This app speaks { h, v } toward Stellarium, so the
-      // translation belongs here. Destructuring { h, v } off the callback yields
-      // undefined and the view never moves.
       onView: ({ yaw, pitch }) => updateStellariumView({ h: yaw, v: pitch }),
       onCalibrationVisibility: (visible) => {
         if (overlayEl) overlayEl.style.display = visible ? "block" : "none";
@@ -366,23 +302,14 @@
 
     onDebugRecalibrate = triggerRecalibration;
     onDebugCancelCalibration = triggerCancelCalibration;
-    onDebugSelectLens = triggerLens;
-    onDebugSimulateCardChange = triggerCardChange;
     onDebugZoomIn = triggerZoomIn;
     onDebugZoomOut = triggerZoomOut;
     onDebugToggleVertical = toggleVerticalMotion;
+    onDebugToggleFreeLook = toggleFreeLook;
 
     const keyboardConnector = createKeyboardConnector({
       bindings: {
         c: () => triggerRecalibration(),
-        1: () => triggerLens(1),
-        2: () => triggerLens(2),
-        3: () => triggerLens(3),
-        4: () => triggerLens(4),
-        5: () => triggerLens(5),
-        6: () => triggerLens(6),
-        7: () => triggerLens(7),
-        8: () => triggerLens(8),
         "+": () => triggerZoomIn(),
         "=": () => triggerZoomIn(),
         "-": () => triggerZoomOut(),
@@ -396,8 +323,6 @@
     });
 
     orientation.start( CALIBRATE_ON_START );
-    const initialLensLevel = appConfig.calibrateOnStart ? 0 : 1;
-    applyLensLevel(initialLensLevel);
 
     const timeUpdateInterval = setInterval(() => {
       setDebug({ engineTime: getEngineTime() });
@@ -410,12 +335,11 @@
       lastZoomMotion = null;
       onDebugRecalibrate = () => {};
       onDebugCancelCalibration = () => {};
-      onDebugSelectLens = () => {};
-      onDebugSimulateCardChange = () => {};
       onDebugZoomIn = () => {};
       onDebugZoomOut = () => {};
       onDebugToggleVertical = () => {};
-      
+      onDebugToggleFreeLook = () => {};
+      freeLook?.stop();
     };
   });
 </script>
@@ -451,11 +375,11 @@
       invertVertical={invertVerticalMotion}
       onRecalibrate={onDebugRecalibrate}
       onCancelCalibration={onDebugCancelCalibration}
-      onSelectLens={onDebugSelectLens}
-      onSimulateCardChange={onDebugSimulateCardChange}
       onZoomIn={onDebugZoomIn}
       onZoomOut={onDebugZoomOut}
       onToggleVertical={onDebugToggleVertical}
+      freeLook={freeLookEnabled}
+      onToggleFreeLook={onDebugToggleFreeLook}
       onAddHour={addHour} 
       onSubHour={subHour}
     />

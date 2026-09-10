@@ -1,63 +1,51 @@
-// Panel de ajustes, compartido por los dos roles.
-//
-// Es un panel de **depuración**, no interfaz de producto. Igual que el de kiosk:
-// existe para calibrar el montaje y probar hipótesis en el aparato, y no debería
-// llegar a una instalación real. Que hoy sea útil no lo convierte en una
-// funcionalidad.
-//
-// Los dos roles necesitan lo mismo con otra configuración, así que el panel se
-// arma según el rol en vez de existir dos veces. Qué controles aparecen depende
-// de qué puede cambiar cada uno:
-//
-//   ocular — montado en el tubo: rotación y posición de la vista, tamaño fijo.
-//   guía   — se mira de frente: tamaño de la vista, siempre arriba, sin rotación.
-//
-// Los que dependen de los sensores (suavizado, zona dinámica, recalibrar) sólo
-// se arman en el rol que efectivamente los lleva, que lo decide el servidor.
+// Panel de depuración y ajustes para Ocular y Guía.
 import qrcode from 'qrcode-generator';
+import { SEEING_DEFAULTS, SEEING_PARAMS } from '@ventanaceleste/core';
 import './ui.css';
 
-// Una clave por rol: en desarrollo las dos páginas se abren en el mismo
-// navegador, o sea el mismo origen y el mismo localStorage.
 const clave = (role) => `dual-telescope:${role}`;
 
-// Rango del zoom, en radianes. Cruza el umbral de la zona dinámica (0.06) para
-// poder entrar y salir de ella con el deslizador.
+// Rango de FOV (radianes).
 export const FOV_MIN = 0.0005;
 export const FOV_MAX = 1.5;
 
-// Ancho a partir del cual se considera pantalla de escritorio. Por debajo, la
-// vista se recorta como en el teléfono.
 export const PANTALLA_GRANDE = '(min-width: 900px)';
+export const UMBRAL_DINAMICO = 0.06;
 
-// Sólo lo que el panel ajusta. El suavizado y el umbral de la zona dinámica
-// quedaron fijados en código (ver sky.js): tenerlos acá los guardaría en
-// localStorage, y un valor viejo guardado le ganaría al del código.
 export const AJUSTES_POR_DEFECTO = {
   ocular: {
-    // 270 es la posición física del teléfono dentro del tubo.
     rot: 270,
-    // Medido contra el ocular real, así que no se expone como control.
     fraccion: 0.5,
-    // Centro vertical de la vista, como fracción del alto de pantalla. Abajo.
     pos: 0.75,
-    fov: 0.05,
+    fov: UMBRAL_DINAMICO * 1.3,
     lado: 'arriba',
+    exposure: 1,
+    invVertical: false,
+    sinSensores: false,
+    seeing: { ...SEEING_DEFAULTS },
   },
   guide: {
     rot: 0,
     fraccion: 0.5,
-    // Arriba. Se recalcula al cambiar el tamaño; el guía no mueve la vista.
     pos: 0.25,
     fov: 0.14,
     lado: 'abajo',
+    exposure: 1,
+    invVertical: false,
+    sinSensores: false,
+    seeing: { ...SEEING_DEFAULTS },
   },
 };
 
 export function cargarAjustes(role) {
   const base = AJUSTES_POR_DEFECTO[role] ?? AJUSTES_POR_DEFECTO.ocular;
   try {
-    return { ...base, ...JSON.parse(localStorage.getItem(clave(role)) ?? '{}') };
+    const guardado = JSON.parse(localStorage.getItem(clave(role)) ?? '{}');
+    return {
+      ...base,
+      ...guardado,
+      seeing: { ...SEEING_DEFAULTS, ...(base.seeing ?? {}), ...(guardado.seeing ?? {}) },
+    };
   } catch {
     return { ...base };
   }
@@ -67,7 +55,7 @@ function guardar(role, ajustes) {
   try { localStorage.setItem(clave(role), JSON.stringify(ajustes)); } catch { /* modo privado */ }
 }
 
-export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, onRecalibrar }) {
+export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecalibrar }) {
   const esOcular = role === 'ocular';
 
   const capa = document.createElement('div');
@@ -76,6 +64,34 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   const caja = document.createElement('div');
   caja.className = 'op-caja';
   capa.appendChild(caja);
+
+  // Los ajustes del seeing son veintidós y no tienen nada que ver con los de
+  // vista, así que van en su propia pestaña en vez de alargar una sola lista.
+  const pestanas = document.createElement('div');
+  pestanas.className = 'op-tabs';
+  const hojaVista = document.createElement('div');
+  const hojaSeeing = document.createElement('div');
+  hojaSeeing.hidden = true;
+  caja.append(pestanas, hojaVista, hojaSeeing);
+
+  const botonPestana = (texto, hoja, activa = false) => {
+    const b = document.createElement('button');
+    b.textContent = texto;
+    b.className = activa ? 'on' : '';
+    b.onclick = () => {
+      for (const o of pestanas.children) o.className = '';
+      b.className = 'on';
+      hojaVista.hidden = hoja !== hojaVista;
+      hojaSeeing.hidden = hoja !== hojaSeeing;
+    };
+    pestanas.appendChild(b);
+    return b;
+  };
+  botonPestana('Vista', hojaVista, true);
+  if (esOcular) botonPestana('Seeing', hojaSeeing);
+
+  // Destino de las filas que se agregan a continuación.
+  let hoja = hojaVista;
 
   const abridor = document.createElement('button');
   abridor.className = 'op-abridor';
@@ -91,12 +107,10 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     const l = document.createElement('span');
     l.textContent = etiqueta;
     d.append(l, control, valorEl ?? document.createElement('span'));
-    caja.appendChild(d);
+    hoja.appendChild(d);
     return d;
   };
 
-  // `escala` permite deslizadores logarítmicos: el zoom abarca tres órdenes de
-  // magnitud y en lineal el extremo cerrado sería inmanejable.
   const deslizador = (c, { min, max, paso, formato, escala = null }) => {
     const aCrudo = escala ? escala.a : (v) => v;
     const deCrudo = escala ? escala.de : (v) => v;
@@ -116,7 +130,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
 
   const pct = (v) => `${Math.round(v * 100)}%`;
 
-  // El ocular tiene tamaño fijo y posición móvil; el guía al revés.
   if (esOcular) {
     const ps = deslizador('pos', {
       min: ajustes.fraccion / 2, max: 1 - ajustes.fraccion / 2, paso: 0.01, formato: pct,
@@ -133,6 +146,86 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     formato: (v) => (v >= 0.02 ? `${((v * 180) / Math.PI).toFixed(1)}°` : `${((v * 180 * 60) / Math.PI).toFixed(0)}'`),
   });
   fila('zoom', zm.input, zm.valor);
+
+  // --- Seeing ----------------------------------------------------------
+  // Sólo el ocular monta el overlay. La sección se construye desde
+  // SEEING_PARAMS para que no exista una segunda lista que se desincronice.
+  // El FWHM va arriba y separado: es el único que la app expone al público, y
+  // el resto describe el modelo o el instrumento.
+  if (esOcular) {
+    hoja = hojaSeeing;
+    const deslizadorSeeing = (spec) => {
+      const input = document.createElement('input');
+      Object.assign(input, {
+        type: 'range', min: spec.min, max: spec.max, step: spec.step,
+        value: ajustes.seeing[spec.k],
+      });
+      const valor = document.createElement('b');
+      const pintar = () => {
+        const dec = spec.step >= 1 ? 0 : spec.step >= 0.1 ? 1 : 2;
+        valor.textContent = ajustes.seeing[spec.k].toFixed(dec) + spec.u;
+      };
+      pintar();
+      input.addEventListener('input', () => {
+        ajustes.seeing[spec.k] = parseFloat(input.value);
+        pintar();
+        emitir(`seeing.${spec.k}`);
+      });
+      return { input, valor };
+    };
+
+    const titulo = (t) => {
+      const d = document.createElement('div');
+      d.className = 'op-sec';
+      d.textContent = t;
+      hoja.appendChild(d);
+    };
+
+    titulo('SEEING');
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'user')) {
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+
+    let grupoAbierto = null;
+    for (const spec of SEEING_PARAMS.filter((x) => x.scope === 'debug')) {
+      if (spec.grupo !== grupoAbierto) {
+        grupoAbierto = spec.grupo;
+        titulo(`seeing · ${grupoAbierto.toLowerCase()}`);
+      }
+      const d = deslizadorSeeing(spec);
+      fila(spec.lbl.toLowerCase(), d.input, d.valor);
+    }
+    hoja = hojaVista;
+  }
+
+  // Exposición del motor. No es del seeing: decide cuánto detalle revelan los
+  // objetos extensos, que el motor muestra más de lo que el ojo alcanza a ver en
+  // una nebulosa.
+  const ex = deslizador('exposure', { min: 0.05, max: 3, paso: 0.05, formato: (v) => `${v.toFixed(2)}×` });
+  fila('exposición', ex.input, ex.valor);
+
+  // El montaje del teléfono en el tubo puede cambiar, así que la inversión
+  // vertical queda como opción en vez de horneada en el eje óptico.
+  const invVert = document.createElement('input');
+  invVert.type = 'checkbox';
+  invVert.checked = !!ajustes.invVertical;
+  invVert.onchange = () => {
+    ajustes.invVertical = invVert.checked;
+    emitir('invVertical');
+  };
+  fila('vertical invertida', invVert);
+
+  // Apuntado libre, para probar en el teléfono sin apuntar el aparato a la
+  // dirección real del objeto.
+  const sinSensores = document.createElement('input');
+  sinSensores.type = 'checkbox';
+  sinSensores.checked = !!ajustes.sinSensores;
+  sinSensores.onchange = () => {
+    ajustes.sinSensores = sinSensores.checked;
+    emitir('sinSensores');
+  };
+  fila('sin sensores', sinSensores);
 
   if (esOcular) {
     const rotBox = document.createElement('div');
@@ -160,12 +253,7 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     caja.appendChild(recal);
   }
 
-  // Emparejamiento: QR con la URL del guía.
-  //
-  // La dirección la reporta el relay, porque una página no puede conocer la IP
-  // de LAN del equipo que la sirve. El protocolo y el puerto salen de `location`,
-  // así que la URL queda bien tanto en desarrollo, sobre Vite, como en
-  // producción, sin que el servidor tenga que saber en cuál de los dos está.
+  // QR con la URL del guía.
   const qrCaja = document.createElement('div');
   qrCaja.className = 'op-qr';
   qrCaja.style.display = 'none';
@@ -176,9 +264,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
 
   let direcciones = [];
   let iDir = 0;
-  // Arranca oculto: un QR legible ocupa casi todo el panel y taparía el canvas,
-  // y el emparejamiento se hace una vez por sesión de montaje. El SVG tampoco se
-  // genera hasta que se muestra.
   let qrVisible = false;
 
   function pintarQr() {
@@ -187,7 +272,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
     if (!mostrar) return;
     const puerto = location.port || (location.protocol === 'https:' ? 443 : 80);
     const url = `${location.protocol}//${direcciones[iDir]}:${puerto}/guide.html`;
-    // Tipo 0 deja que la librería elija la versión mínima que entre.
     const qr = qrcode(0, 'M');
     qr.addData(url);
     qr.make();
@@ -197,9 +281,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
       : url;
   }
 
-  // Un teléfono puede tener a la vez la interfaz del punto de acceso y una de
-  // wifi. Cuál alcanza al guía depende de a cuál esté conectado, así que se
-  // pueden recorrer en vez de adivinar.
   qrCaja.onclick = () => {
     if (direcciones.length < 2) return;
     iDir = (iDir + 1) % direcciones.length;
@@ -218,7 +299,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
       pintarBoton();
       pintarQr();
     };
-    // El interruptor va antes del QR, así no se mueve de lugar al abrirlo.
     fila('QR del guía', qrBoton);
     caja.appendChild(qrCaja);
   }
@@ -227,24 +307,9 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   estado.className = 'op-estado';
   caja.appendChild(estado);
 
-  // El enfocador vive en el ocular, que es donde está el hardware.
-  const botonPair = document.createElement('button');
-  botonPair.className = 'op-pair';
-  botonPair.textContent = 'Emparejar enfocador';
-  botonPair.style.display = 'none';
-  botonPair.onclick = () => onPair?.(botonPair);
-  if (esOcular) caja.appendChild(botonPair);
-
-  // Barra fija arriba de todo: con la vista en un extremo el hueco de ese lado es
-  // cero y la caja se recorta al mínimo, así que estos dos botones tienen que
-  // seguir alcanzables sin scrollear.
   const barra = document.createElement('div');
   barra.className = 'op-barra';
 
-  // Anclaje manual arriba o abajo. Antes el alto se recortaba solo al hueco que
-  // dejaba la vista, lo cual en pantalla completa daba hueco cero y aplastaba el
-  // panel. Mover de lado alcanza: la caja mide lo que mide su contenido y deja
-  // ver el canvas del otro lado.
   const lado = document.createElement('button');
   lado.className = 'op-cerrar';
   const aplicarLado = () => {
@@ -274,7 +339,6 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onPair, 
   return {
     caja,
     setEstado(texto) { estado.textContent = texto; },
-    mostrarPair(mostrar) { botonPair.style.display = mostrar ? 'block' : 'none'; },
     setDirecciones(lista) {
       direcciones = lista ?? [];
       iDir = 0;

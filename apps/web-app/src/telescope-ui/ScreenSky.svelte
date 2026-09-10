@@ -42,7 +42,10 @@
   );
   let pollutionValue = $state(9);
   let autoPollutionEnabled = $state(false);
-  let turbulenceValue = $state(5);
+  // Único parámetro de seeing que se ofrece al público: el FWHM del disco, en
+  // arcosegundos. 0.3 es una noche excelente y 3 una mala. El resto del modelo
+  // se ajusta en desarrollo.
+  let turbulenceValue = $state(1);
   // Fix: Los botones se aclaran cuando se desactivan, y se desaclaran cuando se activan. Poco 
   // intuitivo. 
   function toggleStelOption(name) {
@@ -85,7 +88,7 @@
 
   function onTurbulenceChange(v) {
     turbulenceValue = v;
-    sendSeeingValue({ target: 'turbulence', value: v });
+    sendSeeingValue({ target: 'seeing', value: v });
   }
 </script>
 
@@ -132,11 +135,11 @@
       <SectionLabel tone="muted">Turbulencia del aire</SectionLabel>
       <Slider
         value={turbulenceValue}
-        min={0}
-        max={10}
-        step={0.1}
+        min={0.3}
+        max={3}
+        step={0.05}
         onChange={onTurbulenceChange}
-        valueText={turbulenceValue.toFixed(1).replace('.', ',')}
+        valueText={turbulenceValue.toFixed(2).replace('.', ',') + '″'}
         minLabel="Aire quieto"
         maxLabel="Aire revuelto"
         accent="var(--stella)"
