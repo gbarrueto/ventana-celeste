@@ -133,9 +133,7 @@ function createCalibOverlay() {
           btn.textContent = 'Calibrar';
           btn.style.display = 'block';
           break;
-        // Con una calibración guardada todavía hace falta un toque, porque el
-        // permiso de sensores de iOS sólo se concede dentro de un gesto del
-        // usuario. Lo que se ahorra es el ritual de dejar el teléfono quieto.
+        // Requiere interacción del usuario para activar sensores en iOS
         case 'resume':
           icon.textContent = '🔭';
           msg.textContent = 'Todo listo';
@@ -268,13 +266,8 @@ export function isDebugOverlayVisible() {
 // here; the sensor fusion/calibration state machine itself lives in
 // @ventanaceleste/core so it's shared with the other apps.
 
-// El bias del giroscopio se guarda para no pedir el ritual de calibración en
-// cada visita. Caduca a las 12 h: dentro de la misma sesión de observación el
-// sensor es el mismo a la misma temperatura, y al día siguiente ya no se puede
-// afirmar eso. Recalibrar a mano (toque en el overlay de depuración) reescribe
-// el valor guardado, así que una calibración mala no queda atrapada.
 const BIAS_KEY = 'web-app:gyro-bias';
-const BIAS_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const BIAS_MAX_AGE_MS = 12 * 60 * 60 * 1000; // Caduca a las 12 h
 
 let controller = null;
 let updateDebug = null;

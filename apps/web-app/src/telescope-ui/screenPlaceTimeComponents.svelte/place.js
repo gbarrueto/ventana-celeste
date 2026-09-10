@@ -43,9 +43,6 @@ async function sendCoordinates({ lat, lon }) {
   const pollution = await getMagFromLonLat({ lat, lon });
   const tz = getUtcOffset(lat, lon);
   setCurrentTZ(tz);
-  // El brillo del cielo es una propiedad del sitio, así que mover el observador
-  // lo recalcula. Queda marcado como "viene del lugar" para que el deslizador de
-  // luces de la ciudad lo muestre en vez de quedarse en el valor anterior.
   if (pollution != null) updateSkySettings({ skyMag: pollution, skyMagFromPlace: true });
 
   onLocationChange?.({

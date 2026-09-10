@@ -58,10 +58,6 @@
 
     blurTarget = BLUR_TARGETS[len] ?? 0;
     updateDisplayBlur();
-
-    // La turbulencia ya no se rampa contra el campo desde acá. El modelo expresa
-    // sus amplitudes en arcosegundos y las convierte a píxeles con el FOV que lee
-    // del motor, así que el efecto crece con el aumento por sí solo.
   }
 
   function updateDisplayBlur() {
@@ -82,7 +78,6 @@
   onMount(async () => {
     await initializeStelEngine(true);
 
-    //Protobject.Core.send({ msg: 'requestSynchronizeData', values: {} }).to('index.html');
     const msg = 'requestSynchronizeData';
     sendTelescopeMessage(msg, {});
 
@@ -129,9 +124,6 @@
       onmouseup={onFinderUp}
       onmouseleave={onFinderUp}
     >
-      <!-- Sin `blur`: el buscador es la referencia para apuntar y tiene que
-           verse nítido siempre. El enfocador actúa sobre la imagen del visor,
-           que es la que un ocular desenfocado emborrona de verdad. -->
       <FinderView>
         <canvas id="stel-canvas"></canvas>
       </FinderView>

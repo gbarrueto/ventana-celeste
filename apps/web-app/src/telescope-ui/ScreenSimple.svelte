@@ -19,8 +19,6 @@
   const ZOOM_MAX = 150;
 
   let zoomValue = $state(100);
-  // Display-only: the source has no "go to object" message, so tapping a target
-  // just marks it here. Kept because the redesign shows what you are looking at.
   let target = $state(null);
 
   let t = $derived(TARGETS.find((x) => x.id === target));
@@ -37,7 +35,6 @@
 
   onMount(() => {
     sendTelescopeMessage('requestSynchronizeSimpleZoom', {});
-    //Protobject.Core.send({ msg: 'requestSynchronizeSimpleZoom', values: {} }).to('index.html');
 
     onTelescopeMessage('setSynchronizedSimpleZoom', (values) => {
       const { data } = values;

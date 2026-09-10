@@ -38,9 +38,6 @@
 
   const LAYERS = Object.entries(STEL_BUTTONS).map(([name, info]) => ({ name, info, ...PRESENT[name] }));
 
-  // Todo el estado de esta pantalla vive en `skySettings`, no en variables
-  // locales: la pestaña se desmonta al salir de ella y con ella se perdía lo que
-  // el visitante acababa de elegir.
   let layers = $derived($skySettings.layers);
   let bortle = $derived(magToBortle($skySettings.skyMag));
   let seeingValue = $derived($skySettings.seeing);
@@ -53,8 +50,6 @@
     sendTelescopeMessage('stellariumOption', { path: info.path, attr: info.attr, value: visible });
   }
 
-  // `mag` es la magnitud SQM, que es lo que entiende el motor. Bortle es sólo la
-  // forma de presentarlo.
   function applySkyMag(mag, { fromPlace }) {
     updateSkySettings({ skyMag: mag, skyMagFromPlace: fromPlace });
     applyPollution({ mag });
@@ -65,15 +60,10 @@
     );
   }
 
-  // Mover el deslizador es siempre una elección manual, y como tal sobrescribe
-  // lo que había puesto la ubicación.
   function onPollutionChange(v) {
     applySkyMag(bortleToMag(Math.round(v)), { fromPlace: false });
   }
 
-  // No bloquea el deslizador: lo devuelve al brillo real del sitio donde está
-  // puesto el observador. Antes era un pestillo, y un pestillo sobre un valor
-  // que la pantalla no conservaba no le servía a nadie.
   async function usarLuzDelLugar() {
     try {
       const mag = await getMagFromLonLat({ lat: observerLat, lon: observerLon });
@@ -94,8 +84,6 @@
     <SectionLabel>Qué se dibuja</SectionLabel>
     <div class="tile-grid">
       {#each LAYERS as l (l.name)}
-        <!-- `active` es "la capa está encendida". Antes se pasaba negado, así
-             que las casillas mostraban lo contrario de lo que ocurría. -->
         <ToggleTile
           label={l.label}
           hint={l.hint}

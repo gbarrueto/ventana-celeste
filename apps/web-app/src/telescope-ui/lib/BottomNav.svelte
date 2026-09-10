@@ -1,6 +1,4 @@
 <script module>
-  // Replaces the source hamburger drawer: three named destinations, one tap each,
-  // readable without prior knowledge.
   const TABS = [
     { id: 'mirar', icon: 'telescope', label: 'Mirar' },
     { id: 'cielo', icon: 'sliders-horizontal', label: 'Cielo' },

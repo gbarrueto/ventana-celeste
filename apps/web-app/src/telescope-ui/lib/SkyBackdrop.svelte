@@ -1,6 +1,4 @@
 <script module>
-  // Decorative star field behind the connect and finder views. New in the
-  // redesign — no equivalent in the source, purely ornamental.
   const STARS = [
     [12, 18, 1.4], [28, 9, 1], [41, 24, 1.8], [58, 13, 1.1], [72, 27, 2.2], [86, 16, 1.3],
     [8, 44, 1], [22, 55, 1.6], [37, 47, 1.1], [52, 62, 2.6], [66, 51, 1.2], [79, 66, 1.5],

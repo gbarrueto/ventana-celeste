@@ -80,14 +80,11 @@
       }
     });
 
-    // El overlay de seeing lee el campo del motor por frame: el zoom llega por
-    // mensaje pero el motor también atiende gestos por su cuenta.
     const seeing = initializeSeeingOverlay({
       getFov: getEngineFov,
     });
     if (seeing) {
       setSeeingControl(seeing);
-      // El arranque es en modo simple, que no lleva seeing.
       seeing.setEnabled(false);
       setSeeingOptionHandler(({ target, value }) => {
         if (!seeing.set(target, value)) {
@@ -126,10 +123,7 @@
   aria-label={peerConnected ? 'Telescopio conectado' : 'Telescopio desconectado'}
 ></div>
 
-<!-- Always mounted, toggled with CSS. Inside an {#if} the container would be
-     destroyed on connect, and the overlay returning after a disconnect would get a
-     *new, empty* div while the QR was only ever rendered once in onMount — which
-     showed up as a blank white square. -->
+<!-- Toggle vía CSS para mantener el canvas QR instanciado en el DOM -->
 <div class="qr-overlay" class:qr-overlay--hidden={!showQr}>
   <div class="qr-text">
     {#if connectionLost}
@@ -219,8 +213,6 @@
     -webkit-backdrop-filter: blur(90px);
   }
 
-  /* Connection indicator: deliberately small and quiet. Sits above the QR
-     overlay so it stays visible while the overlay is up. */
   .conn-status {
     position: fixed;
     top: 12px;
@@ -256,9 +248,6 @@
     -webkit-backdrop-filter: blur(2px);
   }
 
-  /* Compound selector on purpose: `.qr-overlay` sets `display: flex`, and after
-     Svelte adds its scoping class a single-class `.qr-overlay--hidden` ties on
-     specificity and loses to whichever rule comes later. This wins regardless. */
   .qr-overlay.qr-overlay--hidden {
     display: none;
   }

@@ -9,11 +9,6 @@
   let pct = $derived(((value - min) / (max - min)) * 100);
   let fill = $derived(accent || 'var(--digitale)');
 
-  // El pulgar recorre la pista descontando su propio ancho, igual que hace el
-  // navegador con el de un <input type=range>. Sin ese descuento el pulgar
-  // dibujado sobresale media anchura por cada extremo — se monta sobre las
-  // etiquetas y sobre el borde de la tarjeta — y además queda desplazado
-  // respecto del pulgar nativo que de verdad sigue al dedo.
   let thumbLeft = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px)`);
   let fillWidth = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px + ${thumbSize / 2}px)`);
 
@@ -36,8 +31,6 @@
     </div>
   {/if}
 
-  <!-- La caja es al menos 36px de alto aunque el pulgar sea menor: el círculo se
-       encogió para no chocar con el texto, pero el área que recibe el dedo no. -->
   <div class="vc-slider-track-wrap" style="height:max({thumbSize}px, 36px)">
     <div class="vc-slider-track"></div>
     <div class="vc-slider-fill" style="width:{fillWidth};background:{fill}"></div>
@@ -129,9 +122,6 @@
     appearance: none;
     background: transparent;
   }
-  /* Invisible, pero el navegador calcula el recorrido con el ancho de SU pulgar.
-     Dárselo igual que al dibujado es lo que hace que el dedo y el círculo
-     blanco coincidan en toda la pista y no sólo en el centro. */
   .vc-slider-input::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;

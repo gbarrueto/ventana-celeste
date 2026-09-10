@@ -55,8 +55,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Fila 2: un stepper por campo, una fila cada uno para tener blancos grandes
-        en un control remoto de mano. */
 .field-steppers {
   display: grid;
   gap: 6px;

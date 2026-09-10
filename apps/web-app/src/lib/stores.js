@@ -86,25 +86,13 @@ export const isLoading = writable(true);
 export const isMenuOpen = writable(false);
 
 // ── Ajustes del cielo ──────────────────────────────────────
-// La copia única de lo que el teléfono le pidió mostrar al visor. Vive acá y no
-// dentro de ScreenSky por dos razones: esa pantalla se desmonta al cambiar de
-// pestaña y con ella se iba el estado, y en una reconexión hay que poder
-// reenviarle al visor la foto completa de los ajustes.
-//
-// `skyMag` se guarda en magnitudes SQM, que es la unidad del motor, y la escala
-// Bortle se deriva para presentarla. Antes se guardaban las dos cosas en la
-// misma variable —el selector escribía Bortle y el buscador de lugares escribía
-// magnitudes— y ninguna de las dos era fiable.
 export const PARANAL_SKY_MAG = 21.8;
 
 export const skySettings = writable({
-  // Nombre de STEL_BUTTONS -> ¿está visible la capa?
   layers: Object.fromEntries(Object.entries(STEL_BUTTONS).map(([name, info]) => [name, info.on])),
   skyMag: PARANAL_SKY_MAG,
-  // El brillo del cielo lo fijó la ubicación y nadie lo ha tocado a mano.
   skyMagFromPlace: true,
-  // FWHM del disco de seeing en arcosegundos. Ver packages/core/src/sky/seeing.js.
-  seeing: 1.0,
+  seeing: 1.0, // FWHM del disco en arcosegundos
 });
 
 export function getSkySettings() {

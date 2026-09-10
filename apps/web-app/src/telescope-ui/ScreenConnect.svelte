@@ -8,8 +8,6 @@
   import Wordmark from './lib/ds/Wordmark.svelte';
   import HelpNote from './lib/ds/HelpNote.svelte';
 
-  // Three states of the link to the big screen, from the source Telescope.svelte:
-  // connecting -> connected, connecting -> timeout, connected -> lost.
   let { state = 'connecting', onRetry } = $props();
 </script>
 

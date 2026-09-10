@@ -7,8 +7,6 @@
   const id = 'vsl-' + Math.random().toString(36).slice(2, 9);
   let pct = $derived(((value - min) / (max - min)) * 100);
 
-  // Mismo descuento que en Slider: el pulgar recorre la pista sin salirse por
-  // los extremos, que es donde se montaba sobre el valor y sobre "Todo el cielo".
   let thumbBottom = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px)`);
   let fillHeight = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px + ${thumbSize / 2}px)`);
 
@@ -116,8 +114,6 @@
     appearance: none;
     background: transparent;
   }
-  /* Ver la nota en Slider.svelte: el pulgar nativo es invisible pero fija el
-     recorrido, así que tiene que medir lo mismo que el dibujado. */
   .vc-vslider-input::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;

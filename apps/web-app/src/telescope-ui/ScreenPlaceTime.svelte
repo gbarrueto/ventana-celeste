@@ -31,10 +31,6 @@
 
 
   // ── Time ──────────────────────────────────────────────────
-  // El diseño anterior montaba un flatpickr inline al abrir el control, lo que
-  // arrastraba ~3 CSS/JS de CDN al load. Ahora el estado vive en un Date de
-  // pared (`selected`) que los botones +/- mutan al instante; flatpickr sólo se
-  // carga si el usuario abre el popover "Elegir fecha".
   let timeSpeed = $state(0);
   let selected = $state(new Date());
   let readout = $state('—');
@@ -47,8 +43,6 @@
   let lastInteraction = 0;
   let destroyed = false;
 
-  // Cualquier toque del usuario pausa la resincronización con el motor un rato,
-  // para que un +/- o una navegación del calendario no se pisen con el reloj.
   function markInteraction() {
     lastInteraction = Date.now();
   }
@@ -86,8 +80,6 @@
     return new Date(year, month + 1, 0).getDate();
   }
 
-  // MJD (UTC) -> Date de pared en la zona del observador, para recibir el reloj
-  // del motor de vuelta. `mjdToWallClockISO` entrega "YYYY-MM-DDTHH:MM:SS".
   function mjdToWallDate(mjd) {
     const [datePart, timePart] = mjdToWallClockISO(mjd, currentTZ).split('T');
     const [y, mo, da] = datePart.split('-').map(Number);
@@ -95,23 +87,14 @@
     return new Date(y, mo - 1, da, h, mi, Math.trunc(s) || 0);
   }
 
-  // Aplica `selected` como fecha del visor y actualiza el readout. El calendario,
-  // si está abierto, se pone al día sin disparar su propio onChange.
   function applySelected() {
     readout = fmtReadout(selected);
     updateStelDate(wallClockToMJD(selected, currentTZ));
     if (flatpickrInstance) flatpickrInstance.setDate(selected, false);
   }
 
-  // Fila 2: cada botón mueve un campo en ±1 sin arrastrar a los de más peso.
-  // El mes envuelve 12->1 (nunca mes 13), el día envuelve dentro del mes en
-  // curso, y hora/minuto envuelven en su rango. Para saltar de día real están
-  // los botones ±24 h.
   function stepField(key, delta) {
     markInteraction();
-    // `d` es un Date de usar y tirar: se calcula el campo y se reasigna a
-    // `selected` como referencia nueva, nunca se muta el estado reactivo en
-    // sitio, así que SvelteDate no aporta nada aquí.
     // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const d = new Date(selected);
     switch (key) {
@@ -201,8 +184,6 @@
       flatpickrInstance.destroy();
       flatpickrInstance = null;
     }
-    // El visor ya recibió cada cambio vía onChange; este envío final cubre el
-    // caso de cerrar sin tocar el calendario y deja el motor en `selected`.
     updateStelDate(wallClockToMJD(selected, currentTZ));
   }
 
@@ -221,12 +202,8 @@
     } finally {
       isLoading.set(false);
     }
-    if (destroyed) return; // la pestaña se cerró mientras cargaba el globo
+    if (destroyed) return;
 
-    // El visor emite `syncTime` (MJD del motor) cada 300 ms mientras esto esté
-    // activo. Lo mantenemos prendido todo el tiempo que el control esté montado
-    // para que el readout siga al reloj cuando corre una velocidad, sin que eso
-    // dependa de flatpickr.
     sendTelescopeMessage('setDatetimeInterval', { active: true });
     readout = fmtReadout(selected);
 

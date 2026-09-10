@@ -99,10 +99,6 @@ export function updateStellariumFov({ fov }) {
   engine.core.display_limit_mag = currentLimitMag();
 }
 
-// `value` es el estado que se quiere, no "cambia al contrario". Un mensaje de
-// alternancia no se puede reenviar para resincronizar: si el visor se perdió un
-// toque, repetirlo lo deja al revés en lugar de ponerlo al día. Se acepta la
-// forma sin `value` para no romper a un emisor viejo.
 export function stellariumOption({ path, attr, value }) {
   if (!engine?.core) return;
   const obj = path.split('.').reduce((o, k) => o && o[k], engine.core);
@@ -111,8 +107,6 @@ export function stellariumOption({ path, attr, value }) {
   obj[attr] = next;
 
   if (path === 'atmosphere' && attr === 'visible') {
-    // Sin atmósfera no hay nada que disperse la luz de la ciudad, así que el
-    // cielo pasa a la magnitud de un sitio oscuro.
     applyPollution({ mag: next ? citySqmReading : 22 });
   }
 }
@@ -142,8 +136,6 @@ export function getSynchronizeData() {
   }).to('telescope.html');
 }
 
-// El overlay de seeing necesita el campo actual por frame: el zoom llega por
-// mensaje, pero el motor también atiende gestos por su cuenta.
 export function getEngineFov() {
   return engine?.core?.fov;
 }
@@ -203,9 +195,6 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
-// El overlay de seeing se registra al montarse. Apagarlo por su propia API en
-// vez de ocultar el canvas desde fuera evita que dos dueños peleen por la
-// visibilidad, y de paso lo saca del presupuesto de GPU en modo simple.
 let seeingControl = null;
 export function setSeeingControl(control) {
   seeingControl = control;
