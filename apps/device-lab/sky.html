@@ -103,6 +103,29 @@
       line-height: 1.65; font-size: 10.5px; font-variant-numeric: tabular-nums; }
     .derived b { color: rgba(232,236,245,.82); font-weight: 400; }
 
+    /* ── Objetos ──────────────────────────────────────────────────────── */
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+    .chips button { margin: 0; padding: 5px 9px; font-size: 10.5px; }
+
+    .lista { margin-top: 8px; max-height: 42vh; overflow-y: auto; }
+    .lista button.item { display: flex; justify-content: space-between; gap: 8px;
+      width: 100%; text-align: left; margin: 0 0 3px; padding: 6px 9px; line-height: 1.45; }
+    .lista .tipo { color: rgba(232,236,245,.5); font-size: 10.5px; }
+    .lista .cifras { text-align: right; font-size: 10.5px; color: rgba(232,236,245,.72);
+      font-variant-numeric: tabular-nums; }
+
+    /* Flecha de guía. Va sobre el cielo, en coordenadas del stage: el recorte
+       rota pero la flecha no, así que la rotación entra en el ángulo y no en
+       el elemento. */
+    #guia { position: absolute; z-index: 7; pointer-events: none;
+      transform: translate(-50%, -50%); display: flex; flex-direction: column;
+      align-items: center; gap: 3px; }
+    #guia[hidden] { display: none; }
+    #guia .punta { font-size: 21px; line-height: 1; color: #ff7a0d; }
+    #guia .txt { background: rgba(6,8,15,.85); border: 1px solid rgba(255,122,13,.5);
+      border-radius: 6px; padding: 2px 7px; white-space: nowrap;
+      font-variant-numeric: tabular-nums; }
+
     #dump { width: 100%; height: 118px; margin-top: 7px; display: none; resize: vertical;
       background: rgba(0,0,0,.5); color: rgba(232,236,245,.8);
       border: 1px solid rgba(255,255,255,.15); border-radius: 7px;
@@ -125,6 +148,10 @@
     <canvas id="stel-canvas"></canvas>
     <canvas id="seeing-canvas"></canvas>
     <div class="crosshair"></div>
+    <div id="guia" hidden>
+      <div class="punta" id="guiaPunta">▲</div>
+      <div class="txt" id="guiaTxt"></div>
+    </div>
     <div id="fps">—</div>
   </div>
 
@@ -132,6 +159,7 @@
     <div class="tabs">
       <button type="button" data-tab="orient" class="on">Orientación</button>
       <button type="button" data-tab="seeing">Seeing</button>
+      <button type="button" data-tab="objetos">Objetos</button>
       <button type="button" class="plegar" id="plegar" aria-label="Plegar el panel">▴</button>
     </div>
 
@@ -217,6 +245,23 @@
       <div id="cargaMsg" class="derived" hidden></div>
     </div>
 
+    <!-- ── Pestaña de objetos ──────────────────────────────────────────── -->
+    <div class="tabpanel" id="tab-objetos" hidden>
+      <div class="sl">
+        <label for="umbral">altura mínima sobre el horizonte</label>
+        <output id="umbralOut">10°</output>
+        <input type="range" id="umbral" min="0" max="40" step="1" value="10" />
+      </div>
+      <div class="chips" id="tipos"></div>
+      <div>
+        <button type="button" id="refrescar">Refrescar</button>
+        <button type="button" id="desmarcar">Quitar marca</button>
+        <label><input type="checkbox" id="autoRefresco" checked /> auto</label>
+      </div>
+      <div class="derived" id="diag">esperando al motor…</div>
+      <div class="lista" id="lista"></div>
+    </div>
+
     <div id="status">iniciando…</div>
   </aside>
 
@@ -225,6 +270,8 @@ import {
   initializeStellariumEngine,
   createSeeingOverlay, SEEING_DEFAULTS, SEEING_PRESETS, computeSeeingPhysics,
   createFreeLook, acotarPitch,
+  SKY_TARGETS, TARGET_KINDS, resolveCatalog, listVisibleTargets,
+  selectTarget, clearSelection, getSelectedTarget, getTargetGuidance,
 } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
@@ -252,8 +299,7 @@ $('plegar').onclick = () => {
 for (const b of document.querySelectorAll('.tabs button:not(.plegar)')) {
   b.onclick = () => {
     for (const o of document.querySelectorAll('.tabs button:not(.plegar)')) o.classList.toggle('on', o === b);
-    $('tab-orient').hidden = b.dataset.tab !== 'orient';
-    $('tab-seeing').hidden = b.dataset.tab !== 'seeing';
+    for (const p of document.querySelectorAll('.tabpanel')) p.hidden = p.id !== `tab-${b.dataset.tab}`;
   };
 }
 
@@ -267,6 +313,12 @@ const anchaDeEntrada = window.matchMedia('(min-width: 900px)').matches;
 let rotacion = anchaDeEntrada ? 0 : 270;
 let montaje = !anchaDeEntrada;
 $('montaje').checked = montaje;
+
+// Huella del cielo en coordenadas del stage. La guía necesita dos cosas que no
+// coinciden cuando el recorte está rotado: el rectángulo donde puede poner la
+// flecha, que es la huella en pantalla, y el aspecto del encuadre del cielo,
+// que es el del canvas antes de rotarlo.
+const vista = { ancho: 0, alto: 0, centroY: 0, aspecto: 1 };
 
 function acomodarVista() {
   const area = $('stage').getBoundingClientRect();
@@ -291,6 +343,13 @@ function acomodarVista() {
   for (const c of [$('stel-canvas'), $('seeing-canvas')]) Object.assign(c.style, geom);
   const mira = document.querySelector('.crosshair');
   if (mira) { mira.style.top = `${centro}px`; mira.style.left = '50%'; }
+
+  vista.ancho = anchoArea;
+  vista.alto = altoArea;
+  vista.centroY = centro;
+  // El motor toma el FOV como el alto de su propio canvas, que al rotar 90° o
+  // 270° es el lado que en pantalla se ve como ancho.
+  vista.aspecto = rotado ? altoArea / anchoArea : anchoArea / altoArea;
 }
 
 for (const g of [0, 90, 180, 270]) {
@@ -926,6 +985,156 @@ habilitarControles(false);
   requestAnimationFrame(marco);
 })();
 
+// ── Objetos del cielo ──────────────────────────────────────────────────
+// Banco de la detección y el marcado: resuelve el catálogo contra el motor,
+// lista lo que está sobre el horizonte y guía hasta lo que quedó marcado.
+//
+// El diagnóstico de designaciones sin resolver es la razón principal de esta
+// pestaña: qué cadena reconoce el motor para cada objeto depende de los packs
+// de catálogo que tenga cargados, y eso sólo se ve con el motor andando.
+
+const ETIQUETA_TIPO = {
+  moon: 'Luna', planet: 'planetas', star: 'estrellas', cluster: 'cúmulos',
+  nebula: 'nebulosas', galaxy: 'galaxias', constellation: 'constelaciones',
+};
+
+let umbralAltura = 10;
+const tiposActivos = new Set(TARGET_KINDS);
+let marcado = null;
+
+for (const kind of TARGET_KINDS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = ETIQUETA_TIPO[kind] ?? kind;
+  b.className = 'on';
+  b.onclick = () => {
+    if (tiposActivos.has(kind)) tiposActivos.delete(kind);
+    else tiposActivos.add(kind);
+    b.classList.toggle('on', tiposActivos.has(kind));
+    refrescarObjetos();
+  };
+  $('tipos').appendChild(b);
+}
+
+$('umbral').oninput = (e) => {
+  umbralAltura = +e.target.value;
+  $('umbralOut').textContent = `${umbralAltura}°`;
+  refrescarObjetos();
+};
+
+$('refrescar').onclick = refrescarObjetos;
+$('desmarcar').onclick = () => {
+  marcado = null;
+  clearSelection(engine);
+  refrescarObjetos();
+};
+
+function filaObjeto({ target, alt, az, magnitude }) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = marcado?.id === target.id ? 'item on' : 'item';
+
+  const nombre = document.createElement('span');
+  nombre.textContent = target.name;
+  nombre.appendChild(document.createElement('br'));
+  const tipo = document.createElement('span');
+  tipo.className = 'tipo';
+  tipo.textContent = ETIQUETA_TIPO[target.kind] ?? target.kind;
+  nombre.appendChild(tipo);
+
+  const cifras = document.createElement('span');
+  cifras.className = 'cifras';
+  cifras.textContent = `alt ${alt.toFixed(1)}°`;
+  cifras.appendChild(document.createElement('br'));
+  cifras.appendChild(document.createTextNode(`az ${az.toFixed(1)}°`));
+  if (magnitude !== null) {
+    cifras.appendChild(document.createElement('br'));
+    cifras.appendChild(document.createTextNode(`mag ${magnitude.toFixed(1)}`));
+  }
+
+  b.append(nombre, cifras);
+  b.onclick = () => {
+    marcado = target;
+    selectTarget(engine, target);
+    refrescarObjetos();
+  };
+  return b;
+}
+
+function refrescarObjetos() {
+  if (!engine) return;
+
+  const { resolved, unresolved } = resolveCatalog(engine, SKY_TARGETS);
+  const diag = $('diag');
+  diag.textContent = '';
+  const cuenta = document.createElement('div');
+  cuenta.innerHTML = `catálogo: <b>${resolved.length}</b> de ${SKY_TARGETS.length} resueltos`;
+  diag.appendChild(cuenta);
+  if (unresolved.length > 0) {
+    const faltan = document.createElement('div');
+    faltan.className = 'muted';
+    faltan.textContent = `sin resolver: ${unresolved.map((t) => t.id).join(', ')}`;
+    diag.appendChild(faltan);
+  }
+
+  // El motor también marca por toque en el cielo, así que la lista se entera de
+  // lo que pasó afuera en vez de creerle sólo a sus propios botones.
+  const enMotor = getSelectedTarget(engine);
+  if (enMotor) marcado = enMotor;
+  else if (!engine.core.selection) marcado = null;
+
+  const visibles = listVisibleTargets(engine, {
+    minAltitudeDeg: umbralAltura,
+    kinds: [...tiposActivos],
+  });
+
+  const lista = $('lista');
+  lista.textContent = '';
+  if (visibles.length === 0) {
+    const vacio = document.createElement('div');
+    vacio.className = 'derived';
+    vacio.textContent = `nada del catálogo por encima de ${umbralAltura}°`;
+    lista.appendChild(vacio);
+    return;
+  }
+  for (const v of visibles) lista.appendChild(filaObjeto(v));
+}
+
+// El cielo se mueve y el aparato también: sin refresco la lista envejece.
+setInterval(() => {
+  if ($('autoRefresco').checked && !$('tab-objetos').hidden) refrescarObjetos();
+}, 5000);
+
+// ── Guía hacia lo marcado ──────────────────────────────────────────────
+// Por cuadro y no por intervalo: la flecha sigue al apuntado, que cambia con
+// cada lectura del sensor.
+
+(function () {
+  const el = $('guia');
+  const marco = () => {
+    requestAnimationFrame(marco);
+    if (!engine || !marcado) { el.hidden = true; return; }
+
+    const guia = getTargetGuidance(engine, marcado, {
+      rotationDeg: rotacion,
+      aspect: vista.aspecto,
+      width: vista.ancho,
+      height: vista.alto,
+      center: { x: vista.ancho / 2, y: vista.centroY },
+      marginPx: 34,
+    });
+    if (!guia || guia.inView) { el.hidden = true; return; }
+
+    el.hidden = false;
+    el.style.left = `${guia.edge.x}px`;
+    el.style.top = `${guia.edge.y}px`;
+    $('guiaPunta').style.transform = `rotate(${guia.angleDeg.toFixed(1)}deg)`;
+    $('guiaTxt').textContent = `${marcado.name} · ${guia.separationDeg.toFixed(0)}°`
+      + (guia.behind ? ' · detrás' : '');
+  };
+  requestAnimationFrame(marco);
+})();
+
 // ── Motor ──────────────────────────────────────────────────────────────
 
 setStatus('cargando motor…');
@@ -953,6 +1162,7 @@ initializeStellariumEngine({
     aplicarTodoMotor();
     aplicarFov(fovArcmin);
     refrescarDerivados();
+    refrescarObjetos();
     setStatus('motor listo — el seeing se activa en su pestaña', 'ok');
   },
 }).catch((e) => setStatus('Motor: ' + e.message, 'bad'));

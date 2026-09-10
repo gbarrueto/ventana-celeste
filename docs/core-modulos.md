@@ -923,6 +923,142 @@ por el mismo motivo.
 
 ---
 
+# Objetos del cielo
+
+`packages/core/src/sky/targets.js`, `packages/core/src/sky/objects.js`,
+`packages/core/src/sky/guidance.js`
+
+Detección, marcado y guía de objetos de observación. El motor consulta por nombre y no enumera, así
+que el conjunto sale de un catálogo fijo resuelto contra el motor y filtrado por altura sobre el
+horizonte.
+
+`device-lab` lo ejercita en la pestaña Objetos de `sky.html`.
+
+## Catálogo
+
+`SKY_TARGETS` es una lista plana de objetivos visibles desde el hemisferio sur: Luna y planetas,
+estrellas brillantes, nebulosas, cúmulos, galaxias y constelaciones. Extenderla es agregar filas.
+
+| Campo | Contenido |
+|---|---|
+| `id` | Identificador estable, en minúsculas y con guiones. |
+| `kind` | Uno de `TARGET_KINDS`. |
+| `name` | Nombre en castellano, para mostrar. |
+| `designations` | Cadenas candidatas para `getObj()`, en orden de preferencia. |
+
+Cada objetivo lleva varias designaciones porque qué cadena reconoce el motor depende de los packs de
+catálogo cargados. `resolveTarget()` se queda con la primera que devuelve un objeto.
+
+`getTargetById(id, catalog)` busca por id.
+
+## Detección
+
+| Función | Devuelve |
+|---|---|
+| `resolveTarget(engine, target)` | Primer `SweObj` que el motor reconoce, o `null`. |
+| `resolveCatalog(engine, catalog)` | `{ resolved, unresolved }` del catálogo entero. |
+| `getObjectAltAz(engine, obj)` | `{ alt, az }` en grados. |
+| `getTargetPosition(engine, target)` | `{ obj, alt, az, magnitude }`, o `null`. |
+| `getSunAltitude(engine)` | Altura del Sol en grados, o `null`. |
+| `listVisibleTargets(engine, opciones)` | Objetivos sobre el horizonte, de más alto a más bajo. |
+| `clearTargetCache(engine)` | Vacía el caché de resolución. |
+
+```js
+import { listVisibleTargets } from '@ventanaceleste/core';
+
+const visibles = listVisibleTargets(engine, {
+  minAltitudeDeg: 10,
+  kinds: ['planet', 'nebula'],
+});
+```
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| `catalog` | `SKY_TARGETS` | Catálogo a recorrer. |
+| `minAltitudeDeg` | `10` | Altura mínima sobre el horizonte, en grados. |
+| `kinds` | todos | Tipos a incluir. |
+| `maxMagnitude` | sin límite | Magnitud límite. Un objetivo sin magnitud informada no se descarta. |
+
+Cada elemento del resultado es `{ target, obj, alt, az, magnitude }`, con los ángulos en grados y
+`magnitude` en `null` cuando el motor no la informa.
+
+La resolución se cachea por motor en un `WeakMap`, así que `removeStellariumEngine()` se lleva el
+caché con el motor. Los aciertos quedan; los fallos se reintentan pasados 10 segundos.
+
+## Marcado
+
+| Función | Efecto |
+|---|---|
+| `selectTarget(engine, target)` | Escribe `core.selection`. Devuelve el `SweObj`, o `null`. |
+| `clearSelection(engine)` | Deja `core.selection` en `null`. |
+| `getSelectedTarget(engine, catalog)` | Objetivo del catálogo que corresponde a lo marcado. |
+
+Marcar señala el objeto en el visor y no mueve la vista. `getSelectedTarget()` compara primero el
+puntero del objeto y después las designaciones, así que reconoce también lo que el motor marcó por
+un toque en el cielo.
+
+## Guía
+
+Dirección y distancia hacia el objeto marcado, para llevar a quien observa hasta un objeto que está
+fuera de la vista.
+
+```js
+import { getTargetGuidance } from '@ventanaceleste/core';
+
+const guia = getTargetGuidance(engine, target, {
+  rotationDeg: 90,
+  aspect: 16 / 9,
+  width: 800,
+  height: 450,
+});
+```
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| `fovRad` | `core.fov` | Alto del campo, en radianes. |
+| `aspect` | `width / height` | Ancho sobre alto del encuadre del cielo. |
+| `rotationDeg` | `0` | Rotación del recorte en pantalla, en grados horarios. |
+| `width`, `height` | — | Tamaño de la vista en píxeles. Habilitan `edge`. |
+| `center` | centro geométrico | Centro de la vista en píxeles. |
+| `marginPx` | `28` | Separación de `edge` al borde. |
+
+| Campo | Unidad | Contenido |
+|---|---|---|
+| `separationDeg` | grados | Separación angular entre el centro de vista y el objeto. |
+| `behind` | — | El objeto está a más de 90° del centro. |
+| `inView` | — | Cae dentro del campo. |
+| `x`, `y` | — | Proyección gnomónica en fracción de media pantalla, 1 en el borde. `null` con `behind`. |
+| `angleDeg` | grados | Dirección en pantalla. 0 arriba, positivo horario. |
+| `dx`, `dy` | — | La misma dirección como vector unitario, con y hacia abajo. |
+| `edge` | px | Cruce del rayo con el rectángulo de la vista. `null` sin `width` ni `height`. |
+
+Con el recorte rotado, `aspect` va explícito: `width` y `height` describen el área donde se dibuja
+la flecha, y el encuadre del cielo tiene otro aspecto.
+
+Las mismas cuentas sin motor:
+
+| Función | Uso |
+|---|---|
+| `computeViewGuidance({ object, view, ... })` | Guía a partir de dos pares alt/az en grados. |
+| `computeGuidance({ right, up, forward, ... })` | Guía a partir de las componentes en la base de la vista. |
+| `altAzToViewVector({ object, view })` | Pasa un par alt/az a esas componentes. |
+| `getViewAltAz(engine)` | Centro de vista del motor en grados, desde `observer.yaw` y `observer.pitch`. |
+
+## Trampas conocidas
+
+**Consulta antes de que carguen los catálogos.** Las fuentes de datos terminan de cargar después de
+que el motor avisa que está listo, así que un objetivo consultado en `onReady` puede no resolver. El
+reintento de 10 segundos hace que la siguiente consulta lo encuentre.
+
+**Dirección sobre el centro y sobre la antípoda.** `angleDeg` sale de las componentes `right` y
+`up`, que valen cero en esas dos direcciones. Ahí el ángulo es arbitrario.
+
+**Campo amplio.** `x`, `y` e `inView` salen de una proyección gnomónica y el motor proyecta
+estereográfico a campo amplio. Por encima de unos 60° de FOV el borde calculado y el dibujado no
+coinciden del todo.
+
+---
+
 # Conectores de hardware
 
 `packages/core/src/io/connectors.js`

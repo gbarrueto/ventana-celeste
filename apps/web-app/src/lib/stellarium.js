@@ -17,6 +17,8 @@ import {
   magToBortle,
   initializeStellariumEngine,
   removeStellariumEngine,
+  getObjectAltAz,
+  getSunAltitude,
 } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
@@ -258,26 +260,18 @@ export function clearDatetimeInterval() {
 }
 
 // ── Object queries ─────────────────────────────────────────
-
-function radToDeg(val) {
-  return val * (180 / Math.PI);
-}
+// La conversión de marco vive en el módulo de objetos de core; acá sólo se le
+// pasa el motor que guarda el store.
 
 export function getObjAltAz(obj) {
   if (!engine) return null;
-  const pvo = obj.getInfo('pvo', engine.observer);
-  const altaz = engine.convertFrame(engine.observer, 'ICRF', 'OBSERVED', pvo[0]);
-  const az = radToDeg(engine.anp(engine.c2s(altaz)[0]));
-  let alt = radToDeg(engine.anp(engine.c2s(altaz)[1]));
-  if (alt > 90) alt -= 360;
-  return { alt, az };
+  return getObjectAltAz(engine, obj);
 }
 
 export function isNightime() {
   if (!engine) return true;
-  const sun = engine.getObj('NAME Sun');
-  const sunPos = getObjAltAz(sun);
-  return sunPos ? sunPos.alt <= -3 : true;
+  const sunAlt = getSunAltitude(engine);
+  return sunAlt === null ? true : sunAlt <= -3;
 }
 
 // ── No-lens blur (viewer side) ─────────────────────────────
