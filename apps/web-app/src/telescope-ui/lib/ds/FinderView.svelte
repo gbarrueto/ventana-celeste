@@ -1,5 +1,8 @@
 <script>
-  let { size = null, blur = 0, reticle = true, children = null, style = '', ...rest } = $props();
+  // Sin prop de desenfoque a propósito: el buscador reproduce lo que ve el
+  // teléfono para apuntar, y una imagen blanda ahí no simula nada, sólo
+  // estorba. El desenfoque del enfocador vive en el visor.
+  let { size = null, reticle = true, children = null, style = '', ...rest } = $props();
 </script>
 
 <div
@@ -7,7 +10,7 @@
   style="width:{size ?? '100%'};max-width:{size ?? 'min(60vw, 300px)'};{style}"
   {...rest}
 >
-  <div class="vc-finder-window" style="filter:{blur ? `blur(${blur}px)` : 'none'}">
+  <div class="vc-finder-window">
     {@render children?.()}
   </div>
   {#if reticle}
@@ -28,7 +31,6 @@
     overflow: hidden;
     border: 2px solid var(--white-08);
     background: var(--notte-deep);
-    transition: filter var(--dur-slow) var(--ease-out);
   }
   .vc-finder-reticle {
     position: absolute;

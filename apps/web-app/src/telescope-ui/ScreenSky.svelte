@@ -18,7 +18,8 @@
 
 <script>
   import {
-    STEL_BUTTONS, setPollution, POLLUTION_THROTTLE_MS, observerLat, observerLon,
+    STEL_BUTTONS, POLLUTION_THROTTLE_MS, observerLat, observerLon,
+    skySettings, updateSkySettings, setSkyLayer,
   } from '../lib/stores.js';
   import { applyPollution } from '../lib/stellarium.js';
   import { bortleToMag, magToBortle } from '@ventanaceleste/core';
@@ -37,57 +38,53 @@
 
   const LAYERS = Object.entries(STEL_BUTTONS).map(([name, info]) => ({ name, info, ...PRESENT[name] }));
 
-  let activeButtons = $state(
-    Object.fromEntries(Object.entries(STEL_BUTTONS).map(([name, info]) => [name, info.on])),
-  );
-  let pollutionValue = $state(9);
-  let autoPollutionEnabled = $state(false);
-  // Único parámetro de seeing que se ofrece al público: el FWHM del disco, en
-  // arcosegundos. 0.3 es una noche excelente y 3 una mala. El resto del modelo
-  // se ajusta en desarrollo.
-  let turbulenceValue = $state(1);
-  // Fix: Los botones se aclaran cuando se desactivan, y se desaclaran cuando se activan. Poco 
-  // intuitivo. 
+  // Todo el estado de esta pantalla vive en `skySettings`, no en variables
+  // locales: la pestaña se desmonta al salir de ella y con ella se perdía lo que
+  // el visitante acababa de elegir.
+  let layers = $derived($skySettings.layers);
+  let bortle = $derived(magToBortle($skySettings.skyMag));
+  let seeingValue = $derived($skySettings.seeing);
+  let desdeLugar = $derived($skySettings.skyMagFromPlace);
+
   function toggleStelOption(name) {
     const info = STEL_BUTTONS[name];
-    const msg = 'stellariumOption';
-    const values = { path: info.path, attr: info.attr };
-    sendTelescopeMessage(msg, values);
-    activeButtons = { ...activeButtons, [name]: !activeButtons[name] };
+    const visible = !layers[name];
+    setSkyLayer(name, visible);
+    sendTelescopeMessage('stellariumOption', { path: info.path, attr: info.attr, value: visible });
   }
 
-  function applyPollutionValue(bortle) {
-    pollutionValue = bortle;
-    setPollution(bortle);
-    const skyMag = bortleToMag(bortle);
-    applyPollution({ mag: skyMag });
+  // `mag` es la magnitud SQM, que es lo que entiende el motor. Bortle es sólo la
+  // forma de presentarlo.
+  function applySkyMag(mag, { fromPlace }) {
+    updateSkySettings({ skyMag: mag, skyMagFromPlace: fromPlace });
+    applyPollution({ mag });
     eventManager.sendThrottled(
-      { msg: 'updatePollution', values: { mag: skyMag } },
+      { msg: 'updatePollution', values: { mag } },
       'index.html',
       POLLUTION_THROTTLE_MS,
     );
   }
 
+  // Mover el deslizador es siempre una elección manual, y como tal sobrescribe
+  // lo que había puesto la ubicación.
   function onPollutionChange(v) {
-    applyPollutionValue(Math.round(v));
+    applySkyMag(bortleToMag(Math.round(v)), { fromPlace: false });
   }
 
-  async function toggleAutoPollution() {
-    if (!autoPollutionEnabled) {
-      try {
-        const mag = await getMagFromLonLat({ lat: observerLat, lon: observerLon });
-        if (mag != null) {
-          applyPollutionValue(magToBortle(mag));
-        }
-      } catch (err) {
-        console.warn('Auto pollution fetch failed:', err);
-      }
+  // No bloquea el deslizador: lo devuelve al brillo real del sitio donde está
+  // puesto el observador. Antes era un pestillo, y un pestillo sobre un valor
+  // que la pantalla no conservaba no le servía a nadie.
+  async function usarLuzDelLugar() {
+    try {
+      const mag = await getMagFromLonLat({ lat: observerLat, lon: observerLon });
+      if (mag != null) applySkyMag(mag, { fromPlace: true });
+    } catch (err) {
+      console.warn('Auto pollution fetch failed:', err);
     }
-    autoPollutionEnabled = !autoPollutionEnabled;
   }
 
-  function onTurbulenceChange(v) {
-    turbulenceValue = v;
+  function onSeeingChange(v) {
+    updateSkySettings({ seeing: v });
     sendSeeingValue({ target: 'seeing', value: v });
   }
 </script>
@@ -97,10 +94,12 @@
     <SectionLabel>Qué se dibuja</SectionLabel>
     <div class="tile-grid">
       {#each LAYERS as l (l.name)}
+        <!-- `active` es "la capa está encendida". Antes se pasaba negado, así
+             que las casillas mostraban lo contrario de lo que ocurría. -->
         <ToggleTile
           label={l.label}
           hint={l.hint}
-          active={!activeButtons[l.name]}
+          active={layers[l.name]}
           onclick={() => toggleStelOption(l.name)}
         >
           {#snippet icon()}<Icon name={l.icon} size={28} />{/snippet}
@@ -112,21 +111,20 @@
   <Card raised style="display:grid;gap:12px">
     <div class="row-between">
       <SectionLabel tone="muted">Luces de la ciudad</SectionLabel>
-      <Chip selected={autoPollutionEnabled} onclick={toggleAutoPollution}>Auto</Chip>
+      <Chip selected={desdeLugar} onclick={usarLuzDelLugar}>Luz del lugar</Chip>
     </div>
     <Slider
-      value={pollutionValue}
+      value={bortle}
       min={1}
       max={9}
       onChange={onPollutionChange}
-      disabled={autoPollutionEnabled}
-      valueText={'Efecto polución ' + pollutionValue + ' · ' + BORTLE[pollutionValue]}
+      valueText={'Efecto polución ' + bortle + ' · ' + BORTLE[bortle]}
       minLabel="Cielo oscuro"
       maxLabel="Centro de la ciudad"
     />
     <HelpNote iconName="lightbulb">
-      Mientras más luz haya alrededor, menos estrellas se ven. Con Auto lo calculamos
-      desde tu ubicación.
+      Mientras más luz haya alrededor, menos estrellas se ven. Al elegir un lugar
+      se ajusta solo; muévelo si quieres probar otro cielo.
     </HelpNote>
   </Card>
 
@@ -134,12 +132,12 @@
     <Card raised style="display:grid;gap:12px">
       <SectionLabel tone="muted">Turbulencia del aire</SectionLabel>
       <Slider
-        value={turbulenceValue}
+        value={seeingValue}
         min={0.3}
         max={3}
         step={0.05}
-        onChange={onTurbulenceChange}
-        valueText={turbulenceValue.toFixed(2).replace('.', ',') + '″'}
+        onChange={onSeeingChange}
+        valueText={seeingValue.toFixed(2).replace('.', ',') + '″'}
         minLabel="Aire quieto"
         maxLabel="Aire revuelto"
         accent="var(--stella)"

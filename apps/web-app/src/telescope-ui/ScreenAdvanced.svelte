@@ -26,9 +26,6 @@
   let lens = $derived(LENSES.find((l) => l.name === activeLens) || LENSES[2]);
   let sweet = $derived(BLUR_TARGETS[lens.name] ?? 0);
   let off = $derived(Math.abs(focusValue - sweet));
-  // Cosmetic only (never sent): the phone's finder preview goes soft when the
-  // focuser is off its sweet spot, but only once an eyepiece is actually chosen.
-  let finderBlur = $derived(activeLens ? Math.min(off * 1.6, 9) : 0);
   let sharp = $derived(off < 0.6 ? 'Enfocado' : off < 2 ? 'Casi enfocado' : 'Borroso');
   let fovDeg = $derived((computeFovFromEyepiece(FOCAL_LENGTH, lens.fl) * 180) / Math.PI);
 
@@ -132,7 +129,10 @@
       onmouseup={onFinderUp}
       onmouseleave={onFinderUp}
     >
-      <FinderView blur={finderBlur} style="width:100%;max-width:320px">
+      <!-- Sin `blur`: el buscador es la referencia para apuntar y tiene que
+           verse nítido siempre. El enfocador actúa sobre la imagen del visor,
+           que es la que un ocular desenfocado emborrona de verdad. -->
+      <FinderView>
         <canvas id="stel-canvas"></canvas>
       </FinderView>
     </div>

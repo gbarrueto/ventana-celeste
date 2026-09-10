@@ -99,17 +99,21 @@ export function updateStellariumFov({ fov }) {
   engine.core.display_limit_mag = currentLimitMag();
 }
 
-export function stellariumOption({ path, attr }) {
+// `value` es el estado que se quiere, no "cambia al contrario". Un mensaje de
+// alternancia no se puede reenviar para resincronizar: si el visor se perdió un
+// toque, repetirlo lo deja al revés en lugar de ponerlo al día. Se acepta la
+// forma sin `value` para no romper a un emisor viejo.
+export function stellariumOption({ path, attr, value }) {
+  if (!engine?.core) return;
   const obj = path.split('.').reduce((o, k) => o && o[k], engine.core);
   if (!obj) return;
-  obj[attr] = !obj[attr];
+  const next = typeof value === 'boolean' ? value : !obj[attr];
+  obj[attr] = next;
 
   if (path === 'atmosphere' && attr === 'visible') {
-    if (!obj[attr]) {
-      applyPollution({ mag: 22 });
-    } else {
-      applyPollution({ mag: citySqmReading });
-    }
+    // Sin atmósfera no hay nada que disperse la luz de la ciudad, así que el
+    // cielo pasa a la magnitud de un sitio oscuro.
+    applyPollution({ mag: next ? citySqmReading : 22 });
   }
 }
 

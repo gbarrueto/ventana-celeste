@@ -1,11 +1,16 @@
 <script>
   let {
     value, min = 0, max = 150, step = 0.01, oninput = null, onChange = null,
-    topLabel = null, bottomLabel = null, valueText = null, thumbSize = 44, style = '', ...rest
+    topLabel = null, bottomLabel = null, valueText = null, thumbSize = 36, style = '', ...rest
   } = $props();
 
   const id = 'vsl-' + Math.random().toString(36).slice(2, 9);
   let pct = $derived(((value - min) / (max - min)) * 100);
+
+  // Mismo descuento que en Slider: el pulgar recorre la pista sin salirse por
+  // los extremos, que es donde se montaba sobre el valor y sobre "Todo el cielo".
+  let thumbBottom = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px)`);
+  let fillHeight = $derived(`calc(${pct}% - ${(pct * thumbSize) / 100}px + ${thumbSize / 2}px)`);
 
   function handle(e) {
     const v = parseFloat(e.currentTarget.value);
@@ -14,16 +19,16 @@
   }
 </script>
 
-<div class="vc-vslider" style={style} {...rest}>
+<div class="vc-vslider" style="--thumb:{thumbSize}px;{style}" {...rest}>
   {#if topLabel}<span class="vc-vslider-end">{topLabel}</span>{/if}
 
-  <div class="vc-vslider-track-wrap" style="width:{thumbSize}px">
+  <div class="vc-vslider-track-wrap" style="width:max({thumbSize}px, 44px)">
     <div class="vc-vslider-track"></div>
-    <div class="vc-vslider-fill" style="height:{pct}%"></div>
+    <div class="vc-vslider-fill" style="height:{fillHeight}"></div>
     <div
       aria-hidden="true"
       class="vc-vslider-thumb"
-      style="bottom:calc({pct}% - {thumbSize / 2}px);width:{thumbSize}px;height:{thumbSize}px"
+      style="bottom:{thumbBottom};width:{thumbSize}px;height:{thumbSize}px"
     >
       <span class="vc-vslider-grip"></span>
     </div>
@@ -76,6 +81,8 @@
   }
   .vc-vslider-thumb {
     position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     border-radius: var(--radius-round);
     background: var(--thumb-slider);
     box-shadow: var(--shadow-thumb-lit);
@@ -105,5 +112,24 @@
     cursor: pointer;
     writing-mode: vertical-rl;
     direction: rtl;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+  /* Ver la nota en Slider.svelte: el pulgar nativo es invisible pero fija el
+     recorrido, así que tiene que medir lo mismo que el dibujado. */
+  .vc-vslider-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--thumb);
+    height: var(--thumb);
+    border: none;
+    background: transparent;
+  }
+  .vc-vslider-input::-moz-range-thumb {
+    width: var(--thumb);
+    height: var(--thumb);
+    border: none;
+    background: transparent;
   }
 </style>

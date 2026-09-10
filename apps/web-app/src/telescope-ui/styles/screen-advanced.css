@@ -6,15 +6,22 @@
   padding: 12px 16px 20px;
   box-sizing: border-box;
 }
+/* El círculo se dimensiona por el ALTO disponible, no por el ancho. Al revés
+   —un cuadrado de ancho 100%— en pantallas bajas sale más alto que su hueco y,
+   como el centrado desborda por los dos lados, se monta sobre el selector de
+   ocular. El recorte queda de red de seguridad. */
 .finder-slot {
   flex: 1 1 0;
   min-height: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 .finder-hit {
-  width: 100%;
-  max-width: 320px;
+  height: 100%;
+  aspect-ratio: 1;
+  max-height: min(60vw, 300px);
   display: grid;
   place-items: center;
 }

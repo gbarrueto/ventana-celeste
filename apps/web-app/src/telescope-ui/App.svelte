@@ -6,6 +6,7 @@
     setTelescopeStatusHandler,
   } from '../lib/protobject.js';
   import { Orientation } from '../lib/orientation.js';
+  import { pushSkySettings } from '../lib/sky-settings.js';
 
   import AppBar from './lib/ds/AppBar.svelte';
   import IconButton from './lib/ds/IconButton.svelte';
@@ -36,15 +37,28 @@
     if (k === mode) return;
     isLoading.set(true);
     modes.set({ simple: k === 'simple', advanced: k === 'advanced' });
-    const modeMsg = k === 'advanced' ? 'advancedSettings' : 'simpleSettings';
-    sendTelescopeMessage(modeMsg, {});
+    sendModeToViewer(k);
     mode = k;
+  }
+
+  function sendModeToViewer(k) {
+    sendTelescopeMessage(k === 'advanced' ? 'advancedSettings' : 'simpleSettings', {});
+  }
+
+  // El teléfono es la fuente de verdad de los ajustes: el visor no origina
+  // ninguno, sólo obedece. Así que al recuperar el enlace se le vuelve a contar
+  // todo en vez de intentar averiguar qué se perdió. Los mensajes llevan
+  // valores absolutos, no alternancias, de modo que repetirlos no hace daño.
+  function resyncViewer() {
+    sendModeToViewer(mode);
+    pushSkySettings();
   }
 
   onMount(() => {
     setTelescopeConnectionHandler(() => {
       clearTimeout(connectionTimer);
       conn = 'connected';
+      resyncViewer();
       Orientation.start();
     });
 
@@ -57,6 +71,9 @@
     // Ongoing link state. Sensors keep running through a drop.
     setTelescopeStatusHandler(({ alive, everAlive }) => {
       if (alive) {
+        // Sólo tras una caída. La primera subida del enlace ya la atiende
+        // setTelescopeConnectionHandler, y sin esta guarda se enviaría dos veces.
+        if (conn === 'lost') resyncViewer();
         conn = 'connected';
       } else if (everAlive) {
         conn = 'lost';
