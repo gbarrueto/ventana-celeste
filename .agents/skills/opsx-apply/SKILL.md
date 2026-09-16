@@ -1,6 +1,10 @@
+﻿---
+name: opsx-apply
+description: >-
+  Implement tasks from an OpenSpec change (Experimental)
 ---
-description: "Implement tasks from an OpenSpec change (Experimental)"
----
+
+# Implement Tasks from an OpenSpec Change
 
 Implement tasks from an OpenSpec change.
 
@@ -86,14 +90,14 @@ Implement tasks from an OpenSpec change.
    - Show which task is being worked on
    - Make the code changes required
    - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+   - Mark task complete in the tasks file: `- [ ]` â†’ `- [x]`
    - Continue to next task
 
    **Pause if:**
-   - Task is unclear → ask for clarification
-   - Implementation reveals a design issue → suggest updating artifacts
-   - A task needs work beyond what the spec and tasks describe, or you are tempted to drop, narrow, defer, or accept exceptions to specified behavior to make it fit → surface the added scope and ask; do not absorb it silently
-   - Error or blocker encountered → report and wait for guidance
+   - Task is unclear â†’ ask for clarification
+   - Implementation reveals a design issue â†’ suggest updating artifacts
+   - A task needs work beyond what the spec and tasks describe, or you are tempted to drop, narrow, defer, or accept exceptions to specified behavior to make it fit â†’ surface the added scope and ask; do not absorb it silently
+   - Error or blocker encountered â†’ report and wait for guidance
    - User interrupts
 
 7. **On completion or pause, show status**
@@ -111,11 +115,11 @@ Implement tasks from an OpenSpec change.
 
 Working on task 3/7: <task description>
 [...implementation happening...]
-✓ Task complete
+âœ“ Task complete
 
 Working on task 4/7: <task description>
 [...implementation happening...]
-✓ Task complete
+âœ“ Task complete
 ```
 
 **Output On Completion**
@@ -125,7 +129,7 @@ Working on task 4/7: <task description>
 
 **Change:** <change-name>
 **Schema:** <schema-name>
-**Progress:** 7/7 tasks complete ✓
+**Progress:** 7/7 tasks complete âœ“
 
 ### Completed This Session
 - [x] Task 1
