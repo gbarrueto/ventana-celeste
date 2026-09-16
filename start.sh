@@ -42,3 +42,4 @@ else
 fi
 
 exec node "$SERVER"
+
