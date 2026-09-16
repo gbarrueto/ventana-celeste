@@ -1,6 +1,10 @@
+﻿---
+name: opsx-propose
+description: >-
+  Propose a new change - create it and generate all artifacts in one step
 ---
-description: "Propose a new change - create it and generate all artifacts in one step"
----
+
+# Propose a New OpenSpec Change
 
 Propose a new change - create the change and generate all artifacts in one step.
 
@@ -29,7 +33,7 @@ When the user is ready to implement, they must start the apply workflow explicit
    If no input is provided, ask the user (open-ended, no preset options):
    > "What change do you want to work on? Describe what you want to build or fix."
 
-   From their description, derive a kebab-case name (e.g., "add user authentication" → `add-user-auth`).
+   From their description, derive a kebab-case name (e.g., "add user authentication" â†’ `add-user-auth`).
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
@@ -50,8 +54,8 @@ When the user is ready to implement, they must start the apply workflow explicit
    Use the configured default schema unless the user explicitly requests a different workflow.
 
    **Use a different schema only if the user:**
-   - Explicitly requests a specific schema by name → use `--schema <schema-name>`
-   - Asks to "show workflows" or asks "what workflows" exist → resolve the authoritative root by running `openspec context --json` from the current working directory. If the user explicitly selected a registered store, use `openspec context --json --store "<store-id>"`. Then run `openspec schemas --json` with its working directory set to the returned `root.path` and let them choose. This preserves roots selected by a local `store:` pointer or the global `defaultStore`; when a registered store was explicitly selected, append `--store "<store-id>"` to `openspec schemas --json` as well. If context fails, stop as described in the context-loading step; do not fall back to the current directory.
+   - Explicitly requests a specific schema by name â†’ use `--schema <schema-name>`
+   - Asks to "show workflows" or asks "what workflows" exist â†’ resolve the authoritative root by running `openspec context --json` from the current working directory. If the user explicitly selected a registered store, use `openspec context --json --store "<store-id>"`. Then run `openspec schemas --json` with its working directory set to the returned `root.path` and let them choose. This preserves roots selected by a local `store:` pointer or the global `defaultStore`; when a registered store was explicitly selected, append `--store "<store-id>"` to `openspec schemas --json` as well. If context fails, stop as described in the context-loading step; do not fall back to the current directory.
 
    Otherwise, omit `--schema` to preserve the configured default.
 

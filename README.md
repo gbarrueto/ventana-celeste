@@ -89,7 +89,7 @@ Publicación a los dispositivos, detallada en [docs/deployment.md](docs/deployme
 
 ```bash
 git push origin main
-cd apps/dual-telescope
+cd apps/dual-telescope         # o cd apps/kiosk-standalone
 pnpm run pack:deploy
 pnpm run publish:deploy -- --push
 ```

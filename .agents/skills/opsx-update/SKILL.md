@@ -1,6 +1,10 @@
+﻿---
+name: opsx-update
+description: >-
+  Update a change - revise existing planning artifacts and keep them coherent (Experimental)
 ---
-description: "Update a change - revise existing planning artifacts and keep them coherent (Experimental)"
----
+
+# Update an OpenSpec Change Proposal
 
 Revise a change's existing planning artifacts and keep them coherent. Never edit code.
 

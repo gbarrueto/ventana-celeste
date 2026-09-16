@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "NODE_OPTIONS=--max-old-space-size=1536 vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pack:deploy": "vite build && node scripts/pack-deploy.mjs",
+    "publish:deploy": "node scripts/publish-deploy.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.1.2",

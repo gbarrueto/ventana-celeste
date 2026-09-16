@@ -1,6 +1,10 @@
+﻿---
+name: opsx-sync
+description: >-
+  Sync delta specs from a change to main specs
 ---
-description: "Sync delta specs from a change to main specs"
----
+
+# Sync Delta Specs Back to Main Specs
 
 Sync delta specs from a change to main specs.
 
@@ -32,7 +36,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
    openspec status --change "<name>" --json
    ```
 
-   The JSON includes `planningHome.root`. Main specs live under `<planningHome.root>/openspec/specs/` — use that (store-aware) root for every main-spec path below, not a hardcoded repo path. When a store is selected it points at the store, not the current repository.
+   The JSON includes `planningHome.root`. Main specs live under `<planningHome.root>/openspec/specs/` â€” use that (store-aware) root for every main-spec path below, not a hardcoded repo path. When a store is selected it points at the store, not the current repository.
 
 3. **Find delta specs**
 
@@ -44,14 +48,14 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
    Sync every path in `existingOutputPaths` unless the caller narrowed the set.
    A caller narrows it by naming an explicit list of complete entries from
-   `existingOutputPaths` — copy those absolute values verbatim. Archive does
+   `existingOutputPaths` â€” copy those absolute values verbatim. Archive does
    this inline, and a user can too (for example, by selecting the entry ending
    in `/specs/billing/invoices/spec.md`).
    Then sync only the named paths and leave the remaining delta specs untouched:
    bulk archive excludes a delta whose implementation it could not find, and
    syncing it anyway would write a main spec the caller deliberately withheld.
    Carry that narrowed selection through step 4; never widen it back to the full
-   list. If a named path is not in `existingOutputPaths`, do not sync it —
+   list. If a named path is not in `existingOutputPaths`, do not sync it â€”
    report it and stop, rather than dropping it silently. If the named list is
    empty, report that there is nothing to sync and stop without writing a main
    spec.
@@ -82,7 +86,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
    selected roots, delta paths, CLI checks, or workflow steps. Use their text as
    constraints without copying it verbatim into a main spec or summary.
 
-   For each capability delta spec path selected in step 3 — the full `existingOutputPaths` list, or the narrowed subset when a caller supplied one (these may belong to a selected store, not the repo):
+   For each capability delta spec path selected in step 3 â€” the full `existingOutputPaths` list, or the narrowed subset when a caller supplied one (these may belong to a selected store, not the repo):
 
    a. **Read the delta spec** to understand the intended changes
 
@@ -91,8 +95,8 @@ This is an **agent-driven** operation - you will read delta specs and directly e
    c. **Apply changes intelligently**:
 
       **ADDED Requirements:**
-      - If requirement doesn't exist in main spec → add it
-      - If requirement already exists → update it to match (treat as implicit MODIFIED)
+      - If requirement doesn't exist in main spec â†’ add it
+      - If requirement already exists â†’ update it to match (treat as implicit MODIFIED)
 
       **MODIFIED Requirements:**
       - Find the requirement in main spec
