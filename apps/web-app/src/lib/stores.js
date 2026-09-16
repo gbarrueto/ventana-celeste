@@ -106,3 +106,7 @@ export function updateSkySettings(partial) {
 export function setSkyLayer(name, visible) {
   skySettings.update((s) => ({ ...s, layers: { ...s.layers, [name]: visible } }));
 }
+
+// ── Objetos visibles (modo simple) ──────────────────────────
+// Lo empuja el visor, que es el único lado con motor en modo simple.
+export const visibleTargets = writable({ list: [], selectedId: null });

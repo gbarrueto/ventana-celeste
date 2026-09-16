@@ -1,16 +1,17 @@
 <script>
   import { onMount } from 'svelte';
-  import { initializeStelEngine, getObjAltAz, enableSimpleModeSettings, getEngineFov, setSeeingControl } from '../lib/stellarium.js';
+  import { initializeStelEngine, enableSimpleModeSettings, getEngineFov, setSeeingControl } from '../lib/stellarium.js';
   import { initViewerProtobject, setSeeingOptionHandler, setConnectionStatusHandler } from '../lib/protobject.js';
   import { initializeSeeingOverlay } from '../lib/seeing-overlay.js';
   import { loadCdnScript } from '../lib/lazy-load.js';
   import { engine } from '../lib/stores.js';
+  import { getSelectedTarget, getTargetGuidance } from '@ventanaceleste/core';
 
-  let infoCard = $state({ visible: false, name: '', mag: '', ra: '', dec: '', alt: '', az: '' });
   let showQr = $state(true);
   let qrContainerEl = $state();
   let peerConnected = $state(false);
   let connectionLost = $state(false);
+  let guidance = $state({ visible: false, x: 0, y: 0, angleDeg: 0, separationDeg: 0, behind: false, name: '' });
 
   function buildTelescopeUrl() {
     const params = new URLSearchParams(window.location.search);
@@ -53,33 +54,6 @@
       connectionLost = !alive && everAlive;
     });
 
-    // Object click listener
-    stel.change((obj, attr) => {
-      if (attr === 'hovered') return;
-      if (stel.core.selection) {
-        const s = stel.core.selection;
-        const name = s.designations()[0].replace(/^NAME /, '');
-        const radec = stel.convertFrame(stel.core.observer, 'ICRF', 'CIRS', s.getInfo('radec'));
-        const coords = stel.c2s(radec);
-        const ra = stel.anp(coords[0]);
-        const dec = stel.anpm(coords[1]);
-        const mag = s.getInfo('vmag');
-        const altaz = getObjAltAz(s);
-
-        infoCard = {
-          visible: true,
-          name,
-          mag: mag !== undefined ? mag.toFixed(2) : 'Unknown',
-          ra: ra.toFixed(3),
-          dec: dec.toFixed(3),
-          alt: altaz?.alt.toFixed(3) ?? '?',
-          az: altaz?.az.toFixed(3) ?? '?',
-        };
-      } else {
-        infoCard = { ...infoCard, visible: false };
-      }
-    });
-
     const seeing = initializeSeeingOverlay({
       getFov: getEngineFov,
     });
@@ -95,19 +69,49 @@
 
     // Start protobject message handling
     initViewerProtobject();
+
+    // Guía hacia lo marcado, por cuadro: la flecha sigue al apuntado, que
+    // cambia con cada lectura del sensor del teléfono (mismo patrón que
+    // device-lab/sky.html).
+    const stelCanvas = document.getElementById('stel-canvas');
+    function loopGuidance() {
+      requestAnimationFrame(loopGuidance);
+      const marcado = getSelectedTarget(stel);
+      if (!marcado) {
+        if (guidance.visible) guidance = { ...guidance, visible: false };
+        return;
+      }
+      const guia = getTargetGuidance(stel, marcado, {
+        width: stelCanvas.clientWidth,
+        height: stelCanvas.clientHeight,
+      });
+      if (!guia || guia.inView) {
+        if (guidance.visible) guidance = { ...guidance, visible: false };
+        return;
+      }
+      guidance = {
+        visible: true,
+        x: guia.edge.x,
+        y: guia.edge.y,
+        angleDeg: guia.angleDeg,
+        separationDeg: guia.separationDeg,
+        behind: guia.behind,
+        name: marcado.name,
+      };
+    }
+    requestAnimationFrame(loopGuidance);
   });
 </script>
 
 <div id="stel">
   <canvas id="stel-canvas"></canvas>
-  {#if infoCard.visible}
-    <div id="info-card">
-      <h3>{infoCard.name}</h3>
-      <p><strong>Magnitude:</strong> {infoCard.mag}</p>
-      <p><strong>Ra:</strong> {infoCard.ra}</p>
-      <p><strong>Dec:</strong> {infoCard.dec}</p>
-      <p><strong>Alt:</strong> {infoCard.alt}&deg;</p>
-      <p><strong>Az:</strong> {infoCard.az}&deg;</p>
+
+  {#if guidance.visible}
+    <div class="guidance" style="left:{guidance.x}px;top:{guidance.y}px">
+      <div class="guidance-arrow" style="transform:translate(-50%,-100%) rotate({guidance.angleDeg}deg)"></div>
+      <div class="guidance-label">
+        {guidance.name} · {guidance.separationDeg.toFixed(0)}&deg;{guidance.behind ? ' · detrás' : ''}
+      </div>
     </div>
   {/if}
 </div>
@@ -179,17 +183,35 @@
     display: block;
   }
 
-  #info-card {
+  .guidance {
     position: absolute;
-    top: 80px;
-    left: 10px;
-    width: 400px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 1rem;
-    font-size: 0.9rem;
-    border-radius: 10px;
-    z-index: 9;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 8;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+  }
+
+  .guidance-arrow {
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 20px solid rgba(255, 122, 13, 0.9);
+    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.6));
+  }
+
+  .guidance-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
 
   #eyepiece-overlay {

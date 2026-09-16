@@ -1,9 +1,10 @@
 <script>
 
-  import  TARGETS  from './dictionaries/placeholders/targets.js';
   import { onMount } from 'svelte';
-  import { sliderToFov, fovToSlider } from '@ventanaceleste/core';
-  import { isLoading, setLogFov, setCurrentFov, FOV_SEND_MS, MIN_FOV, MAX_FOV } from '../lib/stores.js';
+  import { sliderToFov, fovToSlider, getTargetById } from '@ventanaceleste/core';
+  import {
+    isLoading, setLogFov, setCurrentFov, FOV_SEND_MS, MIN_FOV, MAX_FOV, visibleTargets,
+  } from '../lib/stores.js';
   import { eventManager, onTelescopeMessage, sendTelescopeMessage } from '../lib/protobject.js';
 
   import SkyBackdrop from './lib/SkyBackdrop.svelte';
@@ -18,11 +19,63 @@
   const FOV_RANGE = { minFov: MIN_FOV, maxFov: MAX_FOV };
   const ZOOM_MAX = 150;
 
+  const KIND_ICON = {
+    moon: 'moon-star', planet: 'orbit', star: 'sparkles', cluster: 'sparkles',
+    nebula: 'cloud', galaxy: 'globe', constellation: 'sparkles',
+  };
+  const KIND_LABEL = {
+    moon: 'luna', planet: 'planeta', star: 'estrella', cluster: 'cúmulo',
+    nebula: 'nebulosa', galaxy: 'galaxia', constellation: 'constelación',
+  };
+
   let zoomValue = $state(100);
   let target = $state(null);
 
-  let t = $derived(TARGETS.find((x) => x.id === target));
+  // El visor empuja { list, selectedId }; el catálogo (nombre, tipo) sale de
+  // @ventanaceleste/core, que el teléfono ya trae, sin pedirle nada al motor.
+  let entries = $derived(
+    $visibleTargets.list
+      .map((v) => {
+        const catalogTarget = getTargetById(v.id);
+        return catalogTarget ? { ...v, name: catalogTarget.name, kind: catalogTarget.kind } : null;
+      })
+      .filter(Boolean),
+  );
+
+  // `visibleTargets` sólo se actualiza cada 5 s, así que confiar en su
+  // `selectedId` para cada toque marcaba con ese retraso: se tocaba un ítem y
+  // el efecto lo revertía al valor viejo hasta el próximo empujón. Mientras
+  // haya un toque propio sin confirmar, se ignora lo que diga el store; un
+  // timeout de respaldo evita quedar colgado si otra selección (un toque en
+  // la pantalla grande) lo adelanta.
+  let pendingId;
+  let pendingTimeout;
+
+  function clearPending() {
+    pendingId = undefined;
+    clearTimeout(pendingTimeout);
+  }
+
+  $effect(() => {
+    const selectedId = $visibleTargets.selectedId;
+    if (pendingId !== undefined) {
+      if (selectedId === pendingId) clearPending();
+      return;
+    }
+    if (selectedId !== target) target = selectedId;
+  });
+
+  let t = $derived(entries.find((x) => x.id === target));
   let fovDeg = $derived((sliderToFov(ZOOM_MAX - zoomValue, FOV_RANGE) * 180) / Math.PI);
+
+  function onSelectTarget(id) {
+    const next = target === id ? null : id;
+    target = next;
+    clearTimeout(pendingTimeout);
+    pendingId = next;
+    pendingTimeout = setTimeout(clearPending, 6000);
+    sendTelescopeMessage('selectTarget', { id: next });
+  }
 
   function onZoomInput(e) {
     const val = parseFloat(e.currentTarget.value);
@@ -51,11 +104,11 @@
   <SkyBackdrop />
 
   <Card raised style="position:relative;display:flex;gap:14px;align-items:center">
-    <span class="target-icon"><Icon name={t ? t.icon : 'telescope'} size={32} /></span>
+    <span class="target-icon"><Icon name={t ? KIND_ICON[t.kind] : 'telescope'} size={32} /></span>
     <div style="min-width:0">
       <SectionLabel tone="sky">Estás mirando</SectionLabel>
       <div class="target-name">{t ? t.name : 'El cielo abierto'}</div>
-      <div class="target-desc">{t ? t.desc : 'Mueve el teléfono para apuntar a algo'}</div>
+      <div class="target-desc">{t ? KIND_LABEL[t.kind] : 'Mueve el teléfono para apuntar a algo'}</div>
     </div>
   </Card>
 
@@ -63,18 +116,22 @@
     <div class="targets-col">
       <SectionLabel>Esta noche</SectionLabel>
       <div class="targets-list">
-        {#each TARGETS as x (x.id)}
-          <Button
-            variant="option"
-            size="md"
-            selected={target === x.id}
-            iconName={x.icon}
-            onclick={() => (target = target === x.id ? null : x.id)}
-            style="justify-content:flex-start;text-align:left;min-height:52px"
-          >
-            {x.name}
-          </Button>
-        {/each}
+        {#if entries.length === 0}
+          <div class="targets-empty">Nada visible ahora mismo</div>
+        {:else}
+          {#each entries as x (x.id)}
+            <Button
+              variant="option"
+              size="md"
+              selected={target === x.id}
+              iconName={KIND_ICON[x.kind]}
+              onclick={() => onSelectTarget(x.id)}
+              style="justify-content:flex-start;text-align:left;min-height:52px"
+            >
+              {x.name}
+            </Button>
+          {/each}
+        {/if}
       </div>
       <HelpNote iconName="lightbulb" style="margin-top:auto">
         Toca un nombre y la pantalla grande te lleva hasta él.
