@@ -41,6 +41,11 @@
   gap: 8px;
   overflow: auto;
 }
+.targets-empty {
+  font: var(--type-body-sm);
+  color: var(--text-muted);
+  padding: 12px 4px;
+}
 .zoom-col {
   width: 88px;
   display: flex;

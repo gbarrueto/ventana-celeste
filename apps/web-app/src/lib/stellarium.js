@@ -17,8 +17,12 @@ import {
   magToBortle,
   initializeStellariumEngine,
   removeStellariumEngine,
-  getObjectAltAz,
   getSunAltitude,
+  listVisibleTargets,
+  getTargetById,
+  getSelectedTarget,
+  selectTarget,
+  clearSelection,
 } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
@@ -260,18 +264,50 @@ export function clearDatetimeInterval() {
 }
 
 // ── Object queries ─────────────────────────────────────────
-// La conversión de marco vive en el módulo de objetos de core; acá sólo se le
-// pasa el motor que guarda el store.
-
-export function getObjAltAz(obj) {
-  if (!engine) return null;
-  return getObjectAltAz(engine, obj);
-}
 
 export function isNightime() {
   if (!engine) return true;
   const sunAlt = getSunAltitude(engine);
   return sunAlt === null ? true : sunAlt <= -3;
+}
+
+// ── Target detection & marking (viewer side) ────────────────
+// El teléfono en modo simple no tiene motor propio: el visor es el único que
+// puede responder "qué se ve ahora" y "qué hay marcado", así que calcula acá y
+// empuja el resultado.
+
+const VISIBLE_TARGETS_PUSH_MS = 5000;
+let visibleTargetsInterval = null;
+
+function pushVisibleTargets() {
+  if (!engine?.core) return;
+  const visibles = listVisibleTargets(engine);
+  const marcado = getSelectedTarget(engine);
+  Protobject.Core.send({
+    msg: 'visibleTargets',
+    values: {
+      list: visibles.map(({ target, alt, az, magnitude }) => ({ id: target.id, alt, az, magnitude })),
+      selectedId: marcado?.id ?? null,
+    },
+  }).to('telescope.html');
+}
+
+export function startVisibleTargetsPush() {
+  if (visibleTargetsInterval) return;
+  pushVisibleTargets();
+  visibleTargetsInterval = setInterval(pushVisibleTargets, VISIBLE_TARGETS_PUSH_MS);
+}
+
+export function stopVisibleTargetsPush() {
+  clearInterval(visibleTargetsInterval);
+  visibleTargetsInterval = null;
+}
+
+export function applySelectTarget({ id }) {
+  if (!engine?.core) return;
+  const target = id ? getTargetById(id) : null;
+  if (target) selectTarget(engine, target);
+  else clearSelection(engine);
 }
 
 // ── No-lens blur (viewer side) ─────────────────────────────

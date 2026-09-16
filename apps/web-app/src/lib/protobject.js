@@ -9,8 +9,11 @@ import {
   getSynchronizeData, getFov, toggleEyepieceOverlay,
   applyLocation, applyPollution, setEngineSpeed, updateDate,
   setDatetimeInterval, clearDatetimeInterval, noLenBlurry, yesLenNormal,
+  startVisibleTargetsPush, stopVisibleTargetsPush, applySelectTarget,
 } from './stellarium.js';
-import { setEngineUTC, setCurrentTZ, updateSkySettings, setObserverLat, setObserverLon } from './stores.js';
+import {
+  setEngineUTC, setCurrentTZ, updateSkySettings, setObserverLat, setObserverLon, visibleTargets,
+} from './stores.js';
 import { getMagFromLonLat } from './light-pollution.js';
 
 const bus = createMessageBus(createProtobjectTransport());
@@ -73,10 +76,17 @@ export function initViewerProtobject() {
   bus.on('noLenBlurry', noLenBlurry);
   bus.on('yesLenNormal', yesLenNormal);
   bus.on('seeingOption', (v) => seeingOptionHandler?.(v));
-  bus.on('simpleSettings', () => enableSimpleModeSettings());
-  bus.on('advancedSettings', () => enableAdvancedModeSettings());
+  bus.on('simpleSettings', () => {
+    enableSimpleModeSettings();
+    startVisibleTargetsPush();
+  });
+  bus.on('advancedSettings', () => {
+    enableAdvancedModeSettings();
+    stopVisibleTargetsPush();
+  });
   bus.on('requestSynchronizeData', getSynchronizeData);
   bus.on('requestSynchronizeSimpleZoom', getFov);
+  bus.on('selectTarget', applySelectTarget);
 
   bus.start({
     onConnect: skipFirstCall(() => {
@@ -137,6 +147,11 @@ export function initTelescopeProtobject() {
   // Built-in handler for time sync
   onTelescopeMessage('syncTime', (values) => {
     setEngineUTC(values.engineUTC);
+  });
+
+  // Lista de objetos visibles, empujada por el visor en modo simple
+  onTelescopeMessage('visibleTargets', (values) => {
+    visibleTargets.set({ list: values.list ?? [], selectedId: values.selectedId ?? null });
   });
 
   // Handle coordinates from Mapa.html / Pelota.html

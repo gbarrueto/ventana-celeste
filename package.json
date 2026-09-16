@@ -2,7 +2,7 @@
   "name": "ventana-celeste",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "dev": "node apps/entry-point/server.js",
     "dev:entry": "node apps/entry-point/server.js",
