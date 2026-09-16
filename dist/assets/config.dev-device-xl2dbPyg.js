@@ -1,0 +1,1 @@
+const e={env:"development-device",smallDataPath:"https://smalldata.ventanaceleste.com/",bigDataPath:"https://bigdata.ventanaceleste.com/",calibrateOnStart:!0,enableZoomBlurTimer:!0,enableDebugPanel:!0};export{e as default};
