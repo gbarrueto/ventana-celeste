@@ -3,7 +3,7 @@ import { initializeStellariumEngine, createOrientationController } from '@ventan
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
 import { connect, fetchLinkConfig } from './link.js';
-import { createFocuser, aplicarBlur } from './focuser.js';
+import { createFocuser, aplicarBlur, TRAMOS_OCULAR, FOV_POR_OCULAR } from './focuser.js';
 import { createSeeingOverlay, SEEING_DEFAULTS, createFreeLook, acotarPitch } from '@ventanaceleste/core';
 import { cargarAjustes, crearPanel, PANTALLA_GRANDE, UMBRAL_DINAMICO } from './panel.js';
 
@@ -135,6 +135,10 @@ export async function startSky({ role, statusEl, canvas }) {
   // sub-píxel de todas formas.
   let seeing = null;
   let effectCanvas = null;
+  // Tapa opaca para cuando no hay ocular puesto. No se toca la visibilidad de
+  // canvas/effectCanvas directamente: el overlay de seeing decide la suya
+  // sola (onActiveChange) y pelearía con eso. Va por encima de los dos.
+  let tapaSinOcular = null;
   if (role === 'ocular') {
     effectCanvas = document.createElement('canvas');
     effectCanvas.id = 'seeing-canvas';
@@ -142,13 +146,20 @@ export async function startSky({ role, statusEl, canvas }) {
     effectCanvas.style.visibility = 'hidden';
     effectCanvas.style.zIndex = '1';
     canvas.parentNode.insertBefore(effectCanvas, canvas.nextSibling);
+
+    tapaSinOcular = document.createElement('div');
+    tapaSinOcular.style.background = '#000';
+    tapaSinOcular.style.pointerEvents = 'none';
+    tapaSinOcular.style.zIndex = '2';
+    tapaSinOcular.style.visibility = 'hidden';
+    canvas.parentNode.insertBefore(tapaSinOcular, effectCanvas.nextSibling);
   }
 
   // El ocular se recorta siempre, porque va dentro del tubo. El guía sólo en
   // pantalla chica: en el monitor conviene a pantalla completa.
   const reacomodar = acomodarVista(canvas, ajustes, {
     recortarSiempre: role === 'ocular',
-    extra: [effectCanvas],
+    extra: [effectCanvas, tapaSinOcular],
   });
 
   if (effectCanvas) {
@@ -282,6 +293,14 @@ export async function startSky({ role, statusEl, canvas }) {
       reacomodar();
     },
     onRecalibrar: () => controller?.startCalibration(),
+    oculares: TRAMOS_OCULAR.map(({ key }) => key),
+    onOcular: (key) => {
+      // Mismo camino que seguiría el Arduino: una línea R:<valor> dentro del
+      // tramo. Sin tramo (ocular ''), se manda el valor de "sin ocular".
+      const tramo = TRAMOS_OCULAR.find((t) => t.key === key);
+      const crudo = tramo ? Math.round((tramo.min + tramo.max) / 2) : 1023;
+      focuser?.simularLinea(`R:${crudo}`);
+    },
   });
   panel.setDirecciones(addresses);
 
@@ -301,7 +320,21 @@ export async function startSky({ role, statusEl, canvas }) {
       },
       onEyepiece: ({ eyepiece }) => {
         panel?.setEstado(`ocular: ${eyepiece || 'ninguno'}`);
+        panel?.marcarOcular(eyepiece);
         bus.send('eyepiece', { eyepiece }, other);
+
+        // Sin ocular puesto no debería verse nada.
+        if (tapaSinOcular) tapaSinOcular.style.visibility = eyepiece ? 'hidden' : 'visible';
+        const mira = document.querySelector('.crosshair');
+        if (mira) mira.style.visibility = eyepiece ? '' : 'hidden';
+
+        // Cada ocular fija su propio zoom.
+        const fov = FOV_POR_OCULAR[eyepiece];
+        if (fov) {
+          ajustes.fov = fov;
+          aplicarFov(fov);
+          panel?.sincronizarZoom();
+        }
       },
       onCamera: ({ connected }) => {
         bus.send('camera', { connected }, other);
