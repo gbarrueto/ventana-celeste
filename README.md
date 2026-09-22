@@ -12,7 +12,7 @@ El proyecto se despliega en cuatro ejes, según quién opera el instrumento y d�
 
 | Eje | Para | Estado |
 |---|---|---|
-| **No mediado** | Museo. La persona visitante usa el instrumento sola. | En pruebas. Ya probado en museo, en segunda fase iterativa. |
+| **Autónomo** | Museo. La persona visitante usa el instrumento sola. | En pruebas. Ya probado en museo, en segunda fase iterativa. |
 | **Mediado** | Eventos y exposiciones. Móvil y flexible, requiere una persona experta que guíe. | En desarrollo de un MVP para su primera prueba en museo. |
 | **Hogar** | Distribuible y accesible. | Esbozo. Sin planificar. |
 | **Educativo** | Colegios y educadores. | Esbozo. Sin planificar. |
@@ -127,6 +127,3 @@ Dos condiciones que hacen perder tiempo cuando no se conocen:
 
 [docs/README.md](docs/README.md) es el índice. Punto de entrada:
 [docs/arquitectura.md](docs/arquitectura.md).
-
-`old-docs/` contiene la documentación anterior, fuera de git. No es fuente: quedó desactualizada y
-se reescribió leyendo el código.
