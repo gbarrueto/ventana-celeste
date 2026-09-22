@@ -26,20 +26,19 @@ export function computeFovFromEyepiece(focalLength, eyepieceFocalLength, project
 
 // ── Simple-mode slider <-> FOV (exponential mapping) ───────
 
-const SLIDER_FACTOR = 5;
-
+// Mapeo geométrico: cada paso del deslizador multiplica el campo por la misma
+// razón, que es lo que el ojo lee como un paso de zoom parejo. La curva anterior
+// era exponencial sobre el rango lineal del campo, de modo que el tamaño de paso
+// quedaba fijo en radianes: cerca del tope de aumento ese paso era mucho mayor
+// que el campo mismo y el primer escalón saltaba un factor 149.
 export function sliderToFov(sliderValue, { minFov, maxFov, maxSlider = 150 }) {
-  const normalized = sliderValue / maxSlider;
-  const maxExp = Math.exp(SLIDER_FACTOR) - 1;
-  const exponential = (Math.exp(normalized * SLIDER_FACTOR) - 1) / maxExp;
-  return minFov + exponential * (maxFov - minFov);
+  const t = Math.min(1, Math.max(0, sliderValue / maxSlider));
+  return minFov * Math.pow(maxFov / minFov, t);
 }
 
 export function fovToSlider(fov, { minFov, maxFov, maxSlider = 150 }) {
-  const normalizedFov = (fov - minFov) / (maxFov - minFov);
-  const maxExp = Math.exp(SLIDER_FACTOR) - 1;
-  const logValue = Math.log(normalizedFov * maxExp + 1) / SLIDER_FACTOR;
-  return logValue * maxSlider;
+  const f = Math.min(maxFov, Math.max(minFov, fov));
+  return (Math.log(f / minFov) / Math.log(maxFov / minFov)) * maxSlider;
 }
 
 // ── Limiting magnitude (NELM) + Bortle scale ───────────────
@@ -147,20 +146,25 @@ export function magToBortle(magArcsec2) {
   return 9;
 }
 
+// Punto medio del tramo, sin azar. Antes sumaba `Math.random()` por el ancho
+// del tramo, lo que sacaba el resultado del propio tramo: bortleToMag(4) podía
+// devolver 22.3, y magToBortle de eso contesta 1. Con un deslizador que muestra
+// el Bortle derivado de la magnitud guardada, eso significaba que arrastrar a 4
+// saltaba a otro número. El ida y vuelta ahora es exacto para los nueve valores.
 export function bortleToMag(bortle) {
   const ranges = {
-    1: [22.0, 21.99, 0.1],
-    2: [21.99, 21.89, 0.1],
-    3: [21.89, 21.69, 0.2],
-    4: [21.69, 20.49, 1.2],
-    5: [20.49, 19.5, 0.99],
-    6: [19.5, 18.94, 0.56],
-    7: [18.94, 18.38, 0.56],
-    8: [18.38, 16.53, 1.85],
-    9: [16.53, 15.0, 1.53],
+    1: [22.0, 21.99],
+    2: [21.99, 21.89],
+    3: [21.89, 21.69],
+    4: [21.69, 20.49],
+    5: [20.49, 19.5],
+    6: [19.5, 18.94],
+    7: [18.94, 18.38],
+    8: [18.38, 16.53],
+    9: [16.53, 15.0],
   };
   const r = ranges[bortle];
-  return r ? (r[0] + r[1]) / 2 + Math.random() * r[2] : null;
+  return r ? (r[0] + r[1]) / 2 : null;
 }
 
 // ── Telescope: stateful convenience wrapper ────────────────
@@ -233,7 +237,7 @@ export function createDefaultTelescope(overrides = {}) {
   return new Telescope({
     name: 'Ventana Celeste',
     type: TelescopeType.REFRACTOR,
-    aperture: 100,
+    aperture: 150,
     focalLength: 1200,
     ...overrides,
   });

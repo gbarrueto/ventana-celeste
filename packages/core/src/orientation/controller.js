@@ -57,6 +57,33 @@ export function quaternionFromAxisAngle(axis, degrees) {
   throw new Error(`quaternionFromAxisAngle: eje inválido "${axis}"`);
 }
 
+/**
+ * Lee un bias guardado sin crear un controlador. La app lo consulta ANTES de
+ * arrancar para saber si va a tener que pedir la calibración o no, y así
+ * enseñar la pantalla que corresponde en vez de prometer un ritual que no va a
+ * ocurrir. Devuelve `null` si no hay, si está mal formado o si caducó.
+ */
+export function readPersistedBias(key, { maxAgeMs = null } = {}) {
+  if (!key) return null;
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number' || typeof parsed.z !== 'number') {
+      return null;
+    }
+    if (maxAgeMs !== null) {
+      // Un registro sin fecha es de una versión anterior: no se puede saber si
+      // caducó, así que se descarta y se calibra.
+      if (typeof parsed.t !== 'number') return null;
+      if (Date.now() - parsed.t > maxAgeMs) return null;
+    }
+    return { x: parsed.x, y: parsed.y, z: parsed.z };
+  } catch {
+    return null;
+  }
+}
+
 export function createOrientationController({
   gyroFreq = 100,
   relFreq = 30,
@@ -74,6 +101,12 @@ export function createOrientationController({
   countdownSeconds = 3,
 
   persistBiasKey = null,
+  // Vida útil del bias guardado, en ms. El bias es del giroscopio de ESE
+  // teléfono y se mueve con la temperatura, así que uno medido hace semanas ya
+  // no describe al sensor de hoy. Con esto la app se salta la calibración en la
+  // misma visita y la vuelve a pedir cuando el dato dejó de ser representativo.
+  // `null` conserva el comportamiento anterior: no caduca nunca.
+  persistBiasMaxAgeMs = null,
 
   // 'relative': RelativeOrientationSensor. 'absolute': AbsoluteOrientationSensor (norte magnético).
   sensorReference = 'relative',
@@ -206,24 +239,13 @@ export function createOrientationController({
   // ── Bias persistence ─────────────────────────────────────
 
   function loadPersistedBias() {
-    if (!persistBiasKey) return null;
-    try {
-      const saved = localStorage.getItem(persistBiasKey);
-      if (!saved) return null;
-      const parsed = JSON.parse(saved);
-      if (typeof parsed.x === 'number' && typeof parsed.y === 'number' && typeof parsed.z === 'number') {
-        return parsed;
-      }
-    } catch (e) {
-      onError(e);
-    }
-    return null;
+    return readPersistedBias(persistBiasKey, { maxAgeMs: persistBiasMaxAgeMs });
   }
 
   function persistBias(bias) {
     if (!persistBiasKey) return;
     try {
-      localStorage.setItem(persistBiasKey, JSON.stringify(bias));
+      localStorage.setItem(persistBiasKey, JSON.stringify({ ...bias, t: Date.now() }));
     } catch (e) {
       onError(e);
     }
@@ -609,6 +631,10 @@ export function createOrientationController({
       const savedBias = loadPersistedBias();
       if (savedBias) {
         state.gyroBias = savedBias;
+        // No va a haber fase de calibración, así que hay que decirlo: quien
+        // muestre un overlay de calibración se queda esperando un cierre que,
+        // por este camino, nunca llegaba.
+        onCalibrationVisibility(false);
         if (!state.sensorsStarted) {
           state.lastTime = performance.now();
           state.gyroSensor.addEventListener('reading', onSensorReading);

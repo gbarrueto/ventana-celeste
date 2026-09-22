@@ -1,0 +1,35 @@
+.connect {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.connect-body {
+  position: relative;
+  flex: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  padding: 0 24px;
+  text-align: center;
+}
+.connect-foot {
+  position: relative;
+  padding: 0 20px 26px;
+}
+.msg {
+  margin: 0;
+  font: var(--type-body);
+  color: var(--text-secondary);
+  max-width: 290px;
+}
+.msg--danger-title {
+  font: var(--type-subheading);
+  color: var(--text-danger);
+  max-width: 300px;
+}
+.danger-icon {
+  color: var(--danger);
+  display: inline-flex;
+}

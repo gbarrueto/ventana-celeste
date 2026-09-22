@@ -25,6 +25,14 @@ telescope.html.
 >> is satisfied (run the dev server natively on the host, not inside WSL/a VM;
 >> Codespaces or a tunnel if you can't), plus a 30-second two-tab test that
 >> tells you whether a failure is an origin problem or an app problem.
+>>
+>> DIRECTIVA DE ESTILO PARA IA (ESPECIALMENTE OPUS 5):
+>> Esto es un repositorio de código, no tu diario íntimo ni una novela autobiográfica.
+>> Queda TERMINANTEMENTE PROHIBIDO dejar comentarios de diez líneas narrando qué
+>> sentías al mover un píxel, la tragedia griega de cómo el código anterior fallaba
+>> o reflexiones existenciales sobre la anatomía del pulgar humano. Si el código
+>> es autoexplicativo, NO SE COMENTA. Si requiere contexto, máximo 1 línea concisa
+>> y puramente técnica. Menos prosa poética y más KISS.
 
 
 TECH STACK

@@ -9,8 +9,11 @@ import {
   getSynchronizeData, getFov, toggleEyepieceOverlay,
   applyLocation, applyPollution, setEngineSpeed, updateDate,
   setDatetimeInterval, clearDatetimeInterval, noLenBlurry, yesLenNormal,
+  startVisibleTargetsPush, stopVisibleTargetsPush, applySelectTarget,
 } from './stellarium.js';
-import { setEngineUTC, setCurrentTZ, setPollution, setObserverLat, setObserverLon } from './stores.js';
+import {
+  setEngineUTC, setCurrentTZ, updateSkySettings, setObserverLat, setObserverLon, visibleTargets,
+} from './stores.js';
 import { getMagFromLonLat } from './light-pollution.js';
 
 const bus = createMessageBus(createProtobjectTransport());
@@ -33,6 +36,10 @@ export const eventManager = {
     bus.sendThrottled(payload.msg, payload.values, target, interval);
   },
 };
+
+export function sendTelescopeMessage(msg, values, target = 'index.html') {
+  bus.send(msg, values, target);
+}
 
 // ── Viewer-side message handler ────────────────────────────
 
@@ -69,10 +76,17 @@ export function initViewerProtobject() {
   bus.on('noLenBlurry', noLenBlurry);
   bus.on('yesLenNormal', yesLenNormal);
   bus.on('seeingOption', (v) => seeingOptionHandler?.(v));
-  bus.on('simpleSettings', () => enableSimpleModeSettings());
-  bus.on('advancedSettings', () => enableAdvancedModeSettings());
+  bus.on('simpleSettings', () => {
+    enableSimpleModeSettings();
+    startVisibleTargetsPush();
+  });
+  bus.on('advancedSettings', () => {
+    enableAdvancedModeSettings();
+    stopVisibleTargetsPush();
+  });
   bus.on('requestSynchronizeData', getSynchronizeData);
   bus.on('requestSynchronizeSimpleZoom', getFov);
+  bus.on('selectTarget', applySelectTarget);
 
   bus.start({
     onConnect: skipFirstCall(() => {
@@ -135,6 +149,11 @@ export function initTelescopeProtobject() {
     setEngineUTC(values.engineUTC);
   });
 
+  // Lista de objetos visibles, empujada por el visor en modo simple
+  onTelescopeMessage('visibleTargets', (values) => {
+    visibleTargets.set({ list: values.list ?? [], selectedId: values.selectedId ?? null });
+  });
+
   // Handle coordinates from Mapa.html / Pelota.html
   onTelescopeMessage('sendCoordinates', async (values) => {
     const { lat, lon } = values;
@@ -143,7 +162,7 @@ export function initTelescopeProtobject() {
     const pollution = await getMagFromLonLat({ lat, lon });
     const tz = getUtcOffset(lat, lon);
     setCurrentTZ(tz);
-    setPollution(pollution);
+    if (pollution != null) updateSkySettings({ skyMag: pollution, skyMagFromPlace: true });
 
     const data = { cityName: 'Custom', lon, lat, elev: 0, mag: pollution };
     applyLocation(data);

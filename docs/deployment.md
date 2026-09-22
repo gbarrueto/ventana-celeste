@@ -1,17 +1,17 @@
 # Despliegue
 
-Cómo se desarrolla, se publica y se arranca `dual-telescope` en los dispositivos. El esquema de
-compilar en la PC y bajar sólo el resultado sirve igual para `kiosk-standalone`.
+Cómo se desarrolla, se publica y se arranca `dual-telescope` y `kiosk-standalone` en los dispositivos.
+El esquema compila en la PC y descarga únicamente el paquete listo en el dispositivo, evitando
+la lentitud y límites de memoria del build en Android.
 
 ## Restricciones
 
 1. El sistema opera sin Internet. La red se usa para preparar (clonar, instalar, traer catálogos),
    no para funcionar.
-2. Un teléfono hace de punto de acceso y el otro se conecta a él.
-3. Hace falta un proceso servidor en uno de los dispositivos: sirve los estáticos y hace de relay
-   entre los dos roles.
-4. El dispositivo no compila. El build en Android es lento y es la razón de que `kiosk` necesite
-   `--max-old-space-size=1536`.
+2. En `dual-telescope`, un teléfono hace de punto de acceso y el otro se conecta a él.
+3. Hace falta un proceso servidor en el dispositivo: sirve los estáticos (y en `dual-telescope` hace
+   de relay entre los dos roles).
+4. El dispositivo no compila. El build en Android es lento y consumía demasiada memoria.
 5. Los sensores exigen contexto seguro. El dispositivo con sensores se sirve a sí mismo por
    `http://localhost`, que ya lo es.
 
@@ -19,9 +19,11 @@ compilar en la PC y bajar sólo el resultado sirve igual para `kiosk-standalone`
 
 ```bash
 pnpm --filter @ventanaceleste/dual-telescope dev
+# o para kiosk:
+pnpm --filter @ventanaceleste/kiosk-standalone dev
 ```
 
-Vite sirve las dos páginas por HTTPS y el relay va montado sobre el mismo servidor.
+En `dual-telescope`, Vite sirve las dos páginas por HTTPS y el relay va montado sobre el mismo servidor.
 
 | Rol | URL |
 |---|---|
@@ -41,7 +43,7 @@ El teléfono con sensores abre `localhost`, no la IP: sólo `localhost` es conte
 certificado de confianza. El certificado de `@vitejs/plugin-basic-ssl` es autofirmado y se acepta
 una vez por dispositivo.
 
-Para invertir qué rol lleva los sensores:
+Para invertir qué rol lleva los sensores en `dual-telescope`:
 
 ```bash
 SENSOR_SOURCE=guide pnpm --filter @ventanaceleste/dual-telescope dev
@@ -54,21 +56,22 @@ Compartiendo origen, el socket es `wss://` sin configuración.
 
 ```bash
 git push origin main                       # 1
-cd apps/dual-telescope
-pnpm run pack:deploy                       # 2
-pnpm run publish:deploy -- --push          # 3
+cd apps/dual-telescope                     # o cd apps/kiosk-standalone (2)
+pnpm run pack:deploy                       # 3
+pnpm run publish:deploy -- --push          # 4
 ```
 
 **`main` va primero.** El script de publicación etiqueta el commit con la revisión de `main` de la
 que salió, y esa referencia sólo sirve si el commit existe en el remoto.
 
 Los dos pasos son decisiones separadas a propósito: `main` puede avanzar sin cambiar lo que corre
-en el telescopio.
+en el dispositivo.
 
 ### `pack:deploy`
 
-Compila y arma `deploy/` con tres cosas:
+Compila y arma `deploy/`:
 
+En `dual-telescope`:
 ```
 deploy/
 ├── dist/       la app construida
@@ -79,10 +82,22 @@ deploy/
 esbuild empaqueta `server/relay.js` a ESM. El banner con `createRequire` es necesario porque `ws`
 usa `require()` internamente.
 
+En `kiosk-standalone`:
+```
+deploy/
+├── dist/       la app construida
+├── server.mjs  servidor de estáticos HTTP con biblioteca estándar de Node
+└── start.sh    el arranque
+```
+
+No requiere dependencias externas ni empaquetado con esbuild: sirve los estáticos con los módulos
+nativos de Node (`node:http`, `node:fs/promises`, `node:path`, `node:os`).
+
 ### `publish:deploy`
 
-Publica `deploy/` en la rama `deploy/dual-telescope`, que es huérfana: no comparte historia con
-`main`, así que el clon en el dispositivo pesa lo que pesa el paquete.
+Publica `deploy/` en la rama de deploy correspondiente (`deploy/dual-telescope` o
+`deploy/kiosk-standalone`), que es huérfana: no comparte historia con `main`, así que el clon en
+el dispositivo pesa lo que pesa el paquete.
 
 Usa un worktree aparte en `.deploy-worktree`, de modo que el working tree actual nunca se toca.
 
@@ -96,6 +111,8 @@ Cada app tiene su propia rama de deploy.
 
 ## En el dispositivo
 
+### dual-telescope
+
 ```bash
 # una vez
 git clone --branch deploy/dual-telescope --single-branch --depth 1 <repo> ventana
@@ -105,19 +122,32 @@ cd ventana && ./start.sh
 PULL=1 ./start.sh
 ```
 
+### kiosk-standalone
+
+```bash
+# una vez
+git clone --branch deploy/kiosk-standalone --single-branch --depth 1 <repo> ventana-kiosk
+cd ventana-kiosk && ./start.sh
+
+# actualizar
+PULL=1 ./start.sh
+```
+
 `--single-branch` evita traer los objetos de las otras ramas y `--depth 1` evita el historial.
 
 ### Variables de `start.sh`
 
-| Variable | Por defecto | Qué hace |
-|---|---|---|
-| `SENSOR_SOURCE` | `ocular` | Qué rol lleva los sensores. |
-| `PORT` | `8080` | Puerto del relay. |
-| `PULL` | `0` | `1` hace `git pull --ff-only` antes de arrancar. |
+| Variable | App | Por defecto | Qué hace |
+|---|---|---|---|
+| `SENSOR_SOURCE` | `dual-telescope` | `ocular` | Qué rol lleva los sensores. |
+| `PORT` | `dual-telescope` | `8080` | Puerto del relay y servidor. |
+| `PORT` | `kiosk-standalone` | `5174` | Puerto del servidor de estáticos. |
+| `PULL` | ambas | `0` | `1` hace `git pull --ff-only` antes de arrancar. |
 
 El script no compila. Si falta `dist/`, aborta con un mensaje.
 
-Usa `relay.mjs` si existe, y `server/relay.js` si se corre dentro del repo.
+En `dual-telescope`, usa `relay.mjs` si existe, y `server/relay.js` si se corre dentro del repo.
+En `kiosk-standalone`, ejecuta `server.mjs`.
 
 ### Emparejar con el guía
 

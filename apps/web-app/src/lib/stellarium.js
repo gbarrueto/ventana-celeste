@@ -17,6 +17,12 @@ import {
   magToBortle,
   initializeStellariumEngine,
   removeStellariumEngine,
+  getSunAltitude,
+  listVisibleTargets,
+  getTargetById,
+  getSelectedTarget,
+  selectTarget,
+  clearSelection,
 } from '@ventanaceleste/core';
 import engineWasmUrl from '@ventanaceleste/core/assets/stellarium-web-engine.wasm?url';
 import engineScriptUrl from '@ventanaceleste/core/assets/stellarium-web-engine.js?url';
@@ -99,17 +105,15 @@ export function updateStellariumFov({ fov }) {
   engine.core.display_limit_mag = currentLimitMag();
 }
 
-export function stellariumOption({ path, attr }) {
+export function stellariumOption({ path, attr, value }) {
+  if (!engine?.core) return;
   const obj = path.split('.').reduce((o, k) => o && o[k], engine.core);
   if (!obj) return;
-  obj[attr] = !obj[attr];
+  const next = typeof value === 'boolean' ? value : !obj[attr];
+  obj[attr] = next;
 
   if (path === 'atmosphere' && attr === 'visible') {
-    if (!obj[attr]) {
-      applyPollution({ mag: 22 });
-    } else {
-      applyPollution({ mag: citySqmReading });
-    }
+    applyPollution({ mag: next ? citySqmReading : 22 });
   }
 }
 
@@ -136,6 +140,10 @@ export function getSynchronizeData() {
       },
     },
   }).to('telescope.html');
+}
+
+export function getEngineFov() {
+  return engine?.core?.fov;
 }
 
 export function getFov() {
@@ -193,9 +201,15 @@ export function setSeeingOpacity(opacity) {
   if (el) el.style.opacity = opacity;
 }
 
+let seeingControl = null;
+export function setSeeingControl(control) {
+  seeingControl = control;
+}
+
 function enableSeeingEffect(enable) {
+  seeingControl?.setEnabled(enable);
   const el = document.getElementById('effect-canvas');
-  if (el) el.style.visibility = enable ? 'visible' : 'hidden';
+  if (el && !enable) el.style.visibility = 'hidden';
 }
 
 // ── Location & Pollution ───────────────────────────────────
@@ -251,25 +265,49 @@ export function clearDatetimeInterval() {
 
 // ── Object queries ─────────────────────────────────────────
 
-function radToDeg(val) {
-  return val * (180 / Math.PI);
-}
-
-export function getObjAltAz(obj) {
-  if (!engine) return null;
-  const pvo = obj.getInfo('pvo', engine.observer);
-  const altaz = engine.convertFrame(engine.observer, 'ICRF', 'OBSERVED', pvo[0]);
-  const az = radToDeg(engine.anp(engine.c2s(altaz)[0]));
-  let alt = radToDeg(engine.anp(engine.c2s(altaz)[1]));
-  if (alt > 90) alt -= 360;
-  return { alt, az };
-}
-
 export function isNightime() {
   if (!engine) return true;
-  const sun = engine.getObj('NAME Sun');
-  const sunPos = getObjAltAz(sun);
-  return sunPos ? sunPos.alt <= -3 : true;
+  const sunAlt = getSunAltitude(engine);
+  return sunAlt === null ? true : sunAlt <= -3;
+}
+
+// ── Target detection & marking (viewer side) ────────────────
+// El teléfono en modo simple no tiene motor propio: el visor es el único que
+// puede responder "qué se ve ahora" y "qué hay marcado", así que calcula acá y
+// empuja el resultado.
+
+const VISIBLE_TARGETS_PUSH_MS = 5000;
+let visibleTargetsInterval = null;
+
+function pushVisibleTargets() {
+  if (!engine?.core) return;
+  const visibles = listVisibleTargets(engine);
+  const marcado = getSelectedTarget(engine);
+  Protobject.Core.send({
+    msg: 'visibleTargets',
+    values: {
+      list: visibles.map(({ target, alt, az, magnitude }) => ({ id: target.id, alt, az, magnitude })),
+      selectedId: marcado?.id ?? null,
+    },
+  }).to('telescope.html');
+}
+
+export function startVisibleTargetsPush() {
+  if (visibleTargetsInterval) return;
+  pushVisibleTargets();
+  visibleTargetsInterval = setInterval(pushVisibleTargets, VISIBLE_TARGETS_PUSH_MS);
+}
+
+export function stopVisibleTargetsPush() {
+  clearInterval(visibleTargetsInterval);
+  visibleTargetsInterval = null;
+}
+
+export function applySelectTarget({ id }) {
+  if (!engine?.core) return;
+  const target = id ? getTargetById(id) : null;
+  if (target) selectTarget(engine, target);
+  else clearSelection(engine);
 }
 
 // ── No-lens blur (viewer side) ─────────────────────────────
