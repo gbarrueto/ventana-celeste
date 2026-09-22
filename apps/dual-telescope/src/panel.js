@@ -14,7 +14,7 @@ export const UMBRAL_DINAMICO = 0.06;
 
 export const AJUSTES_POR_DEFECTO = {
   ocular: {
-    rot: 270,
+    rot: 90,
     fraccion: 0.5,
     pos: 0.75,
     fov: UMBRAL_DINAMICO * 1.3,
@@ -55,7 +55,9 @@ function guardar(role, ajustes) {
   try { localStorage.setItem(clave(role), JSON.stringify(ajustes)); } catch { /* modo privado */ }
 }
 
-export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecalibrar }) {
+export function crearPanel({
+  role, ajustes, esFuente = false, onChange, onRecalibrar, oculares = [], onOcular,
+}) {
   const esOcular = role === 'ocular';
 
   const capa = document.createElement('div');
@@ -140,10 +142,11 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     fila('tamaño', fr.input, fr.valor);
   }
 
+  const formatoZoom = (v) => (v >= 0.02 ? `${((v * 180) / Math.PI).toFixed(1)}°` : `${((v * 180 * 60) / Math.PI).toFixed(0)}'`);
   const zm = deslizador('fov', {
     min: FOV_MIN, max: FOV_MAX, paso: 0.001,
     escala: { a: Math.log, de: Math.exp },
-    formato: (v) => (v >= 0.02 ? `${((v * 180) / Math.PI).toFixed(1)}°` : `${((v * 180 * 60) / Math.PI).toFixed(0)}'`),
+    formato: formatoZoom,
   });
   fila('zoom', zm.input, zm.valor);
 
@@ -245,6 +248,21 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
     fila('rotación', rotBox);
   }
 
+  // Botones para probar cada ocular sin el Arduino conectado. '' es "ninguno".
+  const botonesOcular = new Map();
+  if (esOcular && oculares.length > 0) {
+    const ocBox = document.createElement('div');
+    ocBox.className = 'op-rot';
+    for (const key of ['', ...oculares]) {
+      const b = document.createElement('button');
+      b.textContent = key || 'ninguno';
+      b.onclick = () => onOcular?.(key);
+      botonesOcular.set(key, b);
+      ocBox.appendChild(b);
+    }
+    fila('ocular', ocBox);
+  }
+
   if (esFuente) {
     const recal = document.createElement('button');
     recal.className = 'op-cerrar';
@@ -339,6 +357,14 @@ export function crearPanel({ role, ajustes, esFuente = false, onChange, onRecali
   return {
     caja,
     setEstado(texto) { estado.textContent = texto; },
+    marcarOcular(key) {
+      for (const [k, b] of botonesOcular) b.className = k === (key ?? '') ? 'on' : '';
+    },
+    // Refleja en el deslizador un zoom cambiado desde fuera (p. ej. al detectar un ocular).
+    sincronizarZoom() {
+      zm.input.value = Math.log(ajustes.fov);
+      zm.valor.textContent = formatoZoom(ajustes.fov);
+    },
     setDirecciones(lista) {
       direcciones = lista ?? [];
       iDir = 0;

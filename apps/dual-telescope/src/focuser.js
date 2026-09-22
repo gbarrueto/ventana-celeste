@@ -13,7 +13,25 @@ export const PUNTOS_DE_FOCO = {
 };
 
 // Tramos de ADC para identificar cada ocular.
-export const TRAMOS_OCULAR = [];
+export const TRAMOS_OCULAR = [
+  { key: 'len1', min: 100, max: 180 },
+  { key: 'len2', min: 300, max: 380 },
+  { key: 'len3', min: 500, max: 580 },
+  { key: 'len4', min: 700, max: 780 },
+];
+
+// R:1023 (el divisor queda a 5 V) significa que no hay ocular puesto. Se deja
+// un margen por el ruido del ADC.
+export const TRAMO_SIN_OCULAR = { key: '', min: 1015, max: 1023 };
+
+// Campo de visión (radianes) de cada ocular. len1 acerca un poco más que el
+// guía (~8°, 0.14 rad) y cada ocular siguiente cierra más el campo.
+export const FOV_POR_OCULAR = {
+  len1: 0.10,   // ~5.7°
+  len2: 0.06,   // ~3.4°
+  len3: 0.03,   // ~1.7°
+  len4: 0.015,  // ~0.9°
+};
 
 export function createFocuser({
   onBlur = () => {},
@@ -28,7 +46,14 @@ export function createFocuser({
   exponente = 1.6,
 } = {}) {
   let ocular = '';
-  let posicion = null;
+  // Hasta que llega la primera lectura no se sabe si hay ocular: el sketch
+  // sólo manda R: cuando el valor cambia, y una página recargada no recibe
+  // ninguna hasta el próximo cambio.
+  let confirmado = false;
+  // Arranca en el centro del recorrido para que un cambio de ocular (por el
+  // Arduino o por los botones de depuración) se note antes de la primera
+  // lectura real del potenciómetro.
+  let posicion = 0.5;
   let fuente = null;
 
   function calcularBlur(pos) {
@@ -49,7 +74,7 @@ export function createFocuser({
   }
 
   function ocularDeValor(crudo) {
-    for (const { min, max, key } of eyepieceRanges) {
+    for (const { min, max, key } of [...eyepieceRanges, TRAMO_SIN_OCULAR]) {
       if (crudo >= min && crudo <= max) return key;
     }
     return null;
@@ -75,7 +100,7 @@ export function createFocuser({
         onStatus({ message: `ocular sin clasificar (R:${crudo})`, raw: crudo });
         return;
       }
-      if (clave !== ocular) setEyepiece(clave);
+      if (clave !== ocular || !confirmado) setEyepiece(clave);
       return;
     }
 
@@ -84,8 +109,9 @@ export function createFocuser({
 
   function setEyepiece(key) {
     ocular = key ?? '';
+    confirmado = true;
     onEyepiece({ eyepiece: ocular });
-    if (posicion !== null) emitir(posicion);
+    emitir(posicion);
   }
 
   return {
@@ -104,6 +130,10 @@ export function createFocuser({
     },
 
     setEyepiece,
+
+    // Procesa una línea como si la hubiera mandado el Arduino (p. ej.
+    // "R:301"). La usa el panel de depuración para probar sin hardware.
+    simularLinea: consumir,
 
     stop() {
       fuente?.disconnect();
